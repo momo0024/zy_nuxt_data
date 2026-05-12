@@ -11,14 +11,14 @@
     <!-- 知识库统计小卡片 -->
     <Transition name="fade-text">
       <div v-show="!collapsed" class="kb-stats-card">
-        <div class="kb-stat">
-          <div class="kb-stat-num">1,773</div>
-          <div class="kb-stat-label">总文档数</div>
+        <div class="kb-stat-item">
+          <span class="kb-stat-label">文档数</span>
+          <span class="kb-stat-val">1,773</span>
         </div>
         <div class="kb-stat-divider" />
-        <div class="kb-stat">
-          <div class="kb-stat-num">4</div>
-          <div class="kb-stat-label">知识库</div>
+        <div class="kb-stat-item">
+          <span class="kb-stat-label">知识类别</span>
+          <span class="kb-stat-val">{{ hydrated ? (user?.allowedCategories?.length ?? 0) : '…' }}</span>
         </div>
       </div>
     </Transition>
@@ -33,12 +33,12 @@
         :class="{ active: isActive(item.path) }"
         :title="collapsed ? item.name : undefined"
       >
-        <component :is="item.icon" class="nav-icon" :size="18" :stroke-width="1.8" />
+        <UIcon :name="item.icon" class="nav-icon size-[18px] shrink-0" />
         <Transition name="fade-text">
           <span v-show="!collapsed" class="nav-label">{{ item.name }}</span>
         </Transition>
         <Transition name="fade-text">
-          <span v-if="!collapsed && item.badge" class="nav-badge">{{ item.badge }}</span>
+          <UBadge v-if="!collapsed && item.badge" :label="item.badge" variant="soft" size="xs" class="nav-badge" />
         </Transition>
       </NuxtLink>
     </nav>
@@ -46,8 +46,8 @@
     <div class="flex-1" />
 
     <!-- 用户卡片 -->
-    <div class="sidebar-user">
-      <div class="user-avatar">{{ user?.avatar || '?' }}</div>
+    <div v-if="hydrated" class="sidebar-user">
+      <UAvatar :text="userInitials" icon="i-lucide-user-round" size="sm" class="shrink-0 user-avatar-shell" />
       <Transition name="fade-text">
         <div v-show="!collapsed" class="user-info">
           <div class="user-name">{{ user?.name }}</div>
@@ -57,41 +57,61 @@
     </div>
 
     <!-- 退出登录 -->
-    <button class="sidebar-logout" :title="collapsed ? '退出登录' : undefined" @click="handleLogout">
-      <LogOut class="nav-icon" :size="16" :stroke-width="1.8" />
+    <UButton
+      variant="ghost"
+      color="neutral"
+      class="sidebar-logout w-full justify-start"
+      :title="collapsed ? '退出登录' : undefined"
+      @click="handleLogout"
+    >
+      <UIcon name="i-lucide-log-out" class="nav-icon size-4" />
       <Transition name="fade-text">
         <span v-show="!collapsed" class="nav-label">退出登录</span>
       </Transition>
-    </button>
+    </UButton>
 
     <!-- 折叠按钮 -->
-    <button class="collapse-btn" @click="$emit('toggle')">
-      <ChevronLeft
-        :size="16"
-        :style="{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s' }"
-      />
+    <button
+      class="collapse-handle"
+      :class="{ collapsed }"
+      @click="$emit('toggle')"
+    >
+      <span class="collapse-chip" aria-hidden="true">
+        <span class="collapse-edge" />
+        <UIcon :name="collapsed ? 'i-lucide-chevron-right' : 'i-lucide-chevron-left'" class="collapse-icon size-4" />
+      </span>
     </button>
   </aside>
 </template>
 
 <script setup lang="ts">
-import {
-  LayoutDashboard, Search, Database, Upload, Settings, LogOut, ChevronLeft
-} from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
+
+type NavItem = {
+  path: string
+  name: string
+  icon: string
+  badge?: string
+}
 
 defineProps<{ collapsed: boolean }>()
 defineEmits<{ (e: 'toggle'): void }>()
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
+const userInitials = computed(() => user.value?.name?.slice(0, 1) || user.value?.avatar?.slice(0, 1) || '?')
+const hydrated = ref(false)
 
-const navItems = [
-  { path: '/', name: '首页概览', icon: LayoutDashboard },
-  { path: '/retrieve', name: '文档检索', icon: Search },
-  { path: '/data-search', name: '数据搜索', icon: Database },
-  { path: '/import', name: '文档导入', icon: Upload },
-  { path: '/settings', name: '系统设置', icon: Settings }
+const navItems: NavItem[] = [
+  { path: '/', name: '首页概览', icon: 'i-lucide-layout-dashboard' },
+  { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
+  { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
+  { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },
+  { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' }
 ]
 
 function isActive(path: string) {
@@ -101,68 +121,71 @@ function isActive(path: string) {
 
 async function handleLogout() {
   authStore.logout()
-  await navigateTo('/login')
+  await router.push('/login')
 }
+
+onMounted(() => {
+  hydrated.value = true
+})
 </script>
 
 <style scoped>
 .kb-stats-card {
-  margin: 12px 12px 4px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 8px 8px 4px;
+  padding: 8px 10px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  overflow: hidden;
 }
 
-.kb-stat {
+.kb-stat-item {
   flex: 1;
-  text-align: center;
-}
-
-.kb-stat-num {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--primary);
-  font-family: 'Inter', sans-serif;
-  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .kb-stat-label {
-  font-size: 10px;
   color: var(--text-muted);
-  margin-top: 2px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.kb-stat-val {
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-display);
 }
 
 .kb-stat-divider {
   width: 1px;
   height: 28px;
   background: var(--border);
+  flex-shrink: 0;
+  margin: 0 6px;
 }
 
 .sidebar-nav {
-  padding: 8px 0;
+  display: flex;
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  flex-direction: column;
+  padding: 8px 0;
 }
 
 .nav-label {
   flex: 1;
-  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-badge {
-  background: var(--primary-soft);
-  color: var(--primary);
-  border-radius: 999px;
-  font-size: 10px;
-  padding: 1px 6px;
-  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .sidebar-user {
@@ -170,33 +193,24 @@ async function handleLogout() {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border-top: 1px solid var(--border);
   overflow: hidden;
-}
-
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: white;
+  white-space: nowrap;
+  border-top: 1px solid var(--border);
 }
 
 .user-info {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  white-space: nowrap;
 }
 
 .user-name {
+  overflow: hidden;
+  color: var(--text-strong);
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-role {
@@ -226,29 +240,55 @@ async function handleLogout() {
   background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
 
-.collapse-btn {
+.collapse-handle {
   position: absolute;
   top: 50%;
-  right: -12px;
+  right: -18px;
   transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  padding: 0;
+  background: none;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-muted);
-  box-shadow: var(--shadow-sm);
-  transition: color 0.15s, background 0.15s;
-  z-index: 10;
+  z-index: 12;
 }
 
-.collapse-btn:hover {
-  color: var(--text-strong);
-  background: var(--surface-alt);
+.collapse-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 56px;
+  padding: 0;
+  border-radius: 0 8px 8px 0;
+  background: var(--primary);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 45%, transparent);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.collapse-handle:hover .collapse-chip {
+  transform: translateX(2px);
+  opacity: 0.88;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--primary) 55%, transparent);
+}
+
+.collapse-handle.collapsed {
+  right: -18px;
+}
+
+
+
+.collapse-edge {
+  display: none;
+}
+
+.collapse-icon {
+  color: white;
 }
 
 /* Transition */

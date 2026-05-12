@@ -13,9 +13,9 @@
         <span class="pulse-ring" style="animation-delay: 0s" />
         <span class="pulse-ring" style="animation-delay: 0.8s" />
 
-        <!-- 数字人头像（小号） -->
+        <!-- 3D AI 图标 -->
         <div class="fab-avatar">
-          <DigitalHumanAvatar :size="40" :state="chatStore.aiState" />
+          <img src="/images/ai-assistant.png" alt="AI助手" style="width:34px;height:34px;object-fit:contain;display:block;" />
         </div>
       </button>
     </Transition>
@@ -71,8 +71,8 @@ function startDrag(e: MouseEvent) {
 <style scoped>
 .ai-fab {
   position: fixed;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), var(--accent));
   display: flex;
@@ -88,13 +88,13 @@ function startDrag(e: MouseEvent) {
 }
 
 .ai-fab:hover {
-  transform: scale(1.1);
-  box-shadow: var(--shadow-xl), 0 0 50px color-mix(in srgb, var(--primary) 60%, transparent);
+  transform: scale(1.06);
+  box-shadow: var(--shadow-xl), 0 0 36px color-mix(in srgb, var(--primary) 54%, transparent);
 }
 
 .pulse-ring {
   position: absolute;
-  inset: -4px;
+  inset: -3px;
   border-radius: 50%;
   border: 2px solid var(--primary);
   animation: wave-ripple 2.5s ease-out infinite;
@@ -102,8 +102,8 @@ function startDrag(e: MouseEvent) {
 }
 
 .fab-avatar {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
@@ -132,6 +132,6 @@ function startDrag(e: MouseEvent) {
 
 @keyframes wave-ripple {
   0% { opacity: 0.5; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.8); }
+  100% { opacity: 0; transform: scale(1.55); }
 }
 </style>

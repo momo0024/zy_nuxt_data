@@ -1,54 +1,61 @@
-<template>
+﻿<template>
   <Teleport to="body">
-    <Transition name="panel-slide">
-      <div v-if="chatStore.isOpen" class="chat-panel" ref="panelRef">
-        <!-- Header（可拖拽） -->
-        <div class="chat-header" @mousedown="startDrag">
-          <div class="flex items-center gap-3">
+    <!-- 遮罩 -->
+    <Transition name="overlay-fade">
+      <div
+        v-if="chatStore.isOpen"
+        class="chat-overlay"
+        @click="chatStore.closePanel()"
+      />
+    </Transition>
+
+    <!-- 右侧抽屉 -->
+    <Transition name="drawer-slide">
+      <div v-if="chatStore.isOpen" class="chat-drawer" ref="drawerRef">
+        <!-- ===== Header ===== -->
+        <div class="chat-header">
+          <div class="header-left">
             <div class="header-avatar">
-              <DigitalHumanAvatar :size="36" :state="chatStore.aiState" />
+              <img src="/images/ai-assistant.png" alt="AI" style="width:36px;height:36px;object-fit:contain;" />
             </div>
-            <div>
+            <div class="header-info">
               <div class="header-title">智知 AI 助手</div>
-              <div class="header-model">
-                {{ settingsStore.ai.model || 'AI 未配置' }}
-              </div>
+              <div class="header-model">{{ shortModel }}</div>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <!-- 状态指示 -->
+          <div class="header-right">
             <div class="ai-status" :class="chatStore.aiState">
               <span class="status-dot" />
               <span>{{ stateLabel }}</span>
             </div>
-            <!-- 关闭 -->
-            <button class="btn btn-ghost btn-icon-sm" @click="chatStore.closePanel()">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <button class="icon-btn" @click="chatStore.closePanel()" title="关闭">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <path d="M2.5 2.5l10 10M12.5 2.5l-10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
               </svg>
             </button>
           </div>
         </div>
 
-        <!-- 工具栏 -->
+        <!-- ===== 工具栏 ===== -->
         <div class="chat-toolbar">
-          <span class="text-xs" style="color: var(--text-muted)">
-            Enter 发送 · Shift+Enter 换行 · 共 {{ chatStore.messages.length }} 条
-          </span>
-          <button class="btn btn-ghost btn-sm" @click="chatStore.newConversation()">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-            新对话
-          </button>
+          <span class="toolbar-hint">Enter 发送 · Shift+Enter 换行</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span class="msg-count">{{ chatStore.messages.length }} 条</span>
+            <button class="toolbar-btn" @click="chatStore.newConversation()" title="新建对话">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              新对话
+            </button>
+          </div>
         </div>
 
-        <!-- 消息区 -->
+        <!-- ===== 消息区 ===== -->
         <div class="chat-messages" ref="messagesRef">
           <!-- 空状态 -->
           <div v-if="chatStore.messages.length === 0" class="chat-empty">
-            <div class="empty-dh">
-              <DigitalHumanAvatar :size="88" state="idle" />
+            <div class="empty-avatar-wrap">
+              <img src="/images/ai-assistant.png" alt="AI" class="empty-avatar-img" />
               <div class="empty-glow" />
             </div>
             <div class="empty-greeting">你好，我是智知</div>
@@ -59,9 +66,7 @@
                 :key="q"
                 class="quick-card"
                 @click="sendQuick(q)"
-              >
-                {{ q }}
-              </button>
+              >{{ q }}</button>
             </div>
           </div>
 
@@ -73,70 +78,54 @@
               class="msg-row"
               :class="msg.role"
             >
-              <!-- AI 头像 -->
-              <div v-if="msg.role === 'assistant'" class="msg-avatar">
-                <DigitalHumanAvatar :size="24" :state="msg.isStreaming ? 'speaking' : 'idle'" />
+              <div v-if="msg.role === 'assistant'" class="msg-avatar-wrap">
+                <img src="/images/ai-assistant.png" alt="AI" style="width:22px;height:22px;object-fit:contain;" />
               </div>
-              <!-- 气泡 -->
-              <div class="msg-bubble" :class="msg.role === 'user' ? 'msg-user' : 'msg-ai'">
+              <div class="msg-bubble" :class="msg.role === 'user' ? 'bubble-user' : 'bubble-ai'">
                 <div class="msg-content" v-html="renderMd(msg.content)" />
-                <!-- 打字光标 -->
                 <span v-if="msg.isStreaming" class="typing-cursor" />
-                <!-- 操作按钮 -->
                 <div v-if="!msg.isStreaming" class="msg-actions">
-                  <button class="msg-action-btn" @click="copyMsg(msg.content)" title="复制">
-                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                      <rect x="1" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/>
-                      <path d="M3 3V2a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H8" stroke="currentColor" stroke-width="1.2"/>
-                    </svg>
-                  </button>
-                  <button class="msg-action-btn" @click="quoteMsg(msg.content)" title="引用">
-                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                      <path d="M1 3h9M1 6h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                    </svg>
-                  </button>
+                  <button class="msg-action-btn" @click="copyMsg(msg.content)">复制</button>
+                  <button class="msg-action-btn" @click="quoteMsg(msg.content)">引用</button>
                 </div>
               </div>
             </div>
           </template>
         </div>
 
-        <!-- 快捷问题（对话中） -->
-        <div v-if="chatStore.messages.length > 0" class="quick-chips">
+        <!-- ===== 快捷芯片 ===== -->
+        <div v-if="chatStore.messages.length > 0" class="quick-chips-row">
           <button
             v-for="q in chatStore.QUICK_QUESTIONS"
             :key="q"
             class="quick-chip"
             @click="sendQuick(q)"
-          >
-            {{ q }}
-          </button>
+          >{{ q }}</button>
         </div>
 
-        <!-- 输入区 -->
-        <div class="chat-input-area">
+        <!-- ===== 输入区 ===== -->
+        <div class="chat-input-wrap">
           <textarea
             v-model="chatStore.inputText"
             class="chat-textarea"
             placeholder="输入问题，Enter 发送..."
             :disabled="isLoading"
-            @keydown.enter.exact.prevent="handleSend"
-            @keydown.enter.shift.exact="() => {}"
             rows="1"
-            @input="autoResize"
             ref="textareaRef"
+            @keydown.enter.exact.prevent="handleSend"
+            @input="autoResize"
           />
           <button
             class="send-btn"
             :disabled="!chatStore.inputText.trim() || isLoading"
             @click="handleSend"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 14V2M2 8l6-6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+              <path d="M8.5 14.5V2.5M3 8l5.5-5.5L14 8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </div>
-        <div class="chat-footer-note">回复基于当前 AI 配置生成</div>
+        <div class="chat-footer-note">回复基于当前 AI 配置生成，仅供参考</div>
       </div>
     </Transition>
   </Teleport>
@@ -146,21 +135,27 @@
 const chatStore = useChatStore()
 const settingsStore = useSettingsStore()
 
-const panelRef = ref<HTMLElement | null>(null)
+const drawerRef = ref<HTMLElement | null>(null)
 const messagesRef = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 const isLoading = computed(() => chatStore.aiState !== 'idle')
 
+const shortModel = computed(() => {
+  const m = settingsStore.ai.model || ''
+  if (!m) return 'AI 未配置'
+  const parts = m.split('/')
+  return parts[parts.length - 1] || m
+})
+
 const stateLabel = computed(() => {
   switch (chatStore.aiState) {
-    case 'thinking': return '思考中'
-    case 'speaking': return '回复中'
+    case 'thinking': return '思考中...'
+    case 'speaking': return '回复中...'
     default: return '就绪'
   }
 })
 
-// 渲染简单 markdown（粗体、代码）
 function renderMd(text: string) {
   return text
     .replace(/&/g, '&amp;')
@@ -175,9 +170,7 @@ async function handleSend() {
   const text = chatStore.inputText.trim()
   if (!text || isLoading.value) return
   chatStore.inputText = ''
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
-  }
+  if (textareaRef.value) textareaRef.value.style.height = 'auto'
   await chatStore.sendMessage(text)
 }
 
@@ -187,7 +180,7 @@ function sendQuick(q: string) {
 }
 
 function copyMsg(content: string) {
-  navigator.clipboard.writeText(content)
+  navigator.clipboard.writeText(content).catch(() => {})
 }
 
 function quoteMsg(content: string) {
@@ -198,92 +191,79 @@ function quoteMsg(content: string) {
 function autoResize(e: Event) {
   const el = e.target as HTMLTextAreaElement
   el.style.height = 'auto'
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px'
 }
 
-// 自动滚动到底部
-watch(() => chatStore.messages.length, () => {
-  nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-    }
-  })
-})
-
-watch(() => chatStore.messages[chatStore.messages.length - 1]?.content, () => {
-  nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-    }
-  })
-})
-
-// 拖拽面板
-let dragOffset = { x: 0, y: 0 }
-
-function startDrag(e: MouseEvent) {
-  if (!panelRef.value) return
-  const rect = panelRef.value.getBoundingClientRect()
-  dragOffset.x = e.clientX - rect.left
-  dragOffset.y = e.clientY - rect.top
-
-  const onMove = (ev: MouseEvent) => {
-    if (!panelRef.value) return
-    const x = ev.clientX - dragOffset.x
-    const y = ev.clientY - dragOffset.y
-    panelRef.value.style.left = `${Math.max(0, x)}px`
-    panelRef.value.style.top = `${Math.max(0, y)}px`
-    panelRef.value.style.right = 'auto'
-    panelRef.value.style.bottom = 'auto'
+watch(
+  [() => chatStore.messages.length, () => chatStore.messages[chatStore.messages.length - 1]?.content],
+  () => {
+    nextTick(() => {
+      if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+    })
   }
-
-  const onUp = () => {
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
-  }
-
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
-}
+)
 </script>
 
 <style scoped>
+.chat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.chat-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1001;
+  width: 420px;
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.22);
+}
+
 .chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 12px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border);
-  cursor: grab;
-  user-select: none;
+  flex-shrink: 0;
 }
 
-.chat-header:active {
-  cursor: grabbing;
-}
+.header-left { display: flex; align-items: center; gap: 10px; }
 
 .header-avatar {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--primary-soft), var(--bg));
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), var(--bg));
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
-.header-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
+.header-title { font-size: 15px; font-weight: 700; color: var(--text-strong); }
 
 .header-model {
   font-size: 11px;
   color: var(--text-muted);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
 
 .ai-status {
   display: flex;
@@ -297,58 +277,111 @@ function startDrag(e: MouseEvent) {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--success);
 }
 
-.ai-status.idle .status-dot { background: var(--success); }
-.ai-status.thinking .status-dot { background: var(--warning); animation: breathe 0.6s infinite; }
-.ai-status.speaking .status-dot { background: var(--primary); animation: breathe 0.4s infinite; }
+.ai-status.thinking .status-dot { background: var(--warning); animation: breathe 0.7s infinite; }
+.ai-status.speaking .status-dot { background: var(--primary); animation: breathe 0.45s infinite; }
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.icon-btn:hover { background: var(--surface-alt); color: var(--text-strong); }
 
 .chat-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 6px 18px;
   background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
-/* Empty state */
+.toolbar-hint { font-size: 11px; color: var(--text-muted); }
+
+.msg-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--border);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.toolbar-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scroll-behavior: smooth;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
 .chat-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 16px;
-  gap: 12px;
+  padding: 24px 16px 12px;
+  gap: 14px;
 }
 
-.empty-dh {
+.empty-avatar-wrap {
   position: relative;
+  width: 96px;
+  height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.empty-avatar-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 4px 16px rgba(99,102,241,0.35));
+}
+
 .empty-glow {
   position: absolute;
-  width: 100px;
-  height: 100px;
+  inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 20%, transparent), transparent 70%);
-  pointer-events: none;
+  background: radial-gradient(circle, rgba(99,102,241,0.22), transparent 70%);
+  animation: glow-pulse 2.4s ease-in-out infinite;
 }
 
-.empty-greeting {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
-
-.empty-sub {
-  font-size: 13px;
-  color: var(--text-muted);
-  text-align: center;
-}
+.empty-greeting { font-size: 20px; font-weight: 700; color: var(--text-strong); }
+.empty-sub { font-size: 13px; color: var(--text-muted); text-align: center; line-height: 1.6; }
 
 .quick-cards {
   display: grid;
@@ -368,41 +401,58 @@ function startDrag(e: MouseEvent) {
   text-align: left;
   transition: all 0.15s;
   font-family: inherit;
+  line-height: 1.5;
 }
 
 .quick-card:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: var(--primary-soft);
+  background: rgba(99,102,241,0.08);
+  box-shadow: 0 2px 12px rgba(99,102,241,0.12);
 }
 
-/* Messages */
 .msg-row {
   display: flex;
   align-items: flex-end;
   gap: 8px;
 }
 
-.msg-row.user {
-  flex-direction: row-reverse;
-}
+.msg-row.user { flex-direction: row-reverse; }
 
-.msg-avatar {
-  width: 26px;
-  height: 26px;
+.msg-avatar-wrap {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--primary-soft);
+  background: rgba(99,102,241,0.12);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.msg-content {
-  word-break: break-word;
+.msg-bubble {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
   line-height: 1.65;
+  position: relative;
 }
+
+.bubble-user {
+  background: var(--primary);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.bubble-ai {
+  background: var(--surface-alt);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.msg-content { word-break: break-word; }
 
 .typing-cursor {
   display: inline-block;
@@ -412,49 +462,49 @@ function startDrag(e: MouseEvent) {
   border-radius: 1px;
   margin-left: 2px;
   vertical-align: middle;
-  animation: typing-blink 0.8s infinite;
+  animation: blink 0.8s step-end infinite;
 }
 
 .msg-actions {
   display: flex;
   gap: 4px;
-  margin-top: 6px;
+  margin-top: 8px;
   opacity: 0;
   transition: opacity 0.15s;
 }
 
-.msg-bubble:hover .msg-actions {
-  opacity: 1;
-}
+.msg-bubble:hover .msg-actions { opacity: 1; }
 
 .msg-action-btn {
   background: none;
-  border: none;
+  border: 1px solid var(--border);
   cursor: pointer;
   color: var(--text-muted);
-  padding: 3px;
-  border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: inherit;
+  transition: all 0.12s;
 }
 
 .msg-action-btn:hover {
-  color: var(--text);
-  background: var(--border);
+  background: var(--surface);
+  color: var(--text-strong);
+  border-color: var(--primary);
 }
 
-/* Quick chips */
-.quick-chips {
+.quick-chips-row {
   display: flex;
   gap: 6px;
   padding: 8px 16px;
   overflow-x: auto;
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
-
-.quick-chips::-webkit-scrollbar { height: 0; }
+.quick-chips-row::-webkit-scrollbar { height: 0; }
 
 .quick-chip {
-  padding: 4px 10px;
+  padding: 4px 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: transparent;
@@ -465,50 +515,44 @@ function startDrag(e: MouseEvent) {
   transition: all 0.15s;
   font-family: inherit;
 }
+.quick-chip:hover { border-color: var(--primary); color: var(--primary); background: rgba(99,102,241,0.08); }
 
-.quick-chip:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-soft);
-}
-
-/* Input area */
-.chat-input-area {
+.chat-input-wrap {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 12px 16px 8px;
+  padding: 12px 16px 10px;
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .chat-textarea {
   flex: 1;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
   background: var(--surface-alt);
   color: var(--text-strong);
   font-size: 13px;
   font-family: inherit;
   outline: none;
   resize: none;
-  max-height: 120px;
-  transition: border-color 0.15s;
-  line-height: 1.5;
+  max-height: 140px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  line-height: 1.55;
 }
 
 .chat-textarea:focus {
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
 }
 
-.chat-textarea::placeholder {
-  color: var(--text-muted);
-}
+.chat-textarea::placeholder { color: var(--text-muted); }
 
 .send-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   background: var(--primary);
   color: white;
   border: none;
@@ -521,57 +565,58 @@ function startDrag(e: MouseEvent) {
 }
 
 .send-btn:hover:not(:disabled) {
-  filter: brightness(1.15);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 50%, transparent);
+  filter: brightness(1.12);
+  box-shadow: 0 4px 18px rgba(99,102,241,0.4);
+  transform: translateY(-1px);
 }
 
-.send-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.send-btn:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
 
 .chat-footer-note {
   text-align: center;
   font-size: 10px;
   color: var(--text-muted);
-  padding: 4px 0 10px;
+  padding: 2px 0 10px;
+  flex-shrink: 0;
 }
 
 :deep(.inline-code) {
-  background: var(--surface-alt);
+  background: var(--surface);
   padding: 1px 5px;
   border-radius: 4px;
-  font-family: 'Inter', monospace;
-  font-size: 11px;
+  font-family: monospace;
+  font-size: 12px;
   color: var(--accent);
+  border: 1px solid var(--border);
 }
 
-/* Panel animation */
-.panel-slide-enter-active {
-  animation: panel-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+.overlay-fade-enter-active { animation: overlay-in 0.25s ease forwards; }
+.overlay-fade-leave-active { animation: overlay-out 0.2s ease forwards; }
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-out { from { opacity: 1; } to { opacity: 0; } }
 
-.panel-slide-leave-active {
-  animation: panel-out 0.2s ease forwards;
-}
-
-@keyframes panel-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes panel-out {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(16px) scale(0.96); }
-}
+.drawer-slide-enter-active { animation: drawer-in 0.3s cubic-bezier(0.25,0.8,0.25,1) forwards; }
+.drawer-slide-leave-active { animation: drawer-out 0.22s ease forwards; }
+@keyframes drawer-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes drawer-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
 
 @keyframes breathe {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
 }
 
-@keyframes typing-blink {
+@keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@media (max-width: 480px) {
+  .chat-drawer { width: 100vw; }
+  .quick-cards { grid-template-columns: 1fr; }
 }
 </style>

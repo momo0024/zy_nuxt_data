@@ -1,117 +1,177 @@
-<template>
+﻿<template>
   <header class="topbar">
     <!-- 移动端菜单按钮 -->
-    <button class="btn btn-ghost btn-icon md:hidden" @click="$emit('toggle-mobile')">
-      <Menu :size="18" />
-    </button>
-
-    <!-- 页面标题 -->
-    <div class="topbar-title">
-      <span>{{ pageTitle }}</span>
-    </div>
+    <UButton
+      variant="ghost"
+      color="neutral"
+      size="sm"
+      icon="i-lucide-menu"
+      class="md:hidden"
+      aria-label="打开菜单"
+      @click="$emit('toggle-mobile')"
+    />
 
     <div class="flex-1" />
 
-    <!-- 主题切换 -->
-    <div class="theme-switcher">
-      <div
-        v-for="t in themes"
-        :key="t.id"
-        class="theme-dot"
-        :class="{ active: currentTheme === t.id }"
-        :title="t.name"
-        :style="{ background: t.colors[1] }"
-        @click="setTheme(t.id)"
-      />
-    </div>
+    <!-- 主题切换下拉（UDropdownMenu） -->
+    <UDropdownMenu
+      :items="themeMenuItems"
+      :content="{ align: 'end', sideOffset: 10 }"
+      :ui="{ content: 'w-80' }"
+    >
+      <UButton variant="outline" size="sm" color="neutral" class="theme-toggle-btn">
+        <span class="theme-dot-stack" aria-hidden="true">
+          <span
+            v-for="(color, index) in currentThemeColors"
+            :key="`${currentTheme}-${color}`"
+            class="theme-dot-preview"
+            :style="{ background: color, zIndex: currentThemeColors.length - index, transform: `translateX(${index * -6}px)` }"
+          />
+        </span>
+        <span class="theme-label">{{ currentThemeName }}</span>
+        <UIcon name="i-lucide-chevron-down" class="theme-caret size-3.5" />
+      </UButton>
 
-    <!-- 分隔线 -->
-    <div class="topbar-divider" />
+      <template #theme-leading="{ item }">
+        <div class="theme-menu-swatches" aria-hidden="true">
+          <span
+            v-for="(color, index) in item.colors.slice(0, 4)"
+            :key="`${item.id}-${color}`"
+            class="theme-menu-swatch"
+            :style="{ background: color, zIndex: 4 - index, transform: `translateX(${index * -5}px)` }"
+          />
+        </div>
+      </template>
 
-    <!-- 租户信息 -->
-    <div class="topbar-tenant">
-      <div class="tenant-icon">
-        <Building2 :size="14" />
+      <template #theme-trailing="{ item }">
+        <UIcon v-if="item.id === currentTheme" name="i-lucide-check" class="size-4 text-[var(--primary)]" />
+      </template>
+    </UDropdownMenu>
+
+    <template v-if="hydrated">
+      <!-- 分隔线 -->
+      <div class="topbar-divider" />
+
+      <!-- 租户信息 -->
+      <div class="topbar-tenant">
+        <UIcon name="i-lucide-building-2" class="size-4" />
+        <span>{{ user?.tenant }}</span>
       </div>
-      <span>{{ user?.tenant }}</span>
-    </div>
 
-    <!-- 分隔线 -->
-    <div class="topbar-divider" />
+      <!-- 分隔线 -->
+      <div class="topbar-divider" />
 
-    <!-- 用户头像 -->
-    <div class="topbar-user">
-      <div class="user-avatar-sm">{{ user?.avatar || '?' }}</div>
-      <div class="hidden md:block">
-        <div class="user-name-sm">{{ user?.name }}</div>
-        <div class="user-role-sm">{{ user?.roleName }}</div>
+      <!-- 用户头像 -->
+      <div class="topbar-user">
+        <UAvatar :text="userInitials" icon="i-lucide-user-round" size="sm" class="user-avatar-shell" />
+        <div class="hidden md:block">
+          <div class="user-name-sm">{{ user?.name }}</div>
+          <div class="user-role-sm">{{ user?.roleName }}</div>
+        </div>
       </div>
-    </div>
+    </template>
   </header>
 </template>
 
 <script setup lang="ts">
-import { Menu, Building2 } from 'lucide-vue-next'
 import { THEMES } from '~/stores/settings'
 
 defineEmits<{ (e: 'toggle-mobile'): void }>()
 
-const route = useRoute()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const hydrated = ref(false)
 
 const user = computed(() => authStore.user)
 const currentTheme = computed(() => settingsStore.theme)
 const themes = THEMES
 
-const PAGE_TITLES: Record<string, string> = {
-  '/': '首页概览',
-  '/retrieve': '文档检索',
-  '/data-search': '数据搜索',
-  '/import': '文档导入',
-  '/settings': '系统设置'
-}
+const currentThemeMeta = computed(() => themes.find(t => t.id === currentTheme.value) || themes[0])
+const currentThemeName = computed(() => currentThemeMeta.value?.name || '主题')
+const currentThemeColors = computed(() => currentThemeMeta.value?.colors.slice(0, 3) || ['#888'])
+const userInitials = computed(() => user.value?.name?.slice(0, 1) || user.value?.avatar?.slice(0, 1) || '?')
 
-const pageTitle = computed(() => PAGE_TITLES[route.path] || '智知云')
+const themeMenuItems = computed(() => [
+  [
+    {
+      label: '界面主题',
+      type: 'label' as const
+    }
+  ],
+  themes.map(t => ({
+    id: t.id,
+    label: t.name,
+    description: t.desc,
+    colors: t.colors,
+    slot: 'theme' as const,
+    onSelect: () => settingsStore.setTheme(t.id)
+  }))
+])
 
-function setTheme(id: any) {
-  settingsStore.setTheme(id)
-}
+onMounted(() => {
+  hydrated.value = true
+})
 </script>
 
 <style scoped>
-.topbar-title {
-  font-size: 15px;
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.theme-toggle-btn:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--primary-soft) 52%, var(--surface-alt));
+}
+
+.theme-dot-stack {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 12px;
+}
+
+.theme-dot-preview {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--surface) 55%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
+  margin-left: -12px;
+  flex-shrink: 0;
+}
+
+.theme-label {
   font-weight: 600;
   color: var(--text-strong);
 }
 
-.theme-switcher {
-  display: flex;
+.theme-caret {
+  color: var(--text-muted);
+}
+
+.theme-menu-swatches {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: var(--surface-alt);
+  padding-left: 16px;
+}
+
+.theme-menu-swatch {
+  width: 12px;
+  height: 12px;
+  margin-left: -12px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-}
-
-.theme-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-  border: 2px solid transparent;
-}
-
-.theme-dot:hover {
-  transform: scale(1.2);
-}
-
-.theme-dot.active {
-  border-color: var(--text-strong);
-  box-shadow: 0 0 0 2px var(--bg);
+  border: 1px solid color-mix(in srgb, var(--surface) 58%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .topbar-divider {
@@ -128,27 +188,10 @@ function setTheme(id: any) {
   color: var(--text-muted);
 }
 
-.tenant-icon {
-  color: var(--text-muted);
-}
-
 .topbar-user {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.user-avatar-sm {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: white;
 }
 
 .user-name-sm {

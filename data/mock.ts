@@ -108,24 +108,105 @@ export const MOCK_USERS = [
 // ---- 舆情分析数据 ----
 export const SENTIMENT_DATA = {
   updateTime: '2026-05-10 18:00',
-  historical: { positive: 45, neutral: 35, negative: 20 },
-  latest: { positive: 52, neutral: 30, negative: 18 },
+  historical: { total: 1864, positive: 45, neutral: 35, negative: 20 },
+  latest: { total: 426, positive: 52, neutral: 30, negative: 18 },
   trend: { positive: 'up', neutral: 'down', negative: 'down' },
   articles: {
     positive: [
-      { id: 'a1', title: '头部券商一季度业绩全面回暖，投行业务同比增长38%', source: '证券时报', date: '2026-05-09', score: 0.91 },
-      { id: 'a2', title: '新能源汽车出口再创新高，供应链竞争力显著提升', source: '经济日报', date: '2026-05-08', score: 0.87 },
-      { id: 'a3', title: '跨境电商平台Q1营收超预期，东南亚市场持续放量', source: '财经周报', date: '2026-05-07', score: 0.83 }
+      {
+        id: 'a1',
+        title: '头部券商一季度业绩全面回暖，投行业务同比增长38%',
+        source: '证券时报',
+        date: '2026-05-09',
+        score: 0.91,
+        keywords: ['业绩回暖', '投行业务增长', '盈利修复'],
+        reason: '利润增长和核心业务扩张同时出现，市场解读偏正向。',
+        link: '/retrieve?keyword=券商业绩'
+      },
+      {
+        id: 'a2',
+        title: '新能源汽车出口再创新高，供应链竞争力显著提升',
+        source: '经济日报',
+        date: '2026-05-08',
+        score: 0.87,
+        keywords: ['出口创新高', '供应链升级', '竞争力提升'],
+        reason: '出口与产业链双向改善，构成明显利好信号。',
+        link: '/retrieve?keyword=新能源汽车出口'
+      },
+      {
+        id: 'a3',
+        title: '跨境电商平台Q1营收超预期，东南亚市场持续放量',
+        source: '财经周报',
+        date: '2026-05-07',
+        score: 0.83,
+        keywords: ['营收超预期', '东南亚放量', '增长延续'],
+        reason: '营收超预期叠加新市场放量，形成偏积极情绪。',
+        link: '/retrieve?keyword=跨境电商营收'
+      }
     ],
     neutral: [
-      { id: 'a4', title: '央行发布金融稳定报告，强调防范系统性风险', source: '中国证券报', date: '2026-05-09', score: 0.65 },
-      { id: 'a5', title: '半导体行业周期调整接近尾声，去库存进展符合预期', source: '电子工程专辑', date: '2026-05-08', score: 0.61 },
-      { id: 'a6', title: '多家银行调整存款利率，市场预期逐步修复', source: '金融时报', date: '2026-05-07', score: 0.58 }
+      {
+        id: 'a4',
+        title: '央行发布金融稳定报告，强调防范系统性风险',
+        source: '中国证券报',
+        date: '2026-05-09',
+        score: 0.65,
+        keywords: ['金融稳定', '风险防范', '政策观察'],
+        reason: '信息偏政策提示，情绪指向相对中性。',
+        link: '/retrieve?keyword=金融稳定报告'
+      },
+      {
+        id: 'a5',
+        title: '半导体行业周期调整接近尾声，去库存进展符合预期',
+        source: '电子工程专辑',
+        date: '2026-05-08',
+        score: 0.61,
+        keywords: ['周期调整', '去库存', '符合预期'],
+        reason: '没有明显超预期利好或利空，整体偏平稳。',
+        link: '/retrieve?keyword=半导体去库存'
+      },
+      {
+        id: 'a6',
+        title: '多家银行调整存款利率，市场预期逐步修复',
+        source: '金融时报',
+        date: '2026-05-07',
+        score: 0.58,
+        keywords: ['利率调整', '预期修复', '观望情绪'],
+        reason: '信号偏中性修复，尚未形成强趋势。',
+        link: '/retrieve?keyword=存款利率调整'
+      }
     ],
     negative: [
-      { id: 'a7', title: '部分中小房企资金链紧张，债务重组进入关键期', source: '21世纪经济报道', date: '2026-05-09', score: 0.22 },
-      { id: 'a8', title: '消费贷不良率小幅上升，金融机构风控压力增加', source: '银行家', date: '2026-05-08', score: 0.28 },
-      { id: 'a9', title: '出口订单环比下滑，部分出口企业面临承压', source: '贸易观察', date: '2026-05-06', score: 0.32 }
+      {
+        id: 'a7',
+        title: '部分中小房企资金链紧张，债务重组进入关键期',
+        source: '21世纪经济报道',
+        date: '2026-05-09',
+        score: 0.22,
+        keywords: ['资金链紧张', '债务重组', '违约风险'],
+        reason: '现金流和债务风险关键词密集，情绪明显偏负向。',
+        link: '/retrieve?keyword=房企债务重组'
+      },
+      {
+        id: 'a8',
+        title: '消费贷不良率小幅上升，金融机构风控压力增加',
+        source: '银行家',
+        date: '2026-05-08',
+        score: 0.28,
+        keywords: ['不良率上升', '风控压力', '资产质量'],
+        reason: '资产质量承压会直接压制市场风险偏好。',
+        link: '/retrieve?keyword=消费贷不良率'
+      },
+      {
+        id: 'a9',
+        title: '出口订单环比下滑，部分出口企业面临承压',
+        source: '贸易观察',
+        date: '2026-05-06',
+        score: 0.32,
+        keywords: ['订单下滑', '出口承压', '需求走弱'],
+        reason: '需求下滑与经营承压同时出现，形成负向判断。',
+        link: '/retrieve?keyword=出口订单下滑'
+      }
     ]
   }
 }
@@ -149,6 +230,15 @@ export const DAILY_QUERIES = [
   { date: '05-06', count: 87 },
   { date: '05-07', count: 95 },
   { date: '05-08', count: 38 }
+]
+
+export const SYSTEM_CAPABILITY_SCORE = [
+  { name: '智能检索', value: 92 },
+  { name: '文档导入', value: 86 },
+  { name: '数据查询', value: 84 },
+  { name: 'AI 问答', value: 89 },
+  { name: '权限控制', value: 81 },
+  { name: '审计留痕', value: 77 }
 ]
 
 export const DOC_TYPE_DIST = [
@@ -312,6 +402,20 @@ export const RETRIEVE_DOCS = [
 
 // ---- 数据搜索表格数据 ----
 
+function seededRatio(index: number, salt: number) {
+  const value = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453123
+  return value - Math.floor(value)
+}
+
+function seededInt(index: number, min: number, max: number, salt: number) {
+  return Math.floor(min + seededRatio(index, salt) * (max - min + 1))
+}
+
+function seededToken(index: number, salt: number, length = 8) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  return Array.from({ length }, (_, charIndex) => chars[seededInt(index, 0, chars.length - 1, salt + charIndex)]).join('')
+}
+
 // doc_files
 export const DOC_FILES = Array.from({ length: 30 }, (_, i) => {
   const categories = ['research_report', 'annual_report', 'news', 'policy', 'faq', 'technical_doc', 'paper', 'quarterly_report']
@@ -335,7 +439,7 @@ export const DOC_FILES = Array.from({ length: 30 }, (_, i) => {
     ][i],
     category_key: cat,
     file_type: fileTypes[i % fileTypes.length],
-    file_size: Math.floor(120 + Math.random() * 4000),
+    file_size: seededInt(i, 120, 4120, 1),
     kb_id: kbs[i % kbs.length],
     owner: owners[i % owners.length],
     status,
@@ -350,10 +454,10 @@ export const DOC_CHUNKS = Array.from({ length: 30 }, (_, i) => ({
   id: `ck${String(i + 1).padStart(4, '0')}`,
   file_id: `df${String((i % 20) + 1).padStart(4, '0')}`,
   chunk_index: i % 15,
-  content_len: Math.floor(150 + Math.random() * 600),
-  vector_id: `vec-${Math.random().toString(36).slice(2, 10)}`,
-  score: +(0.6 + Math.random() * 0.38).toFixed(3),
-  hit_count: Math.floor(Math.random() * 120),
+  content_len: seededInt(i, 150, 750, 2),
+  vector_id: `vec-${seededToken(i, 3)}`,
+  score: +(0.6 + seededRatio(i, 4) * 0.38).toFixed(3),
+  hit_count: seededInt(i, 0, 119, 5),
   created_at: `2026-0${(i % 5) + 1}-${String((i % 28) + 1).padStart(2, '0')}`
 }))
 
@@ -372,9 +476,9 @@ export const QUERY_LOGS = Array.from({ length: 30 }, (_, i) => {
     user_id: ['u001', 'u002', 'u003'][i % 3],
     query_text: queries[i % queries.length],
     category: cats[i % cats.length],
-    result_count: Math.floor(1 + Math.random() * 25),
-    top_score: +(0.65 + Math.random() * 0.33).toFixed(3),
-    duration_ms: Math.floor(80 + Math.random() * 400),
+    result_count: seededInt(i, 1, 25, 6),
+    top_score: +(0.65 + seededRatio(i, 7) * 0.33).toFixed(3),
+    duration_ms: seededInt(i, 80, 480, 8),
     created_at: `2026-05-${String((i % 10) + 1).padStart(2, '0')} ${String(8 + (i % 10)).padStart(2, '0')}:${String(i * 3 % 60).padStart(2, '0')}:00`
   }
 })

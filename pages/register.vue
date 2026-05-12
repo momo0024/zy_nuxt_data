@@ -20,61 +20,54 @@
         </div>
 
         <Transition name="shake">
-          <div v-if="error" class="error-alert">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/>
-              <path d="M7 4v3M7 9.5v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-            </svg>
-            {{ error }}
-          </div>
+          <UAlert
+            v-if="error"
+            color="error"
+            variant="soft"
+            icon="i-lucide-circle-alert"
+            :title="error"
+          />
         </Transition>
 
         <div class="form-field">
           <label class="form-label">姓名</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" width="15" height="15" viewBox="0 0 15 15" fill="none">
-              <circle cx="7.5" cy="5" r="3" stroke="currentColor" stroke-width="1.3"/>
-              <path d="M1 14c0-3.314 2.91-6 6.5-6s6.5 2.686 6.5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-            <input v-model="form.name" class="form-input" type="text" placeholder="请输入您的姓名" required />
-          </div>
+          <UInput
+            v-model="form.name"
+            class="w-full"
+            icon="i-lucide-user-round"
+            size="lg"
+            type="text"
+            placeholder="请输入您的姓名"
+            required
+          />
         </div>
 
         <div class="form-field">
           <label class="form-label">用户名</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" width="15" height="15" viewBox="0 0 15 15" fill="none">
-              <rect x="1" y="3" width="13" height="9" rx="2" stroke="currentColor" stroke-width="1.3"/>
-              <path d="M4 7h7M4 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-            <input v-model="form.username" class="form-input" type="text" placeholder="设置登录用户名" required />
-          </div>
+          <UInput
+            v-model="form.username"
+            class="w-full"
+            icon="i-lucide-id-card"
+            size="lg"
+            type="text"
+            placeholder="设置登录用户名"
+            required
+          />
         </div>
 
         <div class="form-field">
           <label class="form-label">密码</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" width="15" height="15" viewBox="0 0 15 15" fill="none">
-              <rect x="2" y="6" width="11" height="8" rx="2" stroke="currentColor" stroke-width="1.3"/>
-              <path d="M5 6V4a2.5 2.5 0 015 0v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-            <input
-              v-model="form.password"
-              class="form-input"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="设置登录密码"
-              required
-            />
-            <button type="button" class="eye-btn" @click="showPassword = !showPassword">
-              <svg v-if="!showPassword" width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path d="M7.5 3C4.5 3 2 5.5 1 7.5c1 2 3.5 4.5 6.5 4.5s5.5-2.5 6.5-4.5C13 5.5 10.5 3 7.5 3z" stroke="currentColor" stroke-width="1.3"/>
-                <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.3"/>
-              </svg>
-              <svg v-else width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path d="M2 2l11 11M4 4.8C2.6 5.8 1.5 6.7 1 7.5c1 2 3.5 4.5 6.5 4.5 1.2 0 2.3-.3 3.3-.8M11.5 10.5C12.7 9.6 13.6 8.5 14 7.5 13 5.5 10.5 3 7.5 3c-1 0-2 .3-2.8.7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </div>
+          <UInput
+            v-model="form.password"
+            class="w-full"
+            icon="i-lucide-lock-keyhole"
+            size="lg"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="设置登录密码"
+            :trailing-icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+            required
+            @click:trailing="showPassword = !showPassword"
+          />
         </div>
 
         <div class="role-notice">
@@ -85,10 +78,9 @@
           新注册账号将自动分配"普通用户"权限
         </div>
 
-        <button type="submit" class="btn btn-primary w-full login-btn" :disabled="loading">
-          <span v-if="loading" class="loading-dots"><span /><span /><span /></span>
-          <span v-else>注册并登录</span>
-        </button>
+        <UButton type="submit" class="w-full login-btn" size="lg" :loading="loading">
+          注册并登录
+        </UButton>
 
         <div class="form-switch">
           已有账号？<NuxtLink to="/login" class="form-link">立即登录</NuxtLink>
@@ -99,6 +91,11 @@
 </template>
 
 <script setup lang="ts">
+import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+// @ts-ignore Nuxt macro
 definePageMeta({ layout: false })
 
 const authStore = useAuthStore()
@@ -139,25 +136,11 @@ function particleStyle(i: number) {
 .form-title { font-size: 26px; font-weight: 700; color: var(--text-strong); margin: 0 0 6px; }
 .form-sub { font-size: 13px; color: var(--text-muted); margin: 0; }
 .form-field { display: flex; flex-direction: column; gap: 6px; }
-.input-wrapper { position: relative; }
-.input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-.input-wrapper .form-input { padding-left: 36px; padding-right: 36px; }
-.eye-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 2px; transition: color 0.15s; }
-.eye-btn:hover { color: var(--text); }
-.login-btn { height: 42px; font-size: 14px; font-weight: 600; }
-.error-alert { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 8px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); font-size: 13px; border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent); }
+.login-btn { height: 46px; font-size: 14px; font-weight: 600; }
 .role-notice { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); padding: 8px 12px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border); }
 .form-switch { text-align: center; font-size: 13px; color: var(--text-muted); }
 .form-link { color: var(--primary); text-decoration: none; font-weight: 600; }
 .form-link:hover { text-decoration: underline; }
-.loading-dots { display: flex; gap: 4px; align-items: center; }
-.loading-dots span { width: 5px; height: 5px; border-radius: 50%; background: white; animation: loading-bounce 0.8s infinite; }
-.loading-dots span:nth-child(2) { animation-delay: 0.15s; }
-.loading-dots span:nth-child(3) { animation-delay: 0.3s; }
-@keyframes loading-bounce {
-  0%, 100% { transform: translateY(0); opacity: 0.7; }
-  50% { transform: translateY(-4px); opacity: 1; }
-}
 
 /* Brand */
 .auth-brand { position: relative; z-index: 1; text-align: center; padding: 40px; }

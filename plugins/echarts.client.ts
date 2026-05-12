@@ -1,11 +1,13 @@
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { PieChart, BarChart, LineChart } from 'echarts/charts'
+import { PieChart, BarChart, LineChart, RadarChart } from 'echarts/charts'
 import {
   TitleComponent,
   TooltipComponent,
   LegendComponent,
-  GridComponent
+  GridComponent,
+  GraphicComponent,
+  RadarComponent
 } from 'echarts/components'
 
 use([
@@ -13,10 +15,13 @@ use([
   PieChart,
   BarChart,
   LineChart,
+  RadarChart,
   TitleComponent,
   TooltipComponent,
   LegendComponent,
-  GridComponent
+  GridComponent,
+  GraphicComponent,
+  RadarComponent
 ])
 
 export default defineNuxtPlugin(() => {})

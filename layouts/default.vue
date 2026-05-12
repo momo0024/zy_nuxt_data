@@ -22,18 +22,20 @@
           :key="tab.path"
           class="tab-item"
           :class="{ active: tab.path === currentPath }"
-          @click="navigateTo(tab.path)"
+          @click="goToTab(tab.path)"
         >
+          <UIcon :name="getTabIcon(tab.path)" class="tab-icon size-3.5" />
           <span>{{ tab.name }}</span>
-          <button
+          <UButton
             v-if="tabs.length > 1"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            icon="i-lucide-x"
             class="tab-close"
+            :aria-label="`关闭${tab.name}`"
             @click.stop="closeTab(tab.path)"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-            </svg>
-          </button>
+          />
         </div>
       </div>
 
@@ -50,40 +52,68 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+type NavItem = {
+  path: string
+  name: string
+  icon: string
+}
+
+type TabItem = {
+  path: string
+  name: string
+}
+
 const route = useRoute()
+const router = useRouter()
 const sidebarCollapsed = ref(false)
 const mobileMenuOpen = ref(false)
 
-const NAV_ITEMS = [
-  { path: '/', name: '首页概览' },
-  { path: '/retrieve', name: '文档检索' },
-  { path: '/data-search', name: '数据搜索' },
-  { path: '/import', name: '文档导入' },
-  { path: '/settings', name: '系统设置' }
+const NAV_ITEMS: NavItem[] = [
+  { path: '/', name: '首页概览', icon: 'i-lucide-layout-dashboard' },
+  { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
+  { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
+  { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },
+  { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' }
 ]
 
-const tabs = ref<{ path: string; name: string }[]>([])
+const tabs = ref<TabItem[]>([])
 const currentPath = computed(() => route.path)
 
 watch(
   () => route.path,
-  (newPath) => {
-    const navItem = NAV_ITEMS.find(n => n.path === newPath)
-    if (navItem && !tabs.value.find(t => t.path === newPath)) {
+  (newPath: string) => {
+    const navItem = NAV_ITEMS.find((item) => item.path === newPath)
+    if (navItem && !tabs.value.find((tab) => tab.path === newPath)) {
       tabs.value.push({ path: newPath, name: navItem.name })
     }
   },
   { immediate: true }
 )
 
+function getTabIcon(path: string) {
+  return NAV_ITEMS.find((item) => item.path === path)?.icon || 'i-lucide-panel-right-open'
+}
+
+function goToTab(path: string) {
+  if (path !== currentPath.value) {
+    router.push(path)
+  }
+}
+
 function closeTab(path: string) {
-  const idx = tabs.value.findIndex(t => t.path === path)
+  const idx = tabs.value.findIndex((tab) => tab.path === path)
   if (idx === -1) return
   tabs.value.splice(idx, 1)
   if (currentPath.value === path) {
     const newTab = tabs.value[Math.max(0, idx - 1)]
-    if (newTab) navigateTo(newTab.path)
-    else navigateTo('/')
+    if (newTab) {
+      router.push(newTab.path)
+    } else {
+      router.push('/')
+    }
   }
 }
 </script>

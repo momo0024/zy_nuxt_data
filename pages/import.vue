@@ -1,19 +1,17 @@
-<template>
+﻿<template>
   <div class="import-layout">
-    <!-- 左侧表单 3/4 -->
+    <!-- 左侧表单 -->
     <div class="import-form-col">
-      <!-- 表单卡片 -->
       <div class="card form-card">
         <div class="form-card-title">导入新文档</div>
 
         <!-- 标题 -->
         <div class="form-group">
           <label class="form-label">文档标题 <span class="required">*</span></label>
-          <input
+          <UInput
             v-model="form.title"
-            class="form-input"
             placeholder="请输入文档标题..."
-            :class="{ 'input-error': errors.title }"
+            :color="errors.title ? 'error' : undefined"
           />
           <div v-if="errors.title" class="error-msg">{{ errors.title }}</div>
         </div>
@@ -21,74 +19,73 @@
         <!-- 知识分类 -->
         <div class="form-group">
           <label class="form-label">知识分类 <span class="required">*</span></label>
-          <select
-            v-model="form.category"
-            class="form-input"
-            :class="{ 'input-error': errors.category }"
-          >
-            <option value="">选择知识分类...</option>
-            <option v-for="c in allowedCatOptions" :key="c.value" :value="c.value">{{ c.label }}</option>
-            <option value="__custom">自定义分类...</option>
-          </select>
-          <div v-if="errors.category" class="error-msg">{{ errors.category }}</div>
-        </div>
-
-        <!-- 自定义分类 -->
-        <Transition name="slide-up">
-          <div v-if="form.category === '__custom'" class="form-group">
-            <label class="form-label">自定义分类名</label>
-            <input
-              v-model="form.customCategory"
-              class="form-input"
-              placeholder="输入自定义分类名..."
+          <div class="category-selector">
+            <USelect
+              v-model="form.category"
+              :items="allCategoryOptions"
+              placeholder="选择知识分类..."
+              :color="errors.category ? 'error' : undefined"
+              class="flex-1"
             />
+            <UButton variant="outline" size="sm" icon="i-heroicons-plus" @click="showAddCat = !showAddCat">
+              新增
+            </UButton>
           </div>
-        </Transition>
+          <div v-if="errors.category" class="error-msg">{{ errors.category }}</div>
+          <!-- 新增自定义分类 -->
+          <Transition name="slide-up">
+            <div v-if="showAddCat" class="add-cat-panel">
+              <UInput
+                v-model="newCatInput"
+                placeholder="输入新分类名称，如「内部通知」..."
+                size="sm"
+                class="flex-1"
+                @keydown.enter.prevent="addCustomCategory"
+              />
+              <UButton size="sm" @click="addCustomCategory">确认添加</UButton>
+              <UButton variant="ghost" size="sm" @click="showAddCat = false; newCatInput = ''">取消</UButton>
+            </div>
+          </Transition>
+        </div>
 
         <!-- 文件类型 -->
         <div class="form-group">
           <label class="form-label">文件类型</label>
-          <select v-model="form.fileType" class="form-input">
-            <option value="pdf">PDF</option>
-            <option value="docx">Word (DOCX)</option>
-            <option value="xlsx">Excel (XLSX)</option>
-            <option value="txt">纯文本 (TXT)</option>
-            <option value="md">Markdown (MD)</option>
-            <option value="html">HTML</option>
-          </select>
+          <USelect v-model="form.fileType" :items="fileTypeOptions" />
         </div>
 
         <!-- 文档日期 -->
         <div class="form-group">
           <label class="form-label">文档日期</label>
-          <input v-model="form.docDate" type="date" class="form-input" />
+          <input
+            v-model="docDateValue"
+            type="date"
+            class="native-date-input"
+          />
         </div>
 
         <!-- 切片大小 -->
         <div class="form-group">
           <label class="form-label">切片大小（字符数）</label>
           <div class="chunk-presets">
-            <button
+            <UButton
               v-for="preset in chunkPresets"
               :key="preset"
-              class="preset-btn"
-              :class="{ active: form.chunkSize === preset && !customChunk }"
+              :variant="form.chunkSize === preset && !customChunk ? 'solid' : 'outline'"
+              size="xs"
               @click="setChunk(preset)"
-            >{{ preset }}</button>
-            <button
-              class="preset-btn"
-              :class="{ active: customChunk }"
+            >{{ preset }}</UButton>
+            <UButton
+              :variant="customChunk ? 'solid' : 'outline'"
+              size="xs"
               @click="customChunk = !customChunk"
-            >自定义</button>
+            >自定义</UButton>
           </div>
           <Transition name="slide-up">
             <div v-if="customChunk" style="margin-top: 8px">
-              <input
+              <UInput
                 v-model.number="form.chunkSize"
                 type="number"
-                class="form-input"
-                min="50"
-                max="4000"
                 placeholder="输入字符数..."
                 style="width: 160px"
               />
@@ -108,20 +105,14 @@
             @click="fileInputRef?.click()"
           >
             <template v-if="!form.file">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" class="upload-icon">
-                <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M20 28V14M13 21l7-7 7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
+              <UIcon name="i-heroicons-arrow-up-tray" class="upload-icon size-10" />
               <div class="upload-text">
                 {{ dragActive ? '松开以添加文件' : '点击选择文件，或将文件拖拽到此处' }}
               </div>
               <div class="upload-hint">支持 PDF、DOCX、XLSX、TXT、MD、HTML</div>
             </template>
             <template v-else>
-              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" class="upload-icon" style="color: var(--success)">
-                <circle cx="18" cy="18" r="16" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M11 18l5 5 9-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
+              <UIcon name="i-heroicons-check-circle" class="upload-icon size-10" style="color: var(--success)" />
               <div class="upload-text" style="color: var(--success)">{{ form.file.name }}</div>
               <div class="upload-hint">{{ (form.file.size / 1024).toFixed(0) }} KB · 点击更换</div>
             </template>
@@ -138,39 +129,19 @@
 
         <!-- 提交 -->
         <div class="form-actions">
-          <button class="btn btn-primary" @click="submitForm" :disabled="submitting">
-            <span v-if="submitting">导入中...</span>
-            <template v-else>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right: 6px">
-                <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-              加入导入队列
-            </template>
-          </button>
-          <button class="btn btn-ghost" @click="resetForm">重置</button>
+          <UButton icon="i-heroicons-plus" :loading="submitting" @click="submitForm">
+            加入导入队列
+          </UButton>
+          <UButton variant="ghost" @click="resetForm">重置</UButton>
         </div>
-
-        <!-- 成功提示 -->
-        <Transition name="fade-in">
-          <div v-if="successMsg" class="success-toast">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/>
-              <path d="M4 7l2 2 4-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-            {{ successMsg }}
-          </div>
-        </Transition>
       </div>
     </div>
 
-    <!-- 右侧帮助卡片 1/4 -->
+    <!-- 右侧帮助卡片 -->
     <div class="import-help-col">
       <div class="card help-card">
         <div class="help-title">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M7 6v4M7 4v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-          </svg>
+          <UIcon name="i-heroicons-information-circle" class="size-4" />
           使用说明
         </div>
         <ul class="help-list">
@@ -184,15 +155,15 @@
         <div class="help-sub-title">状态说明</div>
         <div class="help-status-list">
           <div class="help-status-row">
-            <span class="badge badge-warning" style="font-size:10px">排队中</span>
+            <UBadge label="排队中" color="warning" variant="soft" size="xs" />
             <span>等待解析</span>
           </div>
           <div class="help-status-row">
-            <span class="badge badge-primary" style="font-size:10px">解析中</span>
+            <UBadge label="解析中" color="primary" variant="soft" size="xs" />
             <span>正在切片向量化</span>
           </div>
           <div class="help-status-row">
-            <span class="badge badge-success" style="font-size:10px">已解析</span>
+            <UBadge label="已解析" color="success" variant="soft" size="xs" />
             <span>完成，可检索</span>
           </div>
         </div>
@@ -205,57 +176,52 @@
     <div class="queue-header">
       <div class="form-card-title" style="margin-bottom: 0">导入队列</div>
       <div class="queue-toolbar">
-        <div class="search-wrapper" style="width: 200px">
-          <svg class="search-icon" width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M8.5 8.5l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-          </svg>
-          <input
-            v-model="queueSearch"
-            class="form-input"
-            style="padding-left: 30px; height: 33px; font-size: 12px;"
-            placeholder="搜索任务..."
-          />
-        </div>
-        <select v-model="queueStatusFilter" class="form-input" style="height: 33px; font-size: 12px; width: 100px;">
-          <option value="all">全部状态</option>
-          <option value="排队中">排队中</option>
-          <option value="解析中">解析中</option>
-          <option value="已解析">已解析</option>
-        </select>
+        <UInput
+          v-model="queueSearch"
+          icon="i-heroicons-magnifying-glass"
+          placeholder="搜索任务..."
+          size="sm"
+          style="width: 200px"
+        />
+        <USelect
+          v-model="queueStatusFilter"
+          :items="statusFilterOptions"
+          size="sm"
+          style="width: 110px"
+        />
       </div>
     </div>
 
     <div class="table-wrap">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>文件名</th>
-            <th>分类</th>
-            <th>文件类型</th>
-            <th>切片大小</th>
-            <th>状态</th>
-            <th>创建时间</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(task, i) in filteredQueue" :key="task.id" :class="i % 2 === 0 ? 'row-even' : 'row-odd'">
-            <td>
-              <span class="cell-text" style="max-width: 220px">{{ task.file_name }}</span>
-            </td>
-            <td>{{ task.category }}</td>
-            <td><span class="badge badge-outline" style="font-size:10px; text-transform: uppercase">{{ task.file_type }}</span></td>
-            <td>{{ task.chunk_size }}</td>
-            <td>
-              <span class="badge" :class="taskStatusBadge(task.status)">{{ task.status }}</span>
-            </td>
-            <td style="color: var(--text-muted); font-size: 12px">{{ task.submitted_at }}</td>
-          </tr>
-          <tr v-if="filteredQueue.length === 0">
-            <td colspan="6" style="text-align:center; padding: 32px; color: var(--text-muted); font-size: 13px">暂无任务</td>
-          </tr>
-        </tbody>
-      </table>
+      <UTable
+        :data="filteredQueue"
+        :columns="queueColumns"
+        :get-row-id="(row) => row.id"
+        sticky
+        empty="暂无任务"
+        class="queue-table max-h-[420px]"
+      >
+        <template #file_name-cell="{ row }">
+          <span class="cell-text" style="max-width: 220px">{{ row.original.file_name }}</span>
+        </template>
+
+        <template #file_type-cell="{ row }">
+          <UBadge :label="row.original.file_type.toUpperCase()" variant="outline" color="neutral" size="xs" />
+        </template>
+
+        <template #status-cell="{ row }">
+          <UBadge
+            :label="row.original.status"
+            :color="taskStatusColor(row.original.status)"
+            variant="soft"
+            size="xs"
+          />
+        </template>
+
+        <template #submitted_at-cell="{ row }">
+          <span class="queue-time">{{ row.original.submitted_at }}</span>
+        </template>
+      </UTable>
     </div>
   </div>
 </template>
@@ -266,18 +232,73 @@ import { CATEGORIES, IMPORT_TASKS_INIT } from '~/data/mock'
 definePageMeta({ middleware: 'auth' })
 
 const authStore = useAuthStore()
+const toast = useToast()
 const allowedCategories = computed(() => authStore.user?.allowedCategories || [])
 
 const allowedCatOptions = computed(() =>
-  CATEGORIES.filter(c => allowedCategories.value.includes(c.key)).map(c => ({ value: c.key, label: c.name }))
+  CATEGORIES.filter(c => allowedCategories.value.includes(c.key)).map(c => ({ label: c.name, value: c.key }))
 )
 
 const chunkPresets = [200, 500, 800, 1200]
 
+const customCategoryList = ref<string[]>([])
+const showAddCat = ref(false)
+const newCatInput = ref('')
+
+const allCategoryOptions = computed(() => [
+  ...allowedCatOptions.value,
+  ...customCategoryList.value.map(c => ({ label: c, value: '__custom_' + c }))
+])
+
+const fileTypeOptions = [
+  { label: 'PDF', value: 'pdf' },
+  { label: 'Word (DOCX)', value: 'docx' },
+  { label: 'Excel (XLSX)', value: 'xlsx' },
+  { label: '纯文本 (TXT)', value: 'txt' },
+  { label: 'Markdown (MD)', value: 'md' },
+  { label: 'HTML', value: 'html' }
+]
+
+const statusFilterOptions = [
+  { label: '全部状态', value: 'all' },
+  { label: '排队中', value: '排队中' },
+  { label: '解析中', value: '解析中' },
+  { label: '已解析', value: '已解析' }
+]
+
+const queueColumns = [
+  { accessorKey: 'file_name', header: '文件名' },
+  { accessorKey: 'category', header: '分类' },
+  { accessorKey: 'file_type', header: '文件类型' },
+  { accessorKey: 'chunk_size', header: '切片大小' },
+  { accessorKey: 'status', header: '状态' },
+  {
+    accessorKey: 'submitted_at',
+    header: '创建时间',
+    meta: {
+      class: {
+        td: 'whitespace-nowrap'
+      }
+    }
+  }
+]
+
+function addCustomCategory() {
+  const name = newCatInput.value.trim()
+  if (!name) return
+  const value = '__custom_' + name
+  if (!customCategoryList.value.includes(name)) {
+    customCategoryList.value.push(name)
+  }
+  form.category = value
+  errors.category = ''
+  newCatInput.value = ''
+  showAddCat.value = false
+}
+
 const form = reactive({
   title: '',
   category: '',
-  customCategory: '',
   fileType: 'pdf',
   docDate: new Date().toISOString().slice(0, 10),
   chunkSize: 500,
@@ -288,8 +309,12 @@ const errors = reactive({ title: '', category: '', file: '' })
 const customChunk = ref(false)
 const dragActive = ref(false)
 const submitting = ref(false)
-const successMsg = ref('')
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const docDateValue = computed({
+  get: () => form.docDate || '',
+  set: (value: string) => { form.docDate = value }
+})
 
 function setChunk(preset: number) {
   form.chunkSize = preset
@@ -322,7 +347,7 @@ const filteredQueue = computed(() => {
   let tasks = importTasks.value
   if (queueSearch.value.trim()) {
     const kw = queueSearch.value.toLowerCase()
-    tasks = tasks.filter(t => t.filename.toLowerCase().includes(kw) || t.category.toLowerCase().includes(kw))
+    tasks = tasks.filter(t => t.file_name.toLowerCase().includes(kw) || t.category.toLowerCase().includes(kw))
   }
   if (queueStatusFilter.value !== 'all') {
     tasks = tasks.filter(t => t.status === queueStatusFilter.value)
@@ -335,10 +360,9 @@ async function submitForm() {
   submitting.value = true
   await new Promise(r => setTimeout(r, 800))
 
-  const catLabel =
-    form.category === '__custom'
-      ? form.customCategory || '自定义'
-      : CATEGORIES.find(c => c.key === form.category)?.name || form.category
+  const catLabel = form.category.startsWith('__custom_')
+    ? form.category.replace('__custom_', '')
+    : CATEGORIES.find(c => c.key === form.category)?.name || form.category
 
   importTasks.value.unshift({
     id: `T${Date.now()}`,
@@ -354,16 +378,15 @@ async function submitForm() {
     finished_at: null
   })
 
+  const fileName = form.file!.name
   submitting.value = false
-  successMsg.value = `"${form.file!.name}" 已成功加入导入队列`
-  setTimeout(() => { successMsg.value = '' }, 4000)
+  toast.add({ title: '导入成功', description: `"${fileName}" 已成功加入导入队列`, color: 'success' })
   resetForm()
 }
 
 function resetForm() {
   form.title = ''
   form.category = ''
-  form.customCategory = ''
   form.fileType = 'pdf'
   form.docDate = new Date().toISOString().slice(0, 10)
   form.chunkSize = 500
@@ -375,13 +398,18 @@ function resetForm() {
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
-function taskStatusBadge(status: string) {
-  const map: Record<string, string> = {
-    '排队中': 'badge-warning',
-    '解析中': 'badge-primary',
-    '已解析': 'badge-success'
+function taskStatusColor(status: string) {
+  const map: Record<string, 'success' | 'primary' | 'warning' | 'error' | 'neutral'> = {
+    '已入库': 'success',
+    '已解析': 'success',
+    '处理中': 'primary',
+    '解析中': 'primary',
+    '待切片': 'warning',
+    '排队中': 'warning',
+    '已建立': 'success',
+    '失败': 'error'
   }
-  return map[status] || 'badge-secondary'
+  return map[status] || 'neutral'
 }
 </script>
 
@@ -393,9 +421,7 @@ function taskStatusBadge(status: string) {
   margin-bottom: 0;
 }
 
-.form-card {
-  padding: 24px;
-}
+.form-card { padding: 24px; }
 
 .form-card-title {
   font-size: 16px;
@@ -405,33 +431,31 @@ function taskStatusBadge(status: string) {
 }
 
 .form-group { margin-bottom: 18px; }
-
 .required { color: var(--danger); }
-
 .error-msg { font-size: 11px; color: var(--danger); margin-top: 4px; }
 
-.input-error { border-color: var(--danger); }
+.native-date-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s;
+  outline: none;
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
+  color-scheme: dark light;
+}
+.native-date-input:hover { border-color: var(--primary); }
+.native-date-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent); }
+.native-date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.7; filter: invert(0.5); }
 
-/* Chunk presets */
 .chunk-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.preset-btn {
-  padding: 5px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  font-family: 'Inter', sans-serif;
-  transition: all 0.15s;
-}
-
-.preset-btn:hover { border-color: var(--primary); color: var(--primary); }
-.preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-/* Upload zone */
 .upload-zone {
   border: 2px dashed var(--border);
   border-radius: 12px;
@@ -441,38 +465,16 @@ function taskStatusBadge(status: string) {
   transition: all 0.2s;
   background: var(--surface-alt);
 }
-
 .upload-zone:hover { border-color: var(--primary); }
 .upload-zone.drop-active { border-color: var(--primary); background: var(--primary-soft); }
 .upload-zone.has-file { border-style: solid; border-color: var(--success); }
-
-.upload-icon {
-  color: var(--text-muted);
-  margin-bottom: 12px;
-}
-
+.upload-icon { color: var(--text-muted); margin: 0 auto 12px; }
 .upload-text { font-size: 13px; color: var(--text); margin-bottom: 4px; }
 .upload-hint { font-size: 11px; color: var(--text-muted); }
 
-/* form actions */
-.form-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
+.form-actions { display: flex; gap: 10px; align-items: center; }
 
-.success-toast {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--success);
-  margin-top: 12px;
-}
-
-/* Help card */
 .help-card { padding: 20px; }
-
 .help-title {
   display: flex;
   align-items: center;
@@ -482,30 +484,12 @@ function taskStatusBadge(status: string) {
   color: var(--text-strong);
   margin-bottom: 14px;
 }
-
-.help-list {
-  padding-left: 18px;
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.8;
-}
-
+.help-list { padding-left: 18px; margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.8; }
 .help-divider { border-top: 1px solid var(--border); margin: 14px 0; }
-
 .help-sub-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
-
 .help-status-list { display: flex; flex-direction: column; gap: 8px; }
+.help-status-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); }
 
-.help-status-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-/* Queue */
 .queue-header {
   display: flex;
   align-items: center;
@@ -513,36 +497,16 @@ function taskStatusBadge(status: string) {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
-
 .queue-toolbar { display: flex; gap: 8px; align-items: center; }
 
-/* Shared table */
 .table-wrap { overflow-x: auto; }
-
-.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-
-.data-table th {
-  background: var(--surface-alt);
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 10px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-}
-
-.data-table td {
-  padding: 10px 14px;
-  color: var(--text);
-  border-bottom: 1px solid var(--border);
-}
-
+.queue-table { width: 100%; }
 .cell-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-time { color: var(--text-muted); font-size: 12px; }
 
-.row-even { background: var(--surface); }
-.row-odd { background: color-mix(in srgb, var(--surface-alt) 60%, var(--surface)); }
+.category-selector { display: flex; gap: 8px; align-items: center; }
+.add-cat-panel { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+.custom-cat-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
 @media (max-width: 768px) {
   .import-layout { grid-template-columns: 1fr; }
