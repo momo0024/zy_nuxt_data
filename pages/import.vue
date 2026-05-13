@@ -1,67 +1,67 @@
-﻿<template>
+<template>
   <div class="import-layout">
     <!-- 左侧表单 -->
     <div class="import-form-col">
       <div class="card form-card">
-        <div class="form-card-title">导入新文档</div>
+        <div class="form-card-title">
+          <UIcon name="i-heroicons-arrow-up-tray" class="size-5" />
+          新文档导入
+        </div>
 
         <!-- 标题 -->
         <div class="form-group">
-          <label class="form-label">文档标题 <span class="required">*</span></label>
+          <label class="form-label">文档标题</label>
           <UInput
             v-model="form.title"
-            placeholder="请输入文档标题..."
+            placeholder="自动从文件名获取，可手动修改"
             :color="errors.title ? 'error' : undefined"
           />
           <div v-if="errors.title" class="error-msg">{{ errors.title }}</div>
         </div>
 
-        <!-- 知识分类 -->
-        <div class="form-group">
-          <label class="form-label">知识分类 <span class="required">*</span></label>
-          <div class="category-selector">
-            <USelect
-              v-model="form.category"
-              :items="allCategoryOptions"
-              placeholder="选择知识分类..."
-              :color="errors.category ? 'error' : undefined"
-              class="flex-1"
-            />
-            <UButton variant="outline" size="sm" icon="i-heroicons-plus" @click="showAddCat = !showAddCat">
-              新增
-            </UButton>
-          </div>
-          <div v-if="errors.category" class="error-msg">{{ errors.category }}</div>
-          <!-- 新增自定义分类 -->
-          <Transition name="slide-up">
-            <div v-if="showAddCat" class="add-cat-panel">
-              <UInput
-                v-model="newCatInput"
-                placeholder="输入新分类名称，如「内部通知」..."
-                size="sm"
+        <!-- 文件所属类别 和 文件类型 并排 -->
+        <div class="form-row">
+          <!-- 知识分类 -->
+          <div class="form-group flex-1">
+            <label class="form-label">文件所属类别</label>
+            <div class="category-selector">
+              <USelect
+                v-model="form.category"
+                :items="allCategoryOptions"
+                placeholder="新闻 / 资讯"
+                :color="errors.category ? 'error' : undefined"
                 class="flex-1"
-                @keydown.enter.prevent="addCustomCategory"
               />
-              <UButton size="sm" @click="addCustomCategory">确认添加</UButton>
-              <UButton variant="ghost" size="sm" @click="showAddCat = false; newCatInput = ''">取消</UButton>
+              <UButton variant="outline" size="sm" icon="i-heroicons-plus" @click="showAddCat = !showAddCat" />
             </div>
-          </Transition>
+            <div v-if="errors.category" class="error-msg">{{ errors.category }}</div>
+            <!-- 新增自定义分类 -->
+            <Transition name="slide-up">
+              <div v-if="showAddCat" class="add-cat-panel">
+                <UInput
+                  v-model="newCatInput"
+                  placeholder="输入新分类名称，如「内部通知」..."
+                  size="sm"
+                  class="flex-1"
+                  @keydown.enter.prevent="addCustomCategory"
+                />
+                <UButton size="sm" @click="addCustomCategory">确认添加</UButton>
+                <UButton variant="ghost" size="sm" @click="showAddCat = false; newCatInput = ''">取消</UButton>
+              </div>
+            </Transition>
+          </div>
+
+          <!-- 文件类型 -->
+          <div class="form-group flex-1">
+            <label class="form-label">文件类型（自动解析）</label>
+            <USelect v-model="form.fileType" :items="fileTypeOptions" placeholder="选择文件类型" />
+          </div>
         </div>
 
-        <!-- 文件类型 -->
+        <!-- 发布日期 -->
         <div class="form-group">
-          <label class="form-label">文件类型</label>
-          <USelect v-model="form.fileType" :items="fileTypeOptions" />
-        </div>
-
-        <!-- 文档日期 -->
-        <div class="form-group">
-          <label class="form-label">文档日期</label>
-          <input
-            v-model="docDateValue"
-            type="date"
-            class="native-date-input"
-          />
+          <label class="form-label">发布日期</label>
+          <DatePicker v-model="form.docDate" placeholder="选择日期" />
         </div>
 
         <!-- 切片大小 -->
@@ -311,11 +311,6 @@ const dragActive = ref(false)
 const submitting = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-const docDateValue = computed({
-  get: () => form.docDate || '',
-  set: (value: string) => { form.docDate = value }
-})
-
 function setChunk(preset: number) {
   form.chunkSize = preset
   customChunk.value = false
@@ -424,35 +419,30 @@ function taskStatusColor(status: string) {
 .form-card { padding: 24px; }
 
 .form-card-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-strong);
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.flex-1 {
+  flex: 1;
 }
 
 .form-group { margin-bottom: 18px; }
 .required { color: var(--danger); }
 .error-msg { font-size: 11px; color: var(--danger); margin-top: 4px; }
+.cursor-pointer { cursor: pointer; }
 
-.native-date-input {
-  width: 100%;
-  padding: 8px 12px;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 14px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.18s;
-  outline: none;
-  -webkit-appearance: auto !important;
-  appearance: auto !important;
-  color-scheme: dark light;
-}
-.native-date-input:hover { border-color: var(--primary); }
-.native-date-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent); }
-.native-date-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.7; filter: invert(0.5); }
+
 
 .chunk-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 

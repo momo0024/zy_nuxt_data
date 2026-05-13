@@ -11,10 +11,16 @@
   },
   "dependencies": {
     "@pinia/nuxt": "^0.5.4",
+    "@vuepic/vue-datepicker": "^12.1.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "echarts": "^5.5.1",
     "lucide-vue-next": "^0.378.0",
     "pinia": "^2.1.7",
+    "radix-vue": "^1.9.17",
     "resize-detector": "^0.3.0",
+    "tailwind-merge": "^3.6.0",
     "vue-echarts": "^6.7.3"
   },
   "devDependencies": {

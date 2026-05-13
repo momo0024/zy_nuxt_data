@@ -725,16 +725,7 @@ function goToRetrieve(categoryKey: string) {
     0 16px 34px color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
-.sentiment-chart-card::after {
-  content: '';
-  position: absolute;
-  inset: 46px 24px 38px;
-  border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
-  border-radius: 50%;
-  filter: blur(0.2px);
-  opacity: 0.55;
-  pointer-events: none;
-}
+
 
 .sentiment-chart {
   flex: 1;
@@ -777,39 +768,7 @@ function goToRetrieve(categoryKey: string) {
   isolation: isolate;
 }
 
-.trend-card::before {
-  content: '';
-  position: absolute;
-  inset: -125% 30%;
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--trend-color) 48%, transparent), transparent 72%);
-  opacity: 0.32;
-  transform: rotate(18deg);
-  animation: trend-sheen 4.6s linear infinite;
-  pointer-events: none;
-}
 
-.trend-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background:
-    linear-gradient(120deg,
-      color-mix(in srgb, var(--trend-color) 12%, transparent),
-      transparent 16%,
-      color-mix(in srgb, var(--trend-color) 82%, transparent) 38%,
-      transparent 62%,
-      color-mix(in srgb, var(--trend-color) 18%, transparent)
-    );
-  background-size: 220% 220%;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0.85;
-  animation: trend-border-flow 3.2s linear infinite;
-  pointer-events: none;
-}
 
 .trend-card:hover, .trend-card.active {
   border-color: var(--trend-color);
@@ -874,15 +833,7 @@ function goToRetrieve(categoryKey: string) {
 .trend-arrow.up { color: var(--danger); }
 .trend-arrow.down { color: var(--success); }
 
-@keyframes trend-border-flow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
 
-@keyframes trend-sheen {
-  0% { transform: translateX(-18%) rotate(18deg); }
-  100% { transform: translateX(18%) rotate(18deg); }
-}
 
 /* Sentiment articles */
 .sentiment-articles {
