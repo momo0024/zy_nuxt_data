@@ -365,10 +365,12 @@ const tooltipStyle = {
 }
 
 function createSentimentPieOption(title: string, data: typeof SENTIMENT_DATA.historical) {
+  const toCount = (percent: number) => Math.round(data.total * percent / 100)
   const chartData = [
     {
       name: '正向',
       value: data.positive,
+      count: toCount(data.positive),
       itemStyle: {
         color: {
           type: 'linear',
@@ -386,6 +388,7 @@ function createSentimentPieOption(title: string, data: typeof SENTIMENT_DATA.his
     {
       name: '中性',
       value: data.neutral,
+      count: toCount(data.neutral),
       itemStyle: {
         color: {
           type: 'linear',
@@ -403,6 +406,7 @@ function createSentimentPieOption(title: string, data: typeof SENTIMENT_DATA.his
     {
       name: '负向',
       value: data.negative,
+      count: toCount(data.negative),
       itemStyle: {
         color: {
           type: 'linear',
@@ -422,7 +426,11 @@ function createSentimentPieOption(title: string, data: typeof SENTIMENT_DATA.his
   return {
     animationDuration: 900,
     animationEasing: 'cubicOut',
-    tooltip: { ...tooltipStyle, trigger: 'item', formatter: '{b}: {c}% 占比' },
+    tooltip: {
+      ...tooltipStyle,
+      trigger: 'item',
+      formatter: (params: any) => `${params.name}: ${params.data.count} 条 (${params.value}%)`
+    },
     legend: {
       bottom: 0,
       left: 'center',
@@ -432,47 +440,55 @@ function createSentimentPieOption(title: string, data: typeof SENTIMENT_DATA.his
       itemGap: 10,
       textStyle: { color: chartTextColor.value, fontSize: 10 }
     },
-    graphic: [
-      {
-        type: 'text',
-        left: 'center',
-        top: '34%',
-        z: 10,
-        style: {
-          text: `${data.total}`,
-          fill: 'var(--text-strong)',
-          fontSize: 26,
-          fontWeight: 800,
-          textAlign: 'center'
+    graphic: [{
+      type: 'group',
+      left: 'center',
+      top: '43%',
+      z: 10,
+      bounding: 'raw',
+      silent: true,
+      children: [
+        {
+          type: 'text',
+          style: {
+            x: 0,
+            y: -18,
+            text: `${data.total}`,
+            fill: 'var(--text-strong)',
+            fontSize: 26,
+            fontWeight: 800,
+            textAlign: 'center',
+            textVerticalAlign: 'middle'
+          }
+        },
+        {
+          type: 'text',
+          style: {
+            x: 0,
+            y: 4,
+            text: '总舆情量',
+            fill: chartTextColor.value,
+            fontSize: 11,
+            fontWeight: 600,
+            textAlign: 'center',
+            textVerticalAlign: 'middle'
+          }
+        },
+        {
+          type: 'text',
+          style: {
+            x: 0,
+            y: 22,
+            text: title,
+            fill: chartTextColor.value,
+            fontSize: 10,
+            fontWeight: 600,
+            textAlign: 'center',
+            textVerticalAlign: 'middle'
+          }
         }
-      },
-      {
-        type: 'text',
-        left: 'center',
-        top: '48%',
-        z: 10,
-        style: {
-          text: '总舆情量',
-          fill: chartTextColor.value,
-          fontSize: 11,
-          fontWeight: 600,
-          textAlign: 'center'
-        }
-      },
-      {
-        type: 'text',
-        left: 'center',
-        top: '56%',
-        z: 10,
-        style: {
-          text: title,
-          fill: chartTextColor.value,
-          fontSize: 10,
-          fontWeight: 600,
-          textAlign: 'center'
-        }
-      }
-    ],
+      ]
+    }],
     series: [
       {
         type: 'pie',
@@ -524,7 +540,12 @@ function createSentimentPieOption(title: string, data: typeof SENTIMENT_DATA.his
           shadowBlur: 18,
           shadowColor: 'rgba(99, 102, 241, 0.34)'
         },
-        label: { show: true, fontSize: 10, color: chartTextColor.value, formatter: '{b} {c}%' },
+        label: {
+          show: true,
+          fontSize: 10,
+          color: chartTextColor.value,
+          formatter: (params: any) => `${params.name} ${params.data.count}`
+        },
         labelLine: { length: 16, length2: 12, lineStyle: { color: chartTextColor.value, opacity: 0.62 } },
         emphasis: {
           scale: true,
