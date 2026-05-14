@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div>
     <!-- 搜索区 -->
     <div class="card search-section">
@@ -72,7 +72,7 @@
               </div>
               <div class="result-summary">{{ doc.summary }}</div>
               <div class="result-tags">
-                <UBadge v-for="tag in doc.tags" :key="tag" :label="tag" variant="outline" size="xs" color="neutral" />
+                <UBadge v-for="tag in doc.tags" :key="tag" :label="tag" variant="soft" size="xs" :color="getTagColor(tag)" />
               </div>
             </div>
             <div class="result-right" @click.stop>
@@ -112,7 +112,7 @@
             本文档来自 {{ previewDoc.kbName }}，知识类型为 {{ previewDoc.categoryName }}。相关度分数：{{ (previewDoc.score * 100).toFixed(0) }}。
           </p>
           <div class="preview-tags">
-            <UBadge v-for="tag in previewDoc.tags" :key="tag" :label="tag" variant="outline" color="neutral" size="xs" />
+            <UBadge v-for="tag in previewDoc.tags" :key="tag" :label="tag" variant="soft" :color="getTagColor(tag)" size="xs" />
           </div>
         </div>
       </template>
@@ -155,6 +155,16 @@ onMounted(() => {
   }
   doSearch()
 })
+
+const TAG_COLORS = ['primary', 'success', 'warning', 'error', 'info', 'purple', 'orange', 'teal', 'pink', 'amber'] as const
+
+function getTagColor(tag: string): string {
+  let hash = 0
+  for (let i = 0; i < tag.length; i++) {
+    hash = tag.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
+}
 
 function setCategory(key: string) {
   activeCategory.value = key
@@ -279,5 +289,8 @@ function downloadDoc(doc: typeof RETRIEVE_DOCS[0]) {
 @media (max-width: 640px) {
   .result-card-body { flex-direction: column; }
   .result-right { flex-direction: row; width: 100%; justify-content: space-between; align-items: center; }
+  .search-row { flex-direction: column; }
+  .search-section { padding: 14px; }
+  .result-card { padding: 14px; }
 }
 </style>

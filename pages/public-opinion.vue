@@ -30,11 +30,9 @@
         <section class="panel overview-panel" aria-labelledby="title-overview">
           <PanelTitle id="title-overview" title="舆情数据概览" desc="展示当日全网舆情汇总规模" />
           <div class="metric-grid single">
-            <div class="metric-card metric-card-lg" :style="{ '--mc': totalMetric.color }">
-              <div class="mc-top-line" />
+            <div class="metric-card metric-card-lg">
               <div class="metric-value">{{ totalMetric.value }}<span class="metric-unit">{{ totalMetric.unit }}</span></div>
-              <div class="metric-label">{{ totalMetric.label }}</div>
-              <div class="mc-bottom-bar" :style="{ background: totalMetric.color }" />
+              <div class="metric-label">总量</div>
             </div>
           </div>
         </section>
@@ -49,7 +47,7 @@
                 :key="layer.name"
                 class="source-layer"
                 :class="{ active: hoveredSource === layer.name }"
-                :style="{ '--lc': layer.color, '--ld': `${(sourceDistribution.length - index - 1) * 12}px` }"
+                :style="{ '--lc': layer.color, '--ld': `${(sourceDistribution.length - index - 1) * 18}px` }"
                 @mouseenter="hoveredSource = layer.name"
                 @mouseleave="hoveredSource = null"
               />
@@ -351,8 +349,8 @@ const sphereWordStyles = computed(() => {
     const fs      = (9 + (item.count / _maxCount) * 14) * scale
     const glow    = Math.round(4 + depth * 14)
     return {
-      left:       `${(50 + x1 * 44).toFixed(2)}%`,
-      top:        `${(50 - y2 * 40).toFixed(2)}%`,
+      left:       `${(50 + x1 * 34).toFixed(2)}%`,
+      top:        `${(50 - y2 * 24).toFixed(2)}%`,
       fontSize:   `${fs.toFixed(1)}px`,
       opacity:    opacity.toFixed(3),
       zIndex:     Math.round(depth * 20),
@@ -383,7 +381,6 @@ const entityTerms = [
   { name:'亚利桑那厂',count:98,  heat:45,  color:'#ff8fc0', type:'loc',  typeLabel:'地点' },
   { name:'黄仁勋',    count:87,  heat:40,  color:'#b9ff6b', type:'per',  typeLabel:'人物' },
   { name:'拜登政府',  count:72,  heat:33,  color:'#8ea8ff', type:'org',  typeLabel:'机构' },
-  { name:'中国大陆',  count:61,  heat:28,  color:'#ffd97c', type:'loc',  typeLabel:'地点' }
 ]
 
 const trendSeries = [
@@ -471,7 +468,7 @@ const sentCompareOption = computed(() => {
     ],
     yAxis: [
       { gridIndex:0, type:'category', data:categories, position:'right',
-        axisLine:{ show:true, lineStyle:{ color:'rgba(136,211,255,0.36)', width:2 } },
+        axisLine:{ show:false },
         axisTick:{ show:false },
         axisLabel:{ color:'#e8f9ff', fontSize:12, fontWeight:700, margin:12 },
         splitLine:{ show:false }
@@ -689,7 +686,7 @@ const trendOption = computed(() => ({
   position: relative;
   overflow: hidden;
   min-height: 0;
-  padding: 40px 20px 12px;
+  padding: 20px 16px;
   background:
     linear-gradient(180deg, var(--op-pt), var(--op-pb)),
     rgba(3,17,40,0.86);
@@ -719,7 +716,7 @@ const trendOption = computed(() => ({
 .trend-panel     { grid-area: trend; }
 .sent-home-panel,
 .ticker-panel {
-  padding-top: 30px;
+  padding-top: 15px;
 }
 
 /* ═══════════════════════════════
@@ -839,11 +836,9 @@ const trendOption = computed(() => ({
   justify-content: center;
   gap: 4px;
   padding: 8px;
-  background: linear-gradient(160deg,
-    color-mix(in srgb, var(--mc, var(--op-sec)) 14%, rgba(5,24,58,0.7)),
-    rgba(3,13,36,0.82));
-  border: 1px solid color-mix(in srgb, var(--mc, var(--op-line)) 44%, transparent);
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--mc, var(--op-primary)) 8%, transparent);
+  background: transparent;
+  border: none;
+  box-shadow: none;
   overflow: hidden;
 }
 .metric-card-lg {
@@ -895,11 +890,12 @@ const trendOption = computed(() => ({
   gap: 12px;
 }
 .source-stack {
-  width: 72px; height: 68px;
+  width: 72px; height: 82px;
   transform: rotateX(56deg) rotateZ(-38deg);
   transform-style: preserve-3d;
   flex-shrink: 0;
   margin-left: 2px;
+  margin-top: 8px;
 }
 .source-layer {
   position: absolute; inset: 0;
@@ -911,7 +907,7 @@ const trendOption = computed(() => ({
   opacity: 0.72;
 }
 .source-layer.active {
-  transform: translateZ(calc(var(--ld) + 16px)) scale(1.06);
+  transform: translateZ(calc(var(--ld) + 10px)) scale(1.04);
   filter: brightness(1.14);
   box-shadow: 0 18px 28px color-mix(in srgb, var(--lc) 34%, rgba(0,0,0,0.45));
   opacity: 1;
@@ -976,7 +972,7 @@ const trendOption = computed(() => ({
 }
 .brief-icon {
   position: relative;
-  width: 40px; height: 40px;
+  width: 28px; height: 28px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -991,7 +987,7 @@ const trendOption = computed(() => ({
   animation: ringPulse 2.6s ease-in-out infinite;
 }
 .brief-icon-core {
-  width: 14px; height: 14px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   background: var(--op-primary);
   box-shadow: 0 0 14px var(--op-primary);
@@ -1271,7 +1267,7 @@ const trendOption = computed(() => ({
   flex: 1;
   min-height: 0;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 /* 球面中心柔和辉光 */
 .kw-cloud-wrap::before {

@@ -1,11 +1,14 @@
 <template>
-  <aside class="sidebar" :class="{ collapsed }">
+  <aside class="sidebar" :class="{ collapsed, 'mobile-open': mobileOpen }">
     <!-- Logo区 -->
     <div class="sidebar-logo">
       <div class="logo-icon">智</div>
       <Transition name="fade-text">
         <div v-show="!collapsed" class="brand-name">智知云</div>
       </Transition>
+      <button class="mobile-close-btn" @click="$emit('close-mobile')">
+        <UIcon name="i-lucide-x" class="size-5" />
+      </button>
     </div>
 
     <!-- 知识库统计小卡片 -->
@@ -96,8 +99,8 @@ type NavItem = {
   badge?: string
 }
 
-defineProps<{ collapsed: boolean }>()
-defineEmits<{ (e: 'toggle'): void }>()
+defineProps<{ collapsed: boolean; mobileOpen?: boolean }>()
+defineEmits<{ (e: 'toggle'): void; (e: 'close-mobile'): void }>()
 
 const route = useRoute()
 const router = useRouter()
@@ -244,7 +247,7 @@ onMounted(() => {
 .collapse-handle {
   position: absolute;
   top: 50%;
-  right: -18px;
+  right: -13px;
   transform: translateY(-50%);
   padding: 0;
   background: none;
@@ -261,21 +264,22 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 56px;
+  width: 26px;
+  height: 40px;
   padding: 0;
-  border-radius: 0 8px 8px 0;
-  background: var(--primary);
-  border: none;
-  color: white;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 45%, transparent);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  border-radius: 0 10px 10px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: none;
+  color: var(--text-muted);
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
 .collapse-handle:hover .collapse-chip {
   transform: translateX(2px);
-  opacity: 0.88;
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--primary) 55%, transparent);
+  color: var(--primary);
+  box-shadow: 2px 4px 14px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
 .collapse-handle.collapsed {

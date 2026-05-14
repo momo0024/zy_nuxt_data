@@ -25,9 +25,11 @@
 <script setup lang="ts">
 const chatStore = useChatStore()
 const settingsStore = useSettingsStore()
+const route = useRoute()
 
 const isOpen = computed(() => chatStore.isOpen)
-const aiEnabled = computed(() => settingsStore.ai.enabled)
+const isAuthPage = computed(() => ['/login', '/register'].includes(route.path))
+const aiEnabled = computed(() => settingsStore.ai.enabled && !isAuthPage.value)
 
 // 拖拽位置
 const pos = ref({ x: 24, y: 24 })

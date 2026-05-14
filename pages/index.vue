@@ -297,13 +297,14 @@ const selectedTrend = ref<string | null>(null)
 const trendCards = computed(() => {
   const h = SENTIMENT_DATA.historical
   const l = SENTIMENT_DATA.latest
+  const t = SENTIMENT_DATA.trend
   return [
-    { key: 'hist-pos', period: '历史', label: '正向', badgeClass: 'badge-success', icon: 'i-heroicons-arrow-trending-up', color: 'var(--success)', value: h.positive, trend: null, trendText: '' },
-    { key: 'late-pos', period: '最新', label: '正向', badgeClass: 'badge-success', icon: 'i-heroicons-arrow-trending-up', color: 'var(--danger)', value: l.positive, trend: 'up', trendText: `+${l.positive - h.positive}%` },
-    { key: 'hist-neu', period: '历史', label: '中性', badgeClass: 'badge-secondary', icon: 'i-heroicons-minus-circle', color: '#06b6d4', value: h.neutral, trend: null, trendText: '' },
-    { key: 'late-neu', period: '最新', label: '中性', badgeClass: 'badge-secondary', icon: 'i-heroicons-minus-circle', color: '#06b6d4', value: l.neutral, trend: 'down', trendText: `${l.neutral - h.neutral}%` },
-    { key: 'hist-neg', period: '历史', label: '负向', badgeClass: 'badge-danger', icon: 'i-heroicons-arrow-trending-down', color: 'var(--success)', value: h.negative, trend: null, trendText: '' },
-    { key: 'late-neg', period: '最新', label: '负向', badgeClass: 'badge-danger', icon: 'i-heroicons-arrow-trending-down', color: 'var(--success)', value: l.negative, trend: 'down', trendText: `${l.negative - h.negative}%` }
+    { key: 'hist-pos', period: '历史', label: '正向', badgeClass: 'badge-success', icon: 'i-heroicons-minus', color: 'var(--success)', value: h.positive, trend: null, trendText: '' },
+    { key: 'late-pos', period: '最新', label: '正向', badgeClass: 'badge-success', icon: 'i-heroicons-arrow-trending-up', color: 'var(--danger)', value: l.positive, trend: t.positive, trendText: `${l.positive > h.positive ? '+' : ''}${l.positive - h.positive}%` },
+    { key: 'hist-neu', period: '历史', label: '中性', badgeClass: 'badge-secondary', icon: 'i-heroicons-minus', color: '#06b6d4', value: h.neutral, trend: null, trendText: '' },
+    { key: 'late-neu', period: '最新', label: '中性', badgeClass: 'badge-secondary', icon: 'i-heroicons-minus-circle', color: 'var(--success)', value: l.neutral, trend: t.neutral, trendText: `${l.neutral > h.neutral ? '+' : ''}${l.neutral - h.neutral}%` },
+    { key: 'hist-neg', period: '历史', label: '负向', badgeClass: 'badge-danger', icon: 'i-heroicons-minus', color: 'var(--danger)', value: h.negative, trend: null, trendText: '' },
+    { key: 'late-neg', period: '最新', label: '负向', badgeClass: 'badge-danger', icon: 'i-heroicons-arrow-trending-down', color: 'var(--success)', value: l.negative, trend: t.negative, trendText: `${l.negative > h.negative ? '+' : ''}${l.negative - h.negative}%` }
   ]
 })
 
@@ -339,6 +340,15 @@ const SENTIMENT_COLORS = {
 const chartTextColor = computed(() => {
   const t = settingsStore.theme
   return t === 'light' || t === 'warm' ? '#4a3820' : '#8080b0'
+})
+
+const chartTextStrong = computed(() => {
+  const t = settingsStore.theme
+  if (t === 'light') return '#0f1117'
+  if (t === 'green') return '#e8f5ee'
+  if (t === 'purple') return '#f5f0ff'
+  if (t === 'warm') return '#2a1f10'
+  return '#f0f0ff'
 })
 
 const chartSurfaceColor = computed(() => {
@@ -454,7 +464,7 @@ function createSentimentPieOption(title: string, data: typeof SENTIMENT_DATA.his
             x: 0,
             y: -18,
             text: `${data.total}`,
-            fill: 'var(--text-strong)',
+            fill: chartTextStrong.value,
             fontSize: 26,
             fontWeight: 800,
             textAlign: 'center',

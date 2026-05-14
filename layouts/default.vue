@@ -1,7 +1,7 @@
 <template>
   <div class="app-shell">
     <!-- 侧边栏 -->
-    <LayoutSidebar :collapsed="sidebarCollapsed" @toggle="sidebarCollapsed = !sidebarCollapsed" />
+    <LayoutSidebar :collapsed="sidebarCollapsed" :mobile-open="mobileMenuOpen" @toggle="sidebarCollapsed = !sidebarCollapsed" @close-mobile="mobileMenuOpen = false" />
 
     <!-- 移动端遮罩 -->
     <div
