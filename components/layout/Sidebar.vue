@@ -111,6 +111,7 @@ const hydrated = ref(false)
 
 const navItems: NavItem[] = [
   { path: '/', name: '首页概览', icon: 'i-lucide-layout-dashboard' },
+  { path: '/geo-screen', name: '区域地图', icon: 'i-lucide-map' },
   { path: '/public-opinion', name: '舆情监测', icon: 'i-lucide-radar' },
   { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
   { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
@@ -286,14 +287,12 @@ onMounted(() => {
   right: -18px;
 }
 
-
-
 .collapse-edge {
   display: none;
 }
 
 .collapse-icon {
-  color: white;
+  color: var(--text-strong);
 }
 
 /* Transition */

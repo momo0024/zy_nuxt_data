@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <Teleport to="body">
     <!-- 遮罩 -->
     <Transition name="overlay-fade">
@@ -243,7 +243,7 @@ watch(
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(99,102,241,0.15), var(--bg));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 15%, transparent), var(--bg));
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -369,14 +369,14 @@ watch(
   object-fit: contain;
   position: relative;
   z-index: 1;
-  filter: drop-shadow(0 4px 16px rgba(99,102,241,0.35));
+  filter: drop-shadow(0 4px 16px color-mix(in srgb, var(--primary) 35%, transparent));
 }
 
 .empty-glow {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(99,102,241,0.22), transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 22%, transparent), transparent 70%);
   animation: glow-pulse 2.4s ease-in-out infinite;
 }
 
@@ -407,8 +407,8 @@ watch(
 .quick-card:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(99,102,241,0.08);
-  box-shadow: 0 2px 12px rgba(99,102,241,0.12);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 .msg-row {
@@ -423,7 +423,7 @@ watch(
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(99,102,241,0.12);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -515,7 +515,7 @@ watch(
   transition: all 0.15s;
   font-family: inherit;
 }
-.quick-chip:hover { border-color: var(--primary); color: var(--primary); background: rgba(99,102,241,0.08); }
+.quick-chip:hover { border-color: var(--primary); color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
 
 .chat-input-wrap {
   display: flex;
@@ -544,7 +544,7 @@ watch(
 
 .chat-textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 .chat-textarea::placeholder { color: var(--text-muted); }
@@ -566,7 +566,7 @@ watch(
 
 .send-btn:hover:not(:disabled) {
   filter: brightness(1.12);
-  box-shadow: 0 4px 18px rgba(99,102,241,0.4);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--primary) 40%, transparent);
   transform: translateY(-1px);
 }
 
