@@ -59,7 +59,7 @@ export const useSettingsStore = defineStore('settings', () => {
   })
 
   function loadFromStorage() {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined') returng
     try {
       const stored = localStorage.getItem('zhizhi_settings')
       if (stored) {

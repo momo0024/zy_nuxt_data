@@ -514,3 +514,44 @@ export const IMPORT_TASKS_INIT = [
   { id: 'it011', file_name: '人民币国际化研究.pdf', category: '研究报告', file_type: 'PDF', chunk_size: 500, status: '已解析', chunk_count: 52, vector_count: 52, submitter: '李楠', submitted_at: '2026-05-04 10:00', finished_at: '2026-05-04 10:12' },
   { id: 'it012', file_name: '数字化转型ROI评估.xlsx', category: '其他', file_type: 'XLSX', chunk_size: 1200, status: '解析中', chunk_count: 8, vector_count: 5, submitter: '张媛', submitted_at: '2026-05-10 13:00', finished_at: null }
 ]
+
+// ================================================================
+// 区域企业地图数据
+// ================================================================
+
+export interface CompanyRecord {
+  id: string
+  name: string
+  province: string
+  city: string
+  industry: string
+  type: '国企' | '民企' | '外资' | '上市公司'
+  employees: number
+  revenue: string
+  address: string
+  phone: string
+  website: string
+  description: string
+  founded: number
+  tags: string[]
+  /** WGS84 经度（高新区范围内） */
+  lng: number
+  /** WGS84 纬度（高新区范围内） */
+  lat: number
+}
+
+/** 武汉东湖高新区范围内的企业（地图仅展示此列表） */
+export const COMPANIES: CompanyRecord[] = [
+  { id: 'z001', name: '武汉光电工程技术研究院', province: '湖北省', city: '武汉市', industry: '激光光电', type: '国企', employees: 3600, revenue: '31.4亿', address: '武汉市东湖高新区光谷大道', phone: '027-87541234', website: 'www.whloet.cn', description: '国家重点实验室依托单位，激光及光电领域核心研究机构。', founded: 1979, tags: ['激光', '光电'], lng: 114.42, lat: 30.505 },
+  { id: 'z002', name: '烽火通信科技', province: '湖北省', city: '武汉市', industry: '通信设备', type: '上市公司', employees: 15000, revenue: '248亿', address: '武汉市东湖高新区光谷大道74号', phone: '027-87693800', website: 'www.fiberhome.com', description: '光通信系统设备与网络解决方案龙头企业。', founded: 1999, tags: ['光通信', '5G'], lng: 114.435, lat: 30.518 },
+  { id: 'z003', name: '长飞光纤光缆', province: '湖北省', city: '武汉市', industry: '通信设备', type: '上市公司', employees: 9000, revenue: '138亿', address: '武汉市东湖高新区光谷大道9号', phone: '027-68789088', website: 'www.yofc.com', description: '全球领先的光纤预制棒及光纤光缆制造商。', founded: 1988, tags: ['光纤', '光缆'], lng: 114.448, lat: 30.492 },
+  { id: 'z004', name: '华工科技产业', province: '湖北省', city: '武汉市', industry: '激光光电', type: '上市公司', employees: 12000, revenue: '102亿', address: '武汉市东湖高新区大学园路', phone: '027-87180001', website: 'www.hgtech.com.cn', description: '激光装备、光电器件与智能制造装备供应商。', founded: 1999, tags: ['激光装备', '光电器件'], lng: 114.41, lat: 30.478 },
+  { id: 'z005', name: '人福医药集团', province: '湖北省', city: '武汉市', industry: '医药制造', type: '上市公司', employees: 9800, revenue: '87.3亿', address: '武汉市东湖高新区高新大道', phone: '027-83561234', website: 'www.humanwellhc.com', description: '麻醉镇痛药物与特色原料药龙头医药集团。', founded: 1995, tags: ['医药', '麻醉药'], lng: 114.455, lat: 30.512 },
+  { id: 'z006', name: '斗鱼网络科技', province: '湖北省', city: '武汉市', industry: '直播平台', type: '上市公司', employees: 2600, revenue: '19.1亿', address: '武汉市东湖高新区光谷软件园', phone: '027-59001234', website: 'www.douyu.com', description: '游戏直播与电竞内容平台。', founded: 2014, tags: ['直播', '电竞'], lng: 114.402, lat: 30.485 },
+  { id: 'z007', name: '光谷云计算中心', province: '湖北省', city: '武汉市', industry: '云计算', type: '国企', employees: 1800, revenue: '12.6亿', address: '武汉市东湖高新区光谷一路', phone: '027-87771234', website: 'www.ovcloud.cn', description: '区域政务云与产业云服务运营商。', founded: 2012, tags: ['政务云', '算力'], lng: 114.428, lat: 30.468 },
+  { id: 'z008', name: '武汉生物城医药', province: '湖北省', city: '武汉市', industry: '生物医药', type: '民企', employees: 3200, revenue: '28.5亿', address: '武汉市东湖高新区高新二路', phone: '027-87101234', website: 'www.whbiopark.com', description: '创新药研发与CDMO服务平台。', founded: 2008, tags: ['创新药', 'CDMO'], lng: 114.462, lat: 30.495 },
+  { id: 'z009', name: '光谷芯谷半导体', province: '湖北省', city: '武汉市', industry: '半导体', type: '民企', employees: 2400, revenue: '16.8亿', address: '武汉市东湖高新区流芳大道', phone: '027-87991234', website: 'www.ovsemi.cn', description: '功率半导体与封装测试企业。', founded: 2016, tags: ['半导体', '封装'], lng: 114.395, lat: 30.502 },
+  { id: 'z010', name: '武汉人工智能研究院', province: '湖北省', city: '武汉市', industry: '人工智能', type: '国企', employees: 900, revenue: '—', address: '武汉市东湖高新区关山大道', phone: '027-87654321', website: 'www.whai-lab.cn', description: '大模型与行业智能化应用研发平台。', founded: 2021, tags: ['大模型', 'AI'], lng: 114.418, lat: 30.528 },
+  { id: 'z011', name: '光谷新能源科技', province: '湖北省', city: '武汉市', industry: '新能源', type: '民企', employees: 1500, revenue: '9.2亿', address: '武汉市东湖高新区凤凰园路', phone: '027-87551234', website: 'www.ovenergy.cn', description: '储能系统与动力电池PACK集成商。', founded: 2017, tags: ['储能', '电池'], lng: 114.44, lat: 30.455 },
+  { id: 'z012', name: '武汉网络安全实验室', province: '湖北省', city: '武汉市', industry: '网络安全', type: '国企', employees: 680, revenue: '5.4亿', address: '武汉市东湖高新区光谷大道77号', phone: '027-87881234', website: 'www.whsec-lab.cn', description: '态势感知与数据安全治理技术研发。', founded: 2019, tags: ['网络安全', '数据安全'], lng: 114.452, lat: 30.508 },
+]
