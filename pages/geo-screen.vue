@@ -555,13 +555,13 @@ function fmtNum(n: number): string {
 .gs-leaflet-map :deep(.leaflet-control-attribution) {
   display: none !important;
 }
-.gs-map-wrap > .gs-outside-blur {
+.gs-map-wrap :deep(> .gs-outside-blur) {
   position: absolute;
   inset: 0;
   z-index: 400;
   pointer-events: none;
-  backdrop-filter: blur(1.5px);
-  -webkit-backdrop-filter: blur(1.5px);
+  backdrop-filter: blur(2.5px) brightness(0.92);
+  -webkit-backdrop-filter: blur(2.5px) brightness(0.92);
 }
 .gs-leaflet-map :deep(.leaflet-interactive:focus) {
   outline: none !important;
@@ -630,7 +630,7 @@ function fmtNum(n: number): string {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 5px 2px;
-  z-index: 5;
+  z-index: 410;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 .gs-stat {
@@ -668,7 +668,7 @@ function fmtNum(n: number): string {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 5px 8px;
-  z-index: 5;
+  z-index: 410;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 .gs-legend-title {

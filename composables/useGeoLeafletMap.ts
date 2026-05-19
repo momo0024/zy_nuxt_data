@@ -385,25 +385,16 @@ export function useGeoLeafletMap() {
   }
 
   function getBlurHoleRings(): number[][][] {
-    switch (blurFocusMode) {
-      case 'zone':
-        return zoneFeatures.flatMap(f =>
-          f.geometry ? outerRingsFromGeometry(f.geometry) : [],
-        )
-      case 'wuhan':
-        return wuhanFeatureStored?.geometry
-          ? outerRingsFromGeometry(wuhanFeatureStored.geometry)
-          : []
-      case 'city':
-        return focusedCityFeature?.geometry
-          ? outerRingsFromGeometry(focusedCityFeature.geometry)
-          : []
-      case 'hubei':
-      default:
-        return hubeiFeatureStored?.geometry
-          ? outerRingsFromGeometry(hubeiFeatureStored.geometry)
-          : []
+    // zone 模式：只保留高新区高亮，其他全部模糊
+    if (blurFocusMode === 'zone') {
+      return zoneFeatures
+        .filter(f => f.geometry)
+        .flatMap(f => outerRingsFromGeometry(f.geometry!))
     }
+    // 其他模式：保留武汉市高亮，武汉市外全部模糊
+    return wuhanFeatureStored?.geometry
+      ? outerRingsFromGeometry(wuhanFeatureStored.geometry)
+      : []
   }
 
   function setBlurFocus(mode: BlurFocusMode, cityFeature?: GeoJSON.Feature) {
