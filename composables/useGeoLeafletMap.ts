@@ -2,7 +2,7 @@ import type { CompanyRecord } from '~/data/mock'
 
 export const HIGHLIGHT_PROVINCE = '湖北省'
 export const HIGHLIGHT_CITY = '武汉市'
-export const ZONE_LABEL = '高新区范围'
+export const ZONE_LABEL = '高新区'
 
 export type RegionSelectPayload =
   | { type: 'zone', name: string }
@@ -59,28 +59,19 @@ const HOVER_OUTLINE = {
   }
 
   function getProvinceStyle(
-    feature: GeoJSON.Feature | undefined,
+    _feature: GeoJSON.Feature | undefined,
     hovered = false,
     focusMode: BlurFocusMode = 'wuhan',
   ) {
     if (hovered) return { ...HOVER_OUTLINE }
-    const isHubei = feature?.properties?.name === HIGHLIGHT_PROVINCE
     if (focusMode === 'zone') {
       return {
-        color: isHubei ? '#93c5fd' : '#cbd5e1',
-        weight: isHubei ? 1.5 : 1,
+        color: '#cbd5e1',
+        weight: 1,
         opacity: 0.35,
         fillOpacity: 0,
         fill: false,
         dashArray: '4 3',
-      }
-    }
-    if (isHubei) {
-      return {
-        color: '#2563eb',
-        weight: 2.5,
-        fillOpacity: 0,
-        fill: false,
       }
     }
     return {
@@ -94,7 +85,16 @@ const HOVER_OUTLINE = {
   }
 
 function getZoneStyle(hovered = false, focusMode: BlurFocusMode = 'wuhan') {
-  if (hovered) return { ...HOVER_OUTLINE, weight: 5 }
+  if (hovered) {
+    return {
+      color: '#7c3aed',
+      weight: 5,
+      opacity: 1,
+      fillOpacity: 0,
+      fill: false,
+      dashArray: '10 6',
+    }
+  }
   if (focusMode === 'zone') {
     return {
       color: '#7c3aed',
@@ -235,7 +235,6 @@ export function useGeoLeafletMap() {
   let markerLayer: import('leaflet').LayerGroup | null = null
   let blurOverlayEl: HTMLDivElement | null = null
   let chinaProvincesLayer: import('leaflet').GeoJSON | null = null
-  let hubeiProvinceLayer: import('leaflet').GeoJSON | null = null
   let hubeiCitiesLayer: import('leaflet').GeoJSON | null = null
   let zoneLayer: import('leaflet').GeoJSON | null = null
   let zoneBounds: import('leaflet').LatLngBounds | null = null
@@ -248,7 +247,6 @@ export function useGeoLeafletMap() {
   const cityFeatureByAdcode = new Map<number, GeoJSON.Feature>()
   const provincePathsByName = new Map<string, import('leaflet').Path[]>()
   const provinceFeatureByName = new Map<string, GeoJSON.Feature>()
-  let hubeiProvincePaths: import('leaflet').Path[] = []
   const zonePaths: import('leaflet').Path[] = []
   /** 'zone' | `city-${adcode}` | `province-${name}` */
   let hoveredRegion: string | null = null
@@ -274,6 +272,13 @@ export function useGeoLeafletMap() {
     )
   }
 
+  function isInWuhan(latlng: { lat: number, lng: number }) {
+    return !!(
+      wuhanFeatureStored?.geometry
+      && pointInGeoJSON(latlng.lng, latlng.lat, wuhanFeatureStored.geometry)
+    )
+  }
+
   function findHoverTarget(latlng: { lat: number, lng: number }): HoverTarget | null {
     if (blurFocusMode === 'zone') {
       if (isInZone(latlng)) return { kind: 'zone' }
@@ -282,30 +287,23 @@ export function useGeoLeafletMap() {
       return null
     }
 
-    const candidates: { kind: HoverTarget['kind'], feature?: GeoJSON.Feature, area: number }[] = []
+    if (isInZone(latlng)) return { kind: 'zone' }
 
-    for (const f of zoneFeatures) {
-      if (f.geometry && pointInGeoJSON(latlng.lng, latlng.lat, f.geometry)) {
-        candidates.push({ kind: 'zone', area: featureHitArea(f) })
-      }
+    if (isInWuhan(latlng) && wuhanFeatureStored) {
+      return { kind: 'city', feature: wuhanFeatureStored }
     }
-    for (const f of cityFeatures) {
-      if (f.properties?.name !== HIGHLIGHT_CITY) continue
-      if (f.geometry && pointInGeoJSON(latlng.lng, latlng.lat, f.geometry)) {
-        candidates.push({ kind: 'city', feature: f, area: featureHitArea(f) })
-      }
-    }
-    for (const f of otherProvinceFeatures) {
-      if (f.geometry && pointInGeoJSON(latlng.lng, latlng.lat, f.geometry)) {
-        candidates.push({ kind: 'province', feature: f, area: featureHitArea(f) })
-      }
-    }
-    if (!candidates.length) return null
 
-    const best = candidates.reduce((a, b) => (a.area < b.area ? a : b))
-    if (best.kind === 'zone') return { kind: 'zone' }
-    if (best.kind === 'province') return { kind: 'province', feature: best.feature! }
-    return { kind: 'city', feature: best.feature! }
+    if (
+      hubeiFeatureStored?.geometry
+      && pointInGeoJSON(latlng.lng, latlng.lat, hubeiFeatureStored.geometry)
+    ) {
+      return { kind: 'province', feature: hubeiFeatureStored }
+    }
+
+    const provinceHit = findFeatureAt(latlng, otherProvinceFeatures)
+    if (provinceHit) return { kind: 'province', feature: provinceHit }
+
+    return null
   }
 
   function applyFocusVisuals() {
@@ -316,18 +314,12 @@ export function useGeoLeafletMap() {
       hubeiCitiesLayer?.eachLayer((layer) => {
         if ('setOpacity' in layer) (layer as import('leaflet').Path).setOpacity(0)
       })
-      hubeiProvinceLayer?.eachLayer((layer) => {
-        if ('setOpacity' in layer) (layer as import('leaflet').Path).setOpacity(0.3)
-      })
       chinaProvincesLayer?.eachLayer((layer) => {
         if ('setOpacity' in layer) (layer as import('leaflet').Path).setOpacity(0.15)
       })
     }
     else {
       hubeiCitiesLayer?.eachLayer((layer) => {
-        if ('setOpacity' in layer) (layer as import('leaflet').Path).setOpacity(1)
-      })
-      hubeiProvinceLayer?.eachLayer((layer) => {
         if ('setOpacity' in layer) (layer as import('leaflet').Path).setOpacity(1)
       })
       chinaProvincesLayer?.eachLayer((layer) => {
@@ -346,10 +338,6 @@ export function useGeoLeafletMap() {
         const style = getProvinceStyle(feat, false, blurFocusMode)
         paths.forEach(p => p.setStyle(style))
       })
-      if (hubeiFeatureStored) {
-        const style = getProvinceStyle(hubeiFeatureStored, false, blurFocusMode)
-        hubeiProvincePaths.forEach(p => p.setStyle(style))
-      }
     }
 
     const zoneStyle = getZoneStyle(false, blurFocusMode)
@@ -487,7 +475,7 @@ export function useGeoLeafletMap() {
   }
 
   function setCityHover(feature: GeoJSON.Feature, latlng: import('leaflet').LatLng) {
-    if (blurFocusMode === 'zone') return
+    if (blurFocusMode === 'zone' || isInZone(latlng)) return
     const adcode = feature.properties?.adcode as number
     const regionKey = `city-${adcode}`
     if (!adcode) return
@@ -573,11 +561,9 @@ export function useGeoLeafletMap() {
       handleRegionClick(e.latlng)
     })
     mapInstance.on('dblclick', (e) => {
-      const target = findHoverTarget(e.latlng)
-      if (target?.kind === 'zone') {
-        L!.DomEvent.stopPropagation(e)
-        focusZone()
-      }
+      if (!isInZone(e.latlng)) return
+      L!.DomEvent.stopPropagation(e)
+      focusZone()
     })
   }
 
@@ -719,39 +705,31 @@ export function useGeoLeafletMap() {
 
     hubeiFeatureStored = hubeiFeature ?? null
 
-    otherProvinceFeatures = (region.features as GeoJSON.Feature[]).filter(
+    const allProvinceFeatures = region.features as GeoJSON.Feature[]
+    otherProvinceFeatures = allProvinceFeatures.filter(
       f => f.properties?.name !== HIGHLIGHT_PROVINCE,
     )
     provincePathsByName.clear()
     provinceFeatureByName.clear()
 
-    chinaProvincesLayer = L.geoJSON(otherProvinceFeatures as any, {
-      pane: 'boundaryPane',
-      interactive: false,
-      style: feature => getProvinceStyle(feature as GeoJSON.Feature, false, blurFocusMode),
-      onEachFeature: (feature, layer) => {
-        const feat = feature as GeoJSON.Feature
-        const name = feat.properties?.name as string
-        if (name) {
-          provincePathsByName.set(name, collectPathsFromLayer(layer))
-          provinceFeatureByName.set(name, feat)
-        }
-      },
-    }).addTo(map)
+    setupBlurOverlay(map)
 
-    if (hubeiFeature) {
-      setupBlurOverlay(map)
-
-      hubeiProvincePaths = []
-      hubeiProvinceLayer = L.geoJSON(hubeiFeature as any, {
+    chinaProvincesLayer = L.geoJSON(
+      { type: 'FeatureCollection', features: allProvinceFeatures } as GeoJSON.FeatureCollection,
+      {
         pane: 'boundaryPane',
         interactive: false,
-        style: () => getProvinceStyle(hubeiFeature, false, blurFocusMode),
-        onEachFeature: (_feature, layer) => {
-          hubeiProvincePaths.push(...collectPathsFromLayer(layer))
+        style: feature => getProvinceStyle(feature as GeoJSON.Feature, false, blurFocusMode),
+        onEachFeature: (feature, layer) => {
+          const feat = feature as GeoJSON.Feature
+          const name = feat.properties?.name as string
+          if (name) {
+            provincePathsByName.set(name, collectPathsFromLayer(layer))
+            provinceFeatureByName.set(name, feat)
+          }
         },
-      }).addTo(map)
-    }
+      },
+    ).addTo(map)
 
     hubeiCitiesLayer = L.geoJSON(
       { type: 'FeatureCollection', features: cityFeatures } as GeoJSON.FeatureCollection,
@@ -818,7 +796,6 @@ export function useGeoLeafletMap() {
     map = null
     markerLayer = null
     chinaProvincesLayer = null
-    hubeiProvinceLayer = null
     hubeiCitiesLayer = null
     zoneLayer = null
     zoneBounds = null
@@ -827,7 +804,6 @@ export function useGeoLeafletMap() {
     zoneFeatures = []
     otherProvinceFeatures = []
     zonePaths.length = 0
-    hubeiProvincePaths = []
     cityPathsByAdcode.clear()
     cityFeatureByAdcode.clear()
     provincePathsByName.clear()

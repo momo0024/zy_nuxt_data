@@ -1,6 +1,5 @@
 <template>
   <div class="cd-page">
-    <!-- 顶部面包屑 -->
     <div class="cd-topbar">
       <NuxtLink to="/geo-screen" class="cd-back-link">
         <UIcon name="i-lucide-arrow-left" class="size-4" />
@@ -20,7 +19,6 @@
     </div>
 
     <template v-else>
-      <!-- 企业头部 -->
       <div class="cd-hero">
         <div class="cd-hero-logo" :style="{ background: getIndustryBg(company.industry) }">
           <span class="cd-hero-logo-text">{{ company.name.slice(0, 2) }}</span>
@@ -45,17 +43,16 @@
         </div>
       </div>
 
-      <!-- 主体：左侧菜单 + 右侧内容 -->
       <div class="cd-body">
         <aside class="cd-sidebar">
           <div
             v-for="group in menuGroups"
             :key="group.key"
             class="cd-menu-group"
+            :class="{ 'cd-menu-group-open': expandedGroups.has(group.key) }"
           >
             <div
               class="cd-menu-group-header"
-              :class="{ 'cd-menu-group-open': expandedGroups.has(group.key) }"
               @click="toggleGroup(group.key)"
             >
               <UIcon :name="group.icon" class="size-4 cd-menu-icon" />
@@ -65,28 +62,30 @@
                 class="size-3.5 cd-menu-arrow"
               />
             </div>
-            <div v-if="expandedGroups.has(group.key)" class="cd-menu-group-children">
-              <div
-                v-for="child in group.children"
-                :key="child.key"
-                class="cd-menu-item"
-                :class="{ 'cd-menu-active': activeMenu === child.key }"
-                @click="activeMenu = child.key"
-              >
-                <UIcon :name="child.icon" class="size-3.5 cd-menu-item-icon" />
-                <span class="cd-menu-item-label">{{ child.label }}</span>
+            <Transition name="cd-slide">
+              <div v-if="expandedGroups.has(group.key)" class="cd-menu-group-children">
+                <div
+                  v-for="child in group.children"
+                  :key="child.key"
+                  class="cd-menu-item"
+                  :class="{ 'cd-menu-active': activeMenu === child.key }"
+                  @click="scrollToSection(child.key)"
+                >
+                  <span class="cd-menu-item-label">{{ child.label }}</span>
+                </div>
               </div>
-            </div>
+            </Transition>
           </div>
         </aside>
 
-        <div class="cd-content">
+        <div ref="contentRef" class="cd-content">
           <!-- 企业概览 -->
-          <div v-if="activeMenu === 'overview'" class="cd-section">
+          <section id="section-overview" class="cd-section">
             <h2 class="cd-section-title">
               <UIcon name="i-lucide-layout-dashboard" class="size-5" />
               企业概览
             </h2>
+            <template v-if="hasSectionData('overview')">
             <div class="cd-overview-cards">
               <div class="cd-ov-card">
                 <div class="cd-ov-card-icon cd-ov-icon-employees">
@@ -159,14 +158,21 @@
                 </div>
               </div>
             </div>
-          </div>
+            </template>
+            <div v-else class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
 
           <!-- 基本信息 -->
-          <div v-if="activeMenu === 'basic'" class="cd-section">
+          <section id="section-basic" class="cd-section">
             <h2 class="cd-section-title">
               <UIcon name="i-lucide-file-text" class="size-5" />
               基本信息
             </h2>
+            <template v-if="hasSectionData('basic')">
             <div class="cd-info-table">
               <div class="cd-info-row-detail">
                 <div class="cd-info-row-left">
@@ -218,14 +224,21 @@
                 <span class="cd-info-row-right">{{ company.description }}</span>
               </div>
             </div>
-          </div>
+            </template>
+            <div v-else class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
 
           <!-- 经营状况 -->
-          <div v-if="activeMenu === 'business'" class="cd-section">
+          <section id="section-business" class="cd-section">
             <h2 class="cd-section-title">
               <UIcon name="i-lucide-bar-chart-3" class="size-5" />
               经营状况
             </h2>
+            <template v-if="hasSectionData('business')">
             <div class="cd-business-cards">
               <div class="cd-biz-card">
                 <div class="cd-biz-card-header">
@@ -251,14 +264,21 @@
                 <UBadge v-for="t in company.tags" :key="t" :label="t" variant="soft" color="primary" size="sm" />
               </div>
             </div>
-          </div>
+            </template>
+            <div v-else class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
 
           <!-- 联系方式 -->
-          <div v-if="activeMenu === 'contact'" class="cd-section">
+          <section id="section-contact" class="cd-section">
             <h2 class="cd-section-title">
               <UIcon name="i-lucide-phone-call" class="size-5" />
               联系方式
             </h2>
+            <template v-if="hasSectionData('contact')">
             <div class="cd-info-table">
               <div class="cd-info-row-detail">
                 <div class="cd-info-row-left">
@@ -292,7 +312,13 @@
                 <span class="cd-info-row-right">{{ company.province }} · {{ company.city }}</span>
               </div>
             </div>
-          </div>
+            </template>
+            <div v-else class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
         </div>
       </div>
     </template>
@@ -315,7 +341,9 @@ const company = computed<CompanyRecord | undefined>(() =>
 )
 
 const activeMenu = ref('overview')
-const expandedGroups = ref(new Set(['company-info']))
+const expandedGroups = ref(new Set(['company-info', 'business-info', 'contact-info']))
+const contentRef = ref<HTMLElement | null>(null)
+const isScrolling = ref(false)
 
 const menuGroups = [
   {
@@ -345,6 +373,12 @@ const menuGroups = [
   },
 ]
 
+const sectionKeys = menuGroups.flatMap(g => g.children.map(c => c.key))
+
+function findGroupKey(childKey: string): string | undefined {
+  return menuGroups.find(g => g.children.some(c => c.key === childKey))?.key
+}
+
 function toggleGroup(key: string) {
   if (expandedGroups.value.has(key)) {
     expandedGroups.value.delete(key)
@@ -353,6 +387,84 @@ function toggleGroup(key: string) {
   }
   expandedGroups.value = new Set(expandedGroups.value)
 }
+
+function ensureGroupExpanded(childKey: string) {
+  const groupKey = findGroupKey(childKey)
+  if (groupKey && !expandedGroups.value.has(groupKey)) {
+    expandedGroups.value.add(groupKey)
+    expandedGroups.value = new Set(expandedGroups.value)
+  }
+}
+
+function hasSectionData(key: string): boolean {
+  if (!company.value) return false
+  const c = company.value
+  switch (key) {
+    case 'overview':
+      return !!(c.employees || c.revenue || c.description || c.tags?.length)
+    case 'basic':
+      return !!(c.name || c.type || c.industry || c.founded || c.address || c.description)
+    case 'business':
+      return !!(c.employees || c.revenue || c.tags?.length)
+    case 'contact':
+      return !!(c.phone || c.website || c.address)
+    default:
+      return true
+  }
+}
+
+function scrollToSection(key: string) {
+  ensureGroupExpanded(key)
+  activeMenu.value = key
+  isScrolling.value = true
+  nextTick(() => {
+    const el = document.getElementById(`section-${key}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    setTimeout(() => {
+      isScrolling.value = false
+      activeMenu.value = key
+      ensureGroupExpanded(key)
+    }, 800)
+  })
+}
+
+let scrollRaf = 0
+
+function onContentScroll() {
+  if (isScrolling.value) return
+  cancelAnimationFrame(scrollRaf)
+  scrollRaf = requestAnimationFrame(() => {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight
+    const offset = 120
+    let current = sectionKeys[0]
+    if (maxScroll > 0 && scrollTop >= maxScroll - 10) {
+      current = sectionKeys[sectionKeys.length - 1]
+    } else {
+      for (const key of sectionKeys) {
+        const el = document.getElementById(`section-${key}`)
+        if (el && el.offsetTop - offset <= scrollTop) {
+          current = key
+        }
+      }
+    }
+    if (current && activeMenu.value !== current) {
+      activeMenu.value = current
+      ensureGroupExpanded(current)
+    }
+  })
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', onContentScroll, { passive: true })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', onContentScroll)
+  cancelAnimationFrame(scrollRaf)
+})
 
 function getIndustryBg(industry: string): string {
   return getIndustryColor(industry)
@@ -373,11 +485,10 @@ function fmtNum(n: number): string {
 <style scoped>
 .cd-page {
   margin: -24px;
-  min-height: calc(100vh - 90px);
+  min-height: 100vh;
   background: var(--bg);
 }
 
-/* ── 顶部面包屑 ─────────────────────────────────────── */
 .cd-topbar {
   display: flex;
   align-items: center;
@@ -385,6 +496,9 @@ function fmtNum(n: number): string {
   padding: 14px 24px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 .cd-back-link {
   display: inline-flex;
@@ -414,7 +528,6 @@ function fmtNum(n: number): string {
   font-weight: 600;
 }
 
-/* ── 未找到 ──────────────────────────────────────────── */
 .cd-not-found {
   display: flex;
   flex-direction: column;
@@ -442,7 +555,6 @@ function fmtNum(n: number): string {
   opacity: 0.85;
 }
 
-/* ── 企业头部 ────────────────────────────────────────── */
 .cd-hero {
   display: flex;
   align-items: center;
@@ -498,15 +610,13 @@ function fmtNum(n: number): string {
   color: var(--text-muted);
 }
 
-/* ── 主体 ────────────────────────────────────────────── */
 .cd-body {
   display: flex;
   gap: 24px;
   padding: 24px;
-  min-height: calc(100vh - 180px);
+  align-items: flex-start;
 }
 
-/* ── 左侧菜单 ────────────────────────────────────────── */
 .cd-sidebar {
   width: 232px;
   min-width: 232px;
@@ -515,10 +625,13 @@ function fmtNum(n: number): string {
   border-radius: 14px;
   padding: 8px;
   position: sticky;
-  top: 24px;
-  max-height: calc(100vh - 200px);
+  top: 62px;
+  max-height: calc(100vh - 86px);
   overflow-y: auto;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+.cd-sidebar::-webkit-scrollbar {
+  width: 0;
 }
 .cd-menu-group {
   border-radius: 10px;
@@ -571,11 +684,23 @@ function fmtNum(n: number): string {
   overflow: hidden;
   padding: 4px 0 6px;
 }
+.cd-slide-enter-active,
+.cd-slide-leave-active {
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  max-height: 200px;
+  opacity: 1;
+}
+.cd-slide-enter-from,
+.cd-slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
 .cd-menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 14px 9px 24px;
+  padding: 9px 14px 9px 28px;
   margin: 2px 6px;
   font-size: 13px;
   font-weight: 500;
@@ -588,7 +713,7 @@ function fmtNum(n: number): string {
 .cd-menu-item::before {
   content: '';
   position: absolute;
-  left: 12px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   width: 4px;
@@ -596,7 +721,7 @@ function fmtNum(n: number): string {
   border-radius: 50%;
   background: var(--text-muted);
   opacity: 0.35;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .cd-menu-item:hover {
   background: var(--surface-alt);
@@ -619,24 +744,22 @@ function fmtNum(n: number): string {
   top: 50%;
   transform: translateY(-50%);
 }
-.cd-menu-item-icon {
-  display: none;
-}
-.cd-menu-active .cd-menu-item-icon {
-  opacity: 1;
-}
-.cd-menu-item:hover .cd-menu-item-icon {
-  opacity: 0.85;
-}
 
-/* ── 右侧内容 ────────────────────────────────────────── */
 .cd-content {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
 }
 
-/* ── 区块标题 ────────────────────────────────────────── */
+.cd-section {
+  scroll-margin-top: 72px;
+  padding-bottom: 32px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.cd-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
 .cd-section-title {
   display: flex;
   align-items: center;
@@ -647,7 +770,6 @@ function fmtNum(n: number): string {
   margin: 0 0 20px;
 }
 
-/* ── 概览卡片 ────────────────────────────────────────── */
 .cd-overview-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -704,7 +826,6 @@ function fmtNum(n: number): string {
   margin-top: 2px;
 }
 
-/* ── 描述卡片 ────────────────────────────────────────── */
 .cd-desc-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -730,7 +851,6 @@ function fmtNum(n: number): string {
   gap: 6px;
 }
 
-/* ── 信息网格 ────────────────────────────────────────── */
 .cd-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -751,7 +871,6 @@ function fmtNum(n: number): string {
   font-weight: 500;
 }
 
-/* ── 信息表格 ────────────────────────────────────────── */
 .cd-info-table {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -797,7 +916,6 @@ function fmtNum(n: number): string {
   text-decoration: underline;
 }
 
-/* ── 经营卡片 ────────────────────────────────────────── */
 .cd-business-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -834,7 +952,25 @@ function fmtNum(n: number): string {
   margin-top: 0;
 }
 
-/* ── 类型颜色 ────────────────────────────────────────── */
+.cd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
+}
+.cd-empty-divider {
+  width: 40px;
+  height: 1px;
+  background: var(--border);
+}
+.cd-empty-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
 .type-state {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger);

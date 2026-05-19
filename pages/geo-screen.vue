@@ -82,20 +82,12 @@
                 <span>悬停省界</span>
               </div>
               <div class="gs-legend-item">
-                <span class="gs-legend-swatch gs-swatch-province" />
-                <span>湖北省界</span>
-              </div>
-              <div class="gs-legend-item">
                 <span class="gs-legend-swatch gs-swatch-city" />
                 <span>武汉市界</span>
               </div>
               <div class="gs-legend-item">
-                <span class="gs-legend-swatch gs-swatch-wuhan" />
-                <span>武汉市</span>
-              </div>
-              <div class="gs-legend-item">
                 <span class="gs-legend-swatch gs-swatch-zone" />
-                <span>高新区范围</span>
+                <span>高新区</span>
               </div>
             </div>
 
