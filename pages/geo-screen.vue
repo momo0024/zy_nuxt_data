@@ -8,7 +8,7 @@
           <span class="gs-title-icon">
             <UIcon name="i-lucide-map-pin" class="size-[15px]" />
           </span>
-          <span class="gs-title">高新区企业地图</span>
+          <span class="gs-title">企业地图</span>
           <span class="gs-breadcrumb">
             <span class="gs-crumb-badge">{{ zoneCompanies.length }} 家</span>
           </span>
@@ -87,7 +87,7 @@
               </div>
               <div class="gs-legend-item">
                 <span class="gs-legend-swatch gs-swatch-city" />
-                <span>悬停市区</span>
+                <span>武汉市界</span>
               </div>
               <div class="gs-legend-item">
                 <span class="gs-legend-swatch gs-swatch-wuhan" />
@@ -124,7 +124,11 @@
         </button>
 
         <!-- 右侧企业列表面板 -->
-        <Transition name="cp-slide">
+        <Transition
+          name="cp-slide"
+          @after-enter="onPanelLayoutDone"
+          @after-leave="onPanelLayoutDone"
+        >
           <div v-if="panelOpen" class="gs-company-panel">
             <div class="cp-header">
               <UIcon name="i-lucide-building-2" class="size-[15px] text-primary flex-shrink-0" />
@@ -358,9 +362,12 @@ watch(isFullscreen, () => {
 
 watch(panelOpen, () => {
   nextTick(() => invalidateSize())
-  setTimeout(() => invalidateSize(), 100)
-  setTimeout(() => invalidateSize(), 280)
 })
+
+function onPanelLayoutDone() {
+  invalidateSize()
+  requestAnimationFrame(() => invalidateSize())
+}
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) screenRef.value?.requestFullscreen()
@@ -556,7 +563,7 @@ function fmtNum(n: number): string {
 .gs-leaflet-map :deep(.leaflet-control-attribution) {
   display: none !important;
 }
-.gs-leaflet-map :deep(.gs-outside-blur) {
+.gs-map-wrap > .gs-outside-blur {
   position: absolute;
   inset: 0;
   z-index: 400;
@@ -959,31 +966,30 @@ function fmtNum(n: number): string {
 }
 .cd-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 2;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
   color: var(--text-muted);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-  flex-shrink: 0;
 }
 .cd-close:hover {
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger);
 }
 .cd-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 20px 20px 16px;
+  padding: 20px 48px 16px 20px;
   background: color-mix(in srgb, var(--surface-alt) 80%, transparent);
   border-bottom: 1px solid var(--border);
 }

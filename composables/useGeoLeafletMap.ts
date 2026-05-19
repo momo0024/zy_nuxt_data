@@ -9,7 +9,8 @@ export type RegionSelectPayload =
   | { type: 'city', name: string, adcode: number }
 
 const WUHAN_CENTER: [number, number] = [30.5928, 114.3055]
-const WUHAN_ZOOM = 11
+const WUHAN_ZOOM = 12
+const WUHAN_FIT_MAX_ZOOM = 13
 
 /** 模糊蒙版镂空范围：省外 / 市外 / 高新区外 */
 type BlurFocusMode = 'hubei' | 'wuhan' | 'zone' | 'city'
@@ -40,12 +41,20 @@ const HOVER_OUTLINE = {
       }
     }
     const isWuhan = feature?.properties?.name === HIGHLIGHT_CITY
+    if (!isWuhan) {
+      return {
+        color: 'transparent',
+        weight: 0,
+        opacity: 0,
+        fillOpacity: 0,
+        fill: false,
+      }
+    }
     return {
-      color: isWuhan ? '#0891b2' : '#94a3b8',
-      weight: isWuhan ? 2.5 : 1.5,
+      color: '#0891b2',
+      weight: 2.5,
       fillOpacity: 0,
       fill: false,
-      dashArray: isWuhan ? undefined : '4 3',
     }
   }
 
@@ -281,6 +290,7 @@ export function useGeoLeafletMap() {
       }
     }
     for (const f of cityFeatures) {
+      if (f.properties?.name !== HIGHLIGHT_CITY) continue
       if (f.geometry && pointInGeoJSON(latlng.lng, latlng.lat, f.geometry)) {
         candidates.push({ kind: 'city', feature: f, area: featureHitArea(f) })
       }
@@ -356,44 +366,27 @@ export function useGeoLeafletMap() {
   }
 
   function scheduleBlurSync() {
-    // Use lastKnownSize to detect stable dimensions and only sync when stable
     if (!map) return
-    let lastSize = ''
-    let settled = false
-    const doSync = () => {
-      if (settled) return
-      const s = map?.getSize()
-      if (!s) return
-      const key = `${s.x.toFixed(0)}x${s.y.toFixed(0)}`
-      if (key === lastSize && lastSize) {
-        settled = true
-        syncBlurOverlay?.()
-        return
-      }
-      lastSize = key
-      requestAnimationFrame(doSync)
-    }
-    requestAnimationFrame(doSync)
-    setTimeout(() => {
-      settled = true
-      syncBlurOverlay?.()
-    }, 500)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => syncBlurOverlay?.())
+    })
   }
 
   function flyToFeatureBounds(
     bounds: import('leaflet').LatLngBounds | null,
     maxZoom: number,
     duration = 0.6,
+    padding: [number, number] = [48, 48],
   ) {
     if (!map || !bounds?.isValid()) return
     if (duration > 0) map.once('moveend', () => scheduleBlurSync())
     else requestAnimationFrame(() => syncBlurOverlay?.())
-    map.fitBounds(bounds, { padding: [48, 48], maxZoom, duration })
+    map.fitBounds(bounds, { padding, maxZoom, duration })
   }
 
   function flyToCity(feature: GeoJSON.Feature) {
     const name = feature.properties?.name as string
-    const maxZoom = name === HIGHLIGHT_CITY ? 11 : 9
+    const maxZoom = name === HIGHLIGHT_CITY ? WUHAN_FIT_MAX_ZOOM : 9
     flyToFeatureBounds(boundsForFeature(feature), maxZoom)
   }
 
@@ -538,11 +531,15 @@ export function useGeoLeafletMap() {
     showRegionTooltip(name, latlng)
   }
 
+  function focusZone() {
+    flyToZone()
+    onRegionSelect?.({ type: 'zone', name: ZONE_LABEL })
+  }
+
   function handleRegionClick(latlng: import('leaflet').LatLng) {
     const target = findHoverTarget(latlng)
     if (target?.kind === 'zone') {
-      flyToZone()
-      onRegionSelect?.({ type: 'zone', name: ZONE_LABEL })
+      focusZone()
       return
     }
     if (target?.kind === 'city') {
@@ -575,14 +572,24 @@ export function useGeoLeafletMap() {
     mapInstance.on('click', (e) => {
       handleRegionClick(e.latlng)
     })
+    mapInstance.on('dblclick', (e) => {
+      const target = findHoverTarget(e.latlng)
+      if (target?.kind === 'zone') {
+        L!.DomEvent.stopPropagation(e)
+        focusZone()
+      }
+    })
   }
 
   function setupBlurOverlay(mapInstance: import('leaflet').Map) {
-    const container = mapInstance.getContainer()
+    const mapEl = mapInstance.getContainer()
+    const wrap = mapEl.parentElement
+    if (!wrap) return
+
     blurOverlayEl = document.createElement('div')
     blurOverlayEl.className = 'gs-outside-blur'
     blurOverlayEl.style.backgroundColor = 'rgba(255, 255, 255, 0.06)'
-    container.appendChild(blurOverlayEl)
+    wrap.appendChild(blurOverlayEl)
 
     syncBlurOverlay = () => {
       if (!blurOverlayEl || !map) return
@@ -616,8 +623,12 @@ export function useGeoLeafletMap() {
     const onMapViewChange = () => scheduleBlurSync()
     mapInstance.on('move zoom zoomend resize viewreset moveend', onMapViewChange)
 
-    blurResizeObserver = new ResizeObserver(() => scheduleBlurSync())
-    blurResizeObserver.observe(container)
+    blurResizeObserver = new ResizeObserver(() => {
+      mapInstance.invalidateSize({ animate: false })
+      scheduleBlurSync()
+    })
+    blurResizeObserver.observe(mapEl)
+    blurResizeObserver.observe(wrap)
 
     const teardownMapListeners = () => {
       mapInstance.off('move zoom zoomend resize viewreset moveend', onMapViewChange)
@@ -679,9 +690,10 @@ export function useGeoLeafletMap() {
 
     map = L.map(mapContainerRef.value, {
       center: [WUHAN_CENTER[0], WUHAN_CENTER[1]],
-      zoom: 12,
+      zoom: WUHAN_ZOOM,
       zoomControl: false,
       attributionControl: false,
+      doubleClickZoom: false,
     })
 
     L.tileLayer(
@@ -700,7 +712,8 @@ export function useGeoLeafletMap() {
       (f: any) => f.properties?.name === HIGHLIGHT_PROVINCE,
     ) as GeoJSON.Feature | undefined
 
-    cityFeatures = (hubeiCities as GeoJSON.FeatureCollection).features ?? []
+    const allCityFeatures = (hubeiCities as GeoJSON.FeatureCollection).features ?? []
+    cityFeatures = allCityFeatures.filter(f => f.properties?.name === HIGHLIGHT_CITY)
     cityPathsByAdcode.clear()
     cityFeatureByAdcode.clear()
 
@@ -740,19 +753,22 @@ export function useGeoLeafletMap() {
       }).addTo(map)
     }
 
-    hubeiCitiesLayer = L.geoJSON(hubeiCities as any, {
-      pane: 'boundaryPane',
-      interactive: false,
-      style: feature => getCityStyle(feature as GeoJSON.Feature, false, blurFocusMode),
-      onEachFeature: (feature, layer) => {
-        const feat = feature as GeoJSON.Feature
-        const adcode = feat.properties?.adcode as number
-        if (adcode) {
-          cityPathsByAdcode.set(adcode, collectPathsFromLayer(layer))
-          cityFeatureByAdcode.set(adcode, feat)
-        }
+    hubeiCitiesLayer = L.geoJSON(
+      { type: 'FeatureCollection', features: cityFeatures } as GeoJSON.FeatureCollection,
+      {
+        pane: 'boundaryPane',
+        interactive: false,
+        style: feature => getCityStyle(feature as GeoJSON.Feature, false, blurFocusMode),
+        onEachFeature: (feature, layer) => {
+          const feat = feature as GeoJSON.Feature
+          const adcode = feat.properties?.adcode as number
+          if (adcode) {
+            cityPathsByAdcode.set(adcode, collectPathsFromLayer(layer))
+            cityFeatureByAdcode.set(adcode, feat)
+          }
+        },
       },
-    }).addTo(map)
+    ).addTo(map)
 
     zoneFeatures = (zone as GeoJSON.FeatureCollection).features ?? []
     zonePaths.length = 0
@@ -828,7 +844,7 @@ export function useGeoLeafletMap() {
 
   function flyToWuhan(duration = 0.6) {
     if (wuhanBounds?.isValid()) {
-      flyToFeatureBounds(wuhanBounds, 12, duration)
+      flyToFeatureBounds(wuhanBounds, WUHAN_FIT_MAX_ZOOM, duration, [28, 28])
     }
     else {
       if (map && duration > 0) map.once('moveend', () => scheduleBlurSync())
@@ -849,12 +865,12 @@ export function useGeoLeafletMap() {
       flyToWuhan()
       return
     }
-    quickView.value = view
-    setBlurFocus(view)
     if (view === 'zone') {
-      flyToFeatureBounds(zoneBounds, 13, 0.6)
+      focusZone()
     }
-    else if (view === 'wuhan') {
+    else {
+      quickView.value = 'wuhan'
+      setBlurFocus('wuhan')
       flyToWuhan()
     }
   }

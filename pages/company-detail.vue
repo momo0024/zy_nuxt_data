@@ -49,15 +49,34 @@
       <div class="cd-body">
         <aside class="cd-sidebar">
           <div
-            v-for="menu in menus"
-            :key="menu.key"
-            class="cd-menu-item"
-            :class="{ 'cd-menu-active': activeMenu === menu.key }"
-            @click="activeMenu = menu.key"
+            v-for="group in menuGroups"
+            :key="group.key"
+            class="cd-menu-group"
           >
-            <UIcon :name="menu.icon" class="size-4 cd-menu-icon" />
-            <span class="cd-menu-label">{{ menu.label }}</span>
-            <UIcon name="i-lucide-chevron-right" class="size-3.5 cd-menu-arrow" />
+            <div
+              class="cd-menu-group-header"
+              :class="{ 'cd-menu-group-open': expandedGroups.has(group.key) }"
+              @click="toggleGroup(group.key)"
+            >
+              <UIcon :name="group.icon" class="size-4 cd-menu-icon" />
+              <span class="cd-menu-label">{{ group.label }}</span>
+              <UIcon
+                name="i-lucide-chevron-down"
+                class="size-3.5 cd-menu-arrow"
+              />
+            </div>
+            <div v-if="expandedGroups.has(group.key)" class="cd-menu-group-children">
+              <div
+                v-for="child in group.children"
+                :key="child.key"
+                class="cd-menu-item"
+                :class="{ 'cd-menu-active': activeMenu === child.key }"
+                @click="activeMenu = child.key"
+              >
+                <UIcon :name="child.icon" class="size-3.5 cd-menu-item-icon" />
+                <span class="cd-menu-item-label">{{ child.label }}</span>
+              </div>
+            </div>
           </div>
         </aside>
 
@@ -296,13 +315,44 @@ const company = computed<CompanyRecord | undefined>(() =>
 )
 
 const activeMenu = ref('overview')
+const expandedGroups = ref(new Set(['company-info']))
 
-const menus = [
-  { key: 'overview', label: '企业概览', icon: 'i-lucide-layout-dashboard' },
-  { key: 'basic', label: '基本信息', icon: 'i-lucide-file-text' },
-  { key: 'business', label: '经营状况', icon: 'i-lucide-bar-chart-3' },
-  { key: 'contact', label: '联系方式', icon: 'i-lucide-phone-call' },
+const menuGroups = [
+  {
+    key: 'company-info',
+    label: '企业信息',
+    icon: 'i-lucide-building-2',
+    children: [
+      { key: 'overview', label: '企业概览', icon: 'i-lucide-layout-dashboard' },
+      { key: 'basic', label: '基本信息', icon: 'i-lucide-file-text' },
+    ],
+  },
+  {
+    key: 'business-info',
+    label: '经营数据',
+    icon: 'i-lucide-bar-chart-3',
+    children: [
+      { key: 'business', label: '经营状况', icon: 'i-lucide-bar-chart-3' },
+    ],
+  },
+  {
+    key: 'contact-info',
+    label: '联系信息',
+    icon: 'i-lucide-phone-call',
+    children: [
+      { key: 'contact', label: '联系方式', icon: 'i-lucide-phone-call' },
+    ],
+  },
 ]
+
+function toggleGroup(key: string) {
+  if (expandedGroups.value.has(key)) {
+    expandedGroups.value.delete(key)
+  } else {
+    expandedGroups.value.add(key)
+  }
+  expandedGroups.value = new Set(expandedGroups.value)
+}
 
 function getIndustryBg(industry: string): string {
   return getIndustryColor(industry)
@@ -451,53 +501,132 @@ function fmtNum(n: number): string {
 /* ── 主体 ────────────────────────────────────────────── */
 .cd-body {
   display: flex;
-  min-height: calc(100vh - 260px);
+  gap: 24px;
+  padding: 24px;
+  min-height: calc(100vh - 180px);
 }
 
 /* ── 左侧菜单 ────────────────────────────────────────── */
 .cd-sidebar {
-  width: 210px;
-  min-width: 210px;
+  width: 232px;
+  min-width: 232px;
   background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px;
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+.cd-menu-group {
+  border-radius: 10px;
+  overflow: hidden;
+}
+.cd-menu-group + .cd-menu-group {
+  margin-top: 4px;
+}
+.cd-menu-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  user-select: none;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+}
+.cd-menu-group-header:hover {
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+.cd-menu-icon {
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.2s, color 0.2s;
+}
+.cd-menu-group-header:hover .cd-menu-icon {
+  opacity: 0.9;
+  color: var(--primary);
+}
+.cd-menu-group-header .cd-menu-arrow {
+  margin-left: auto;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.35;
+}
+.cd-menu-group-header:hover .cd-menu-arrow {
+  opacity: 0.65;
+}
+.cd-menu-group-open .cd-menu-arrow {
+  transform: rotate(180deg);
+}
+.cd-menu-group-open .cd-menu-group-header {
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
+}
+.cd-menu-group-children {
+  overflow: hidden;
+  padding: 4px 0 6px;
 }
 .cd-menu-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 20px;
+  gap: 8px;
+  padding: 9px 14px 9px 24px;
+  margin: 2px 6px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  border-left: 3px solid transparent;
+  transition: all 0.2s;
+  border-radius: 8px;
+  position: relative;
+}
+.cd-menu-item::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.35;
+  transition: all 0.2s;
 }
 .cd-menu-item:hover {
   background: var(--surface-alt);
-  color: var(--text-strong);
+  color: var(--text);
+}
+.cd-menu-item:hover::before {
+  opacity: 0.6;
 }
 .cd-menu-active {
-  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
-  color: var(--primary) !important;
-  border-left-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
   font-weight: 600;
 }
-.cd-menu-icon {
-  flex-shrink: 0;
-  opacity: 0.65;
+.cd-menu-active::before {
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--primary);
+  opacity: 1;
+  top: 50%;
+  transform: translateY(-50%);
 }
-.cd-menu-active .cd-menu-icon {
+.cd-menu-item-icon {
+  display: none;
+}
+.cd-menu-active .cd-menu-item-icon {
   opacity: 1;
 }
-.cd-menu-arrow {
-  margin-left: auto;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.cd-menu-active .cd-menu-arrow {
-  opacity: 0.6;
+.cd-menu-item:hover .cd-menu-item-icon {
+  opacity: 0.85;
 }
 
 /* ── 右侧内容 ────────────────────────────────────────── */
@@ -505,7 +634,6 @@ function fmtNum(n: number): string {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: 28px 32px;
 }
 
 /* ── 区块标题 ────────────────────────────────────────── */
