@@ -10,7 +10,7 @@
           </span>
           <span class="gs-title">企业地图</span>
           <span class="gs-breadcrumb">
-            <span class="gs-crumb-badge">{{ zoneCompanies.length }} 家</span>
+            <span class="gs-crumb-badge">{{ companyTotal }} 家</span>
           </span>
         </div>
         <div class="gs-toolbar-right">
@@ -58,13 +58,13 @@
           <!-- 统计浮层 (左上) -->
           <div class="gs-stats-overlay">
             <div class="gs-stat">
-              <div class="gs-stat-num">{{ zoneCompanies.length }}</div>
-              <div class="gs-stat-lbl">高新企业</div>
+              <div class="gs-stat-num">{{ companyTotal }}</div>
+              <div class="gs-stat-lbl">企业总数</div>
             </div>
             <div class="gs-stat-sep" />
             <div class="gs-stat">
-              <div class="gs-stat-num">东湖高新区</div>
-              <div class="gs-stat-lbl">范围</div>
+              <div class="gs-stat-num">{{ listedCount }}</div>
+              <div class="gs-stat-lbl">上市公司</div>
             </div>
             <div class="gs-stat-sep" />
             <div class="gs-stat">
@@ -125,7 +125,7 @@
             <div class="cp-header">
               <UIcon name="i-lucide-building-2" class="size-[15px] text-primary flex-shrink-0" />
               <span class="cp-title">{{ panelTitle }}</span>
-              <span class="cp-count">{{ filteredCompanies.length }} 家</span>
+              <span class="cp-count">{{ companyTotal }} 家</span>
               <button
                 type="button"
                 class="cp-close"
@@ -141,7 +141,7 @@
               <input
                 v-model="companySearch"
                 class="cp-search-input"
-                placeholder="搜索名称 / 行业 / 标签…"
+                placeholder="搜索名称 / 行业 / 区域…"
               />
             </div>
 
@@ -153,31 +153,39 @@
                 :class="{ 'cp-item-highlighted': highlightedCompanyId === c.id }"
                 @click="openDetail(c)"
               >
-                <div class="cp-avatar" :style="{ background: getIndustryColor(c.industry) }">
-                  {{ c.name.charAt(0) }}
+                <div class="cp-avatar" :style="{ background: getIndustryColor(c.company_industry) }">
+                  {{ c.company_name.charAt(0) }}
                 </div>
                 <div class="cp-info">
-                  <div class="cp-name">{{ c.name }}</div>
+                  <div class="cp-name">
+                    {{ c.company_name }}
+                    <span v-if="c.company_traded === 1" class="cp-listed-tag">上市</span>
+                  </div>
                   <div class="cp-meta">
                     <span class="cp-city">
                       <UIcon name="i-lucide-map-pin" class="size-3 inline-block mr-0.5" />
-                      {{ c.city }}
+                      {{ c.company_city }} · {{ c.conpany_district || '' }}
                     </span>
-                    <span :class="['cp-type', getTypeCls(c.type)]">{{ c.type }}</span>
+                  </div>
+                  <div v-if="c.company_found_date && c.company_found_date !== '-'" class="cp-founded">
+                    <UIcon name="i-lucide-calendar" class="size-3" />
+                    <span>{{ c.company_found_date }}</span>
                   </div>
                   <div class="cp-tags">
-                    <span v-for="t in c.tags.slice(0, 2)" :key="t" class="cp-tag">{{ t }}</span>
+                    <span v-if="c.company_industry && c.company_industry !== '-'" class="cp-tag">{{ c.company_industry }}</span>
+                    <span v-if="c.company_type && c.company_type !== '-'" class="cp-type-tag">{{ c.company_type }}</span>
                   </div>
-                </div>
-                <div class="cp-emp">
-                  <div class="cp-emp-num">{{ fmtNum(c.employees) }}</div>
-                  <div class="cp-emp-lbl">员工</div>
                 </div>
               </div>
 
               <div v-if="filteredCompanies.length === 0" class="cp-empty">
                 <UIcon name="i-lucide-building-x" class="size-10 opacity-20" />
                 <span>暂无匹配企业</span>
+              </div>
+
+              <div v-if="hasMorePages" class="cp-load-more" @click="loadMore">
+                <UIcon name="i-lucide-chevron-down" class="size-4" />
+                <span>加载更多</span>
               </div>
             </div>
           </div>
@@ -192,12 +200,12 @@
               <UIcon name="i-lucide-x" class="size-4" />
             </button>
             <div class="cd-header">
-              <div class="cd-logo" :style="{ background: getIndustryColor(detailCompany.industry) }">
-                {{ detailCompany.name.slice(0, 2) }}
+              <div class="cd-logo" :style="{ background: getIndustryColor(detailCompany.company_industry) }">
+                {{ detailCompany.company_name.slice(0, 2) }}
               </div>
               <div class="cd-title-wrap">
                 <div class="cd-name-row">
-                  <div class="cd-name">{{ detailCompany.name }}</div>
+                  <div class="cd-name">{{ detailCompany.company_name }}</div>
                   <a
                     class="cd-detail-link"
                     :href="`/company-detail?id=${detailCompany.id}`"
@@ -210,55 +218,90 @@
                   </a>
                 </div>
                 <div class="cd-sub">
-                  <span :class="['cd-type-badge', getTypeCls(detailCompany.type)]">{{ detailCompany.type }}</span>
-                  <span class="cd-industry">{{ detailCompany.industry }}</span>
-                  <span class="cd-founded">成立 {{ detailCompany.founded }} 年</span>
+                  <span v-if="detailCompany.company_traded === 1" class="cd-type-badge type-listed">上市公司</span>
+                  <span v-if="detailCompany.company_type && detailCompany.company_type !== '-'" class="cd-type-badge type-info">{{ detailCompany.company_type }}</span>
+                  <span v-if="detailCompany.company_industry && detailCompany.company_industry !== '-'" class="cd-industry">{{ detailCompany.company_industry }}</span>
+                  <span v-if="detailCompany.company_found_date && detailCompany.company_found_date !== '-'" class="cd-founded">
+                    {{ detailCompany.company_found_date }}
+                  </span>
                 </div>
               </div>
             </div>
             <div class="cd-body">
-              <p class="cd-desc">{{ detailCompany.description }}</p>
               <div class="cd-metrics">
                 <div class="cd-metric">
-                  <UIcon name="i-lucide-users" class="size-[18px] text-primary flex-shrink-0" />
+                  <UIcon name="i-lucide-landmark" class="size-[18px] text-primary flex-shrink-0" />
                   <div>
-                    <div class="cd-metric-val">{{ fmtNum(detailCompany.employees) }}</div>
-                    <div class="cd-metric-lbl">在职员工</div>
-                  </div>
-                </div>
-                <div class="cd-metric">
-                  <UIcon name="i-lucide-trending-up" class="size-[18px] text-success flex-shrink-0" />
-                  <div>
-                    <div class="cd-metric-val">{{ detailCompany.revenue }}</div>
-                    <div class="cd-metric-lbl">年营收</div>
+                    <div class="cd-metric-val">{{ detailCompany.company_registered_capital }}</div>
+                    <div class="cd-metric-lbl">注册资本</div>
                   </div>
                 </div>
                 <div class="cd-metric">
                   <UIcon name="i-lucide-map-pin" class="size-[18px] text-warning flex-shrink-0" />
                   <div>
-                    <div class="cd-metric-val">{{ detailCompany.city }}</div>
-                    <div class="cd-metric-lbl">所在城市</div>
+                    <div class="cd-metric-val">{{ detailCompany.company_city }} · {{ detailCompany.conpany_district || '' }}</div>
+                    <div class="cd-metric-lbl">所在区域</div>
+                  </div>
+                </div>
+                <div class="cd-metric">
+                  <UIcon name="i-lucide-activity" class="size-[18px] text-success flex-shrink-0" />
+                  <div>
+                    <div class="cd-metric-val">{{ detailCompany.company_business_status }}</div>
+                    <div class="cd-metric-lbl">经营状态</div>
                   </div>
                 </div>
               </div>
-              <div class="cd-tags">
-                <UBadge v-for="t in detailCompany.tags" :key="t" :label="t" variant="soft" color="primary" size="sm" />
+              <div class="cd-scope-card">
+                <div class="cd-scope-title">
+                  <UIcon name="i-lucide-briefcase" class="size-4" />
+                  经营范围
+                </div>
+                <div class="cd-scope-text-wrap">
+                  <p
+                    class="cd-scope-text"
+                    :class="{ 'cd-scope-text-collapsed': !scopeExpanded }"
+                  >
+                    {{ detailCompany.company_business_scope }}
+                  </p>
+                  <button
+                    v-if="scopeNeedExpand"
+                    class="cd-scope-expand-btn"
+                    @click="scopeExpanded = !scopeExpanded"
+                  >
+                    {{ scopeExpanded ? '收起' : '显示更多' }}
+                  </button>
+                </div>
               </div>
               <div class="cd-info-list">
                 <div class="cd-info-row">
+                  <UIcon name="i-lucide-user" class="size-3.5 opacity-40 flex-shrink-0" />
+                  <span class="cd-info-key">法人</span>
+                  <span class="cd-info-val">{{ detailCompany.company_legal_person }}</span>
+                </div>
+                <div v-if="detailCompany.company_found_date && detailCompany.company_found_date !== '-'" class="cd-info-row">
+                  <UIcon name="i-lucide-calendar" class="size-3.5 opacity-40 flex-shrink-0" />
+                  <span class="cd-info-key">成立日期</span>
+                  <span class="cd-info-val">{{ detailCompany.company_found_date }}</span>
+                </div>
+                <div class="cd-info-row">
                   <UIcon name="i-lucide-map-pin" class="size-3.5 opacity-40 flex-shrink-0" />
                   <span class="cd-info-key">地址</span>
-                  <span class="cd-info-val">{{ detailCompany.address }}</span>
+                  <span class="cd-info-val">{{ detailCompany.company_work_add || detailCompany.conpany_district || '-' }}</span>
                 </div>
                 <div class="cd-info-row">
                   <UIcon name="i-lucide-phone" class="size-3.5 opacity-40 flex-shrink-0" />
                   <span class="cd-info-key">电话</span>
-                  <span class="cd-info-val">{{ detailCompany.phone }}</span>
+                  <span class="cd-info-val">{{ detailCompany.company_phone || '-' }}</span>
                 </div>
                 <div class="cd-info-row">
                   <UIcon name="i-lucide-globe" class="size-3.5 opacity-40 flex-shrink-0" />
                   <span class="cd-info-key">网站</span>
-                  <span class="cd-info-val text-primary">{{ detailCompany.website }}</span>
+                  <span class="cd-info-val text-primary">{{ detailCompany.company_website || '-' }}</span>
+                </div>
+                <div class="cd-info-row">
+                  <UIcon name="i-lucide-mail" class="size-3.5 opacity-40 flex-shrink-0" />
+                  <span class="cd-info-key">邮箱</span>
+                  <span class="cd-info-val">{{ detailCompany.company_email || '-' }}</span>
                 </div>
               </div>
             </div>
@@ -271,8 +314,8 @@
 </template>
 
 <script setup lang="ts">
-import { COMPANIES } from '~/data/mock'
-import type { CompanyRecord } from '~/data/mock'
+import type { CompanyRecord } from '~/types/company'
+import { fetchCompanies, isListedCompany } from '~/types/company'
 import {
   getIndustryColor,
   useGeoLeafletMap,
@@ -295,47 +338,104 @@ const {
 } = useGeoLeafletMap()
 
 const screenRef = ref<HTMLDivElement>()
-const zoneCompanies = ref<CompanyRecord[]>([])
+const allCompanies = ref<CompanyRecord[]>([])
 const detailCompany = ref<CompanyRecord | null>(null)
 const companySearch = ref('')
 const isFullscreen = ref(false)
 const highlightedCompanyId = ref<string | null>(null)
 const panelOpen = ref(true)
 const selectedRegion = ref<RegionSelectPayload | null>(null)
+const currentPage = ref(1)
+const pageSize = 20
+const companyTotal = ref(0)
+const loadingMore = ref(false)
+const scopeExpanded = ref(false)
+const scopeNeedExpand = computed(() => {
+  if (!detailCompany.value?.company_business_scope) return false
+  const text = detailCompany.value.company_business_scope
+  return text.length > 120
+})
 
-const industryCount = computed(() => new Set(zoneCompanies.value.map(c => c.industry)).size)
+const listedCount = computed(() => allCompanies.value.filter(c => c.company_traded === 1).length)
+
+const industryCount = computed(() => new Set(allCompanies.value.map(c => c.company_industry)).size)
+
+const uniqueCompanyCount = computed(() => new Set(allCompanies.value.map(c => c.company_name)).size)
+const hasMorePages = computed(() => uniqueCompanyCount.value < companyTotal.value)
 
 const panelTitle = computed(() => {
   const r = selectedRegion.value
   if (r?.type === 'city') return `${r.name} · 企业`
   if (r?.type === 'zone') return '高新区企业'
-  return '高新区企业'
+  return '企业列表'
 })
 
 const filteredCompanies = computed(() => {
-  let list = zoneCompanies.value
+  let list = allCompanies.value
   const region = selectedRegion.value
   if (region?.type === 'city') {
-    list = list.filter(c => c.city === region.name)
+    list = list.filter(c => c.company_city === region.name)
   }
   const q = companySearch.value.trim().toLowerCase()
   if (q) {
     list = list.filter(c =>
-      c.name.toLowerCase().includes(q)
-      || c.industry.toLowerCase().includes(q)
-      || c.tags.some(t => t.toLowerCase().includes(q)),
+      c.company_name.toLowerCase().includes(q)
+      || c.company_industry.toLowerCase().includes(q)
+      || (c.conpany_district || '').toLowerCase().includes(q),
     )
   }
   return list
 })
 
+async function loadCompanyData(page: number) {
+  try {
+    const res = await fetchCompanies(page, pageSize)
+    if (res.code === 0 && res.data) {
+      const list = res.data.list.map(item => ({
+        ...item,
+        id: item.company_credit_code || `${item.company_name}-${item.company_longitude}`,
+      }))
+      if (page === 1) {
+        allCompanies.value = list
+      } else {
+        // 过滤掉已存在的公司（根据名称去重）
+        const existingNames = new Set(allCompanies.value.map(c => c.company_name))
+        const newList = list.filter(item => !existingNames.has(item.company_name))
+        allCompanies.value = [...allCompanies.value, ...newList]
+      }
+      companyTotal.value = res.data.total
+      currentPage.value = page
+    }
+  } catch (e) {
+    console.error('[geo-screen] 加载企业数据失败', e)
+  }
+}
+
+async function loadMore() {
+  if (loadingMore.value || !hasMorePages.value) return
+  loadingMore.value = true
+  try {
+    const prevCount = uniqueCompanyCount.value
+    await loadCompanyData(currentPage.value + 1)
+    // 如果加载后去重数量没有变化，说明没有新数据，更新 total
+    if (uniqueCompanyCount.value === prevCount) {
+      companyTotal.value = uniqueCompanyCount.value
+    }
+  } finally {
+    loadingMore.value = false
+  }
+}
+
 onMounted(async () => {
   try {
-    const list = await initMap(COMPANIES, {
+    await loadCompanyData(1)
+    const list = await initMap(allCompanies.value, {
       onCompany: company => openDetail(company),
       onRegion: payload => onRegionSelect(payload),
     })
-    zoneCompanies.value = list ?? []
+    if (list && list.length > 0) {
+      allCompanies.value = list
+    }
   }
   catch (e) {
     console.error('[geo-screen] 加载地图数据失败', e)
@@ -381,21 +481,12 @@ function onRegionSelect(payload: RegionSelectPayload) {
 function openDetail(company: CompanyRecord) {
   detailCompany.value = company
   highlightedCompanyId.value = company.id
+  scopeExpanded.value = false
 }
 
 function closeDetail() {
   detailCompany.value = null
-}
-
-function getTypeCls(type: string): string {
-  return ({ '国企': 'type-state', '民企': 'type-private', '外资': 'type-foreign', '上市公司': 'type-listed' })[type] || ''
-}
-
-function fmtNum(n: number): string {
-  if (n >= 100000) return `${(n / 10000).toFixed(0)}万`
-  if (n >= 10000) return `${(n / 10000).toFixed(1)}万`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
-  return `${n}`
+  scopeExpanded.value = false
 }
 </script>
 
@@ -596,6 +687,24 @@ function fmtNum(n: number): string {
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 10px rgba(99, 102, 241, 0.65);
+}
+.gs-leaflet-map :deep(.gs-cluster-icon) {
+  background: transparent !important;
+  border: none !important;
+}
+.gs-leaflet-map :deep(.gs-cluster-bubble) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.85);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 1px 6px rgba(37, 99, 235, 0.4);
 }
 .gs-loading-overlay {
   position: absolute;
@@ -920,9 +1029,15 @@ function fmtNum(n: number): string {
   border: 1px solid var(--border);
   border-radius: 4px;
 }
-.cp-emp { text-align: right; flex-shrink: 0; }
-.cp-emp-num { font-size: 13px; font-weight: 700; color: var(--text-strong); font-family: var(--font-display); }
-.cp-emp-lbl { font-size: 10px; color: var(--text-muted); }
+.cp-founded {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-top: 4px;
+}
 .cp-empty {
   display: flex;
   flex-direction: column;
@@ -936,20 +1051,20 @@ function fmtNum(n: number): string {
 
 /* ── 企业详情弹窗 ──────────────────────────────────────── */
 .cd-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 1000;
   padding: 24px;
 }
 .cd-panel {
   position: relative;
-  width: 100%;
-  max-width: 540px;
+  width: 520px;
+  max-width: calc(100vw - 48px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -1040,6 +1155,7 @@ function fmtNum(n: number): string {
 .cd-body {
   padding: 20px;
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: calc(100vh - 220px);
 }
 .cd-body::-webkit-scrollbar { width: 3px; }
@@ -1054,9 +1170,10 @@ function fmtNum(n: number): string {
   border-radius: 10px;
   border-left: 3px solid var(--primary);
 }
-.cd-metrics { display: flex; gap: 10px; margin-bottom: 16px; }
+.cd-metrics { display: flex; gap: 10px; margin-bottom: 16px; overflow-x: hidden; }
 .cd-metric {
   flex: 1;
+  min-width: 120px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1065,12 +1182,20 @@ function fmtNum(n: number): string {
   border: 1px solid var(--border);
   border-radius: 10px;
 }
+.cd-metric > div { min-width: 0; }
 .cd-metric-val {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-strong);
   font-family: var(--font-display);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cd-metric:hover .cd-metric-val {
+  white-space: nowrap;
+  overflow: visible;
 }
 .cd-metric-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 .cd-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
@@ -1086,6 +1211,96 @@ function fmtNum(n: number): string {
 .cd-info-row:last-child { border-bottom: none; }
 .cd-info-key { color: var(--text-muted); min-width: 28px; flex-shrink: 0; }
 .cd-info-val { color: var(--text); flex: 1; }
+
+.cd-scope-card {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.cd-scope-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 8px;
+}
+.cd-scope-text-wrap { position: relative; }
+.cd-scope-text {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text);
+  margin: 0;
+  transition: max-height 0.3s ease;
+}
+.cd-scope-text-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cd-scope-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cd-scope-expand-btn:hover {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.type-listed { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
+.type-info { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+
+.cp-listed-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0 5px;
+  height: 16px;
+  background: rgba(236, 72, 153, 0.15);
+  color: #f472b6;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.cp-type-tag {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.cp-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--primary);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.cp-load-more:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
 
 /* ── 过渡动画 ──────────────────────────────────────────── */
 .cd-fade-enter-active { transition: opacity 0.22s ease; }

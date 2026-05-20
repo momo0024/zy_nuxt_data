@@ -1,4 +1,4 @@
-import type { CompanyRecord } from '~/data/mock'
+import type { CompanyRecord } from '~/types/company'
 
 export const HIGHLIGHT_PROVINCE = '湖北省'
 export const HIGHLIGHT_CITY = '武汉市'
@@ -200,7 +200,7 @@ function collectPathsFromLayer(layer: import('leaflet').Layer): import('leaflet'
 function filterCompaniesInZone(companies: CompanyRecord[], zone: GeoJSON.FeatureCollection): CompanyRecord[] {
   const polys = zone.features.filter(f => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon')
   if (!polys.length) return companies
-  return companies.filter(c => polys.some(f => pointInGeoJSON(c.lng, c.lat, f.geometry!)))
+  return companies.filter(c => polys.some(f => pointInGeoJSON(c.company_longitude, c.company_latitude, f.geometry!)))
 }
 
 const INDUSTRY_COLORS: Record<string, string> = {
@@ -225,6 +225,15 @@ function makeCompanyIcon(L: typeof import('leaflet'), color: string) {
   })
 }
 
+function makeClusterIcon(L: typeof import('leaflet'), count: number) {
+  return L.divIcon({
+    className: 'gs-cluster-icon',
+    html: `<div class="gs-cluster-bubble">${count}</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  })
+}
+
 export function useGeoLeafletMap() {
   const mapContainerRef = ref<HTMLDivElement>()
   const mapReady = ref(false)
@@ -233,6 +242,7 @@ export function useGeoLeafletMap() {
   let L: typeof import('leaflet') | null = null
   let map: import('leaflet').Map | null = null
   let markerLayer: import('leaflet').LayerGroup | null = null
+  let clusterLayer: import('leaflet').LayerGroup | null = null
   let blurOverlayEl: HTMLDivElement | null = null
   let chinaProvincesLayer: import('leaflet').GeoJSON | null = null
   let hubeiCitiesLayer: import('leaflet').GeoJSON | null = null
@@ -626,19 +636,56 @@ export function useGeoLeafletMap() {
   }
 
   function refreshMarkers(companies: CompanyRecord[]) {
-    if (!map || !markerLayer || !L) return
+    if (!map || !markerLayer || !L || !clusterLayer) return
     markerLayer.clearLayers()
-    companies.forEach((c) => {
-      const marker = L.marker([c.lat, c.lng], {
-        icon: makeCompanyIcon(L, getIndustryColor(c.industry)),
+    clusterLayer.clearLayers()
+
+    const zoom = map.getZoom()
+    const clusterThreshold = 11
+
+    if (zoom < clusterThreshold) {
+      // 缩小模式：按网格聚合显示气泡
+      const gridSize = 0.02 // 约2km网格
+      const grid = new Map<string, { lat: number, lng: number, count: number }>()
+
+      companies.forEach((c) => {
+        const gridX = Math.floor(c.company_longitude / gridSize)
+        const gridY = Math.floor(c.company_latitude / gridSize)
+        const key = `${gridX},${gridY}`
+        const existing = grid.get(key)
+        if (existing) {
+          existing.count++
+          existing.lat = (existing.lat * (existing.count - 1) + c.company_latitude) / existing.count
+          existing.lng = (existing.lng * (existing.count - 1) + c.company_longitude) / existing.count
+        } else {
+          grid.set(key, { lat: c.company_latitude, lng: c.company_longitude, count: 1 })
+        }
       })
-      marker.bindTooltip(c.name, { direction: 'top' })
-      marker.on('click', (e) => {
-        L!.DomEvent.stopPropagation(e)
-        onCompanyClick?.(c)
+
+      grid.forEach((cell) => {
+        if (cell.count >= 1) {
+          const marker = L.marker([cell.lat, cell.lng], {
+            icon: makeClusterIcon(L, cell.count),
+          })
+          marker.bindTooltip(`${cell.count} 家企业`, { direction: 'top' })
+          clusterLayer!.addLayer(marker)
+        }
       })
-      markerLayer!.addLayer(marker)
-    })
+    } else {
+      // 正常模式：显示单个企业点
+      companies.forEach((c) => {
+        const color = c.company_traded === 1 ? '#ef4444' : '#10b981'
+        const marker = L.marker([c.company_latitude, c.company_longitude], {
+          icon: makeCompanyIcon(L, color),
+        })
+        marker.bindTooltip(c.company_name, { direction: 'top' })
+        marker.on('click', (e) => {
+          L!.DomEvent.stopPropagation(e)
+          onCompanyClick?.(c)
+        })
+        markerLayer!.addLayer(marker)
+      })
+    }
   }
 
   async function initMap(
@@ -765,6 +812,13 @@ export function useGeoLeafletMap() {
     setupRegionHover(map)
 
     markerLayer = L.layerGroup().addTo(map)
+    clusterLayer = L.layerGroup().addTo(map)
+
+    // 监听缩放事件，切换聚合/单点模式
+    map.on('zoomend', () => {
+      refreshMarkers(zoneCompanies)
+    })
+
     refreshMarkers(zoneCompanies)
 
     setBlurFocus('wuhan')
@@ -786,6 +840,7 @@ export function useGeoLeafletMap() {
     map?.remove()
     map = null
     markerLayer = null
+    clusterLayer = null
     chinaProvincesLayer = null
     hubeiCitiesLayer = null
     zoneLayer = null
