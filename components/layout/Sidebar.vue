@@ -110,13 +110,13 @@ const userInitials = computed(() => user.value?.name?.slice(0, 1) || user.value?
 const hydrated = ref(false)
 
 const navItems: NavItem[] = [
-  { path: '/', name: '首页概览', icon: 'i-lucide-layout-dashboard' },
+  // { path: '/', name: '首页概览', icon: 'i-lucide-layout-dashboard' },
   { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
-  { path: '/public-opinion', name: '舆情监测', icon: 'i-lucide-radar' },
-  { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
-  { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
-  { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },
-  { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' }
+  // { path: '/public-opinion', name: '舆情监测', icon: 'i-lucide-radar' },
+  // { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
+  // { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
+  // { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },
+  // { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' }
 ]
 
 function isActive(path: string) {

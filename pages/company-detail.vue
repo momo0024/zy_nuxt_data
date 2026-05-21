@@ -132,7 +132,7 @@
 
             <div class="cd-desc-card">
               <h3 class="cd-desc-card-title">经营范围</h3>
-              <p class="cd-desc-text" :class="{ 'cd-desc-text-collapsed': !bizScopeExpanded }">{{ company.company_business_scope }}</p>
+              <p ref="bizScopeRef" class="cd-desc-text" :class="{ 'cd-desc-text-collapsed': !bizScopeExpanded }">{{ company.company_business_scope }}</p>
               <button v-if="bizScopeNeedExpand" class="cd-scope-expand-btn" @click="bizScopeExpanded = !bizScopeExpanded">
                 {{ bizScopeExpanded ? '收起' : '展开全部' }}
               </button>
@@ -290,11 +290,16 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="(row, ri) in shareholderData.latest.data" :key="`lr-${ri}`">
+                      <tr v-for="(row, ri) in shareholderLatestPage.items" :key="`lr-${ri}`">
                         <td v-for="(cell, ci) in row" :key="`lc-${ri}-${ci}`">{{ cell }}</td>
                       </tr>
                     </tbody>
                   </table>
+                </div>
+                <div v-if="shareholderLatestPage.totalPages > 1" class="cd-pagination">
+                  <button class="cd-page-btn" :disabled="shareholderPage <= 1" @click="shareholderPage--">&lt;</button>
+                  <span class="cd-page-info">{{ shareholderPage }} / {{ shareholderLatestPage.totalPages }}</span>
+                  <button class="cd-page-btn" :disabled="shareholderPage >= shareholderLatestPage.totalPages" @click="shareholderPage++">&gt;</button>
                 </div>
               </div>
               <!-- 主要成员 - 关系图 -->
@@ -340,7 +345,7 @@
               </div>
               <div class="cd-card-grid">
                 <div
-                  v-for="(row, ri) in trademarkData.data"
+                  v-for="(row, ri) in trademarkPageData.items"
                   :key="`t-${ri}`"
                   class="cd-info-card"
                 >
@@ -356,6 +361,11 @@
                     </div>
                   </div>
                 </div>
+              </div>
+              <div v-if="trademarkPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="trademarkPage <= 1" @click="trademarkPage--">&lt;</button>
+                <span class="cd-page-info">{{ trademarkPage }} / {{ trademarkPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="trademarkPage >= trademarkPageData.totalPages" @click="trademarkPage++">&gt;</button>
               </div>
             </template>
             <div v-else-if="!sectionLoading.trademark" class="cd-empty">
@@ -377,7 +387,7 @@
             <template v-if="patentData?.data?.length">
               <div class="cd-card-grid cd-card-grid-patent">
                 <div
-                  v-for="(row, ri) in patentData.data"
+                  v-for="(row, ri) in patentPageData.items"
                   :key="`p-${ri}`"
                   class="cd-info-card cd-info-card-patent"
                 >
@@ -393,6 +403,11 @@
                     </div>
                   </div>
                 </div>
+              </div>
+              <div v-if="patentPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="patentPage <= 1" @click="patentPage--">&lt;</button>
+                <span class="cd-page-info">{{ patentPage }} / {{ patentPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="patentPage >= patentPageData.totalPages" @click="patentPage++">&gt;</button>
               </div>
             </template>
             <div v-else-if="!sectionLoading.patent" class="cd-empty">
@@ -435,7 +450,7 @@
                 </ClientOnly>
               </div>
               <div class="cd-timeline">
-                <div v-for="(row, i) in changeRecordData.data" :key="i" class="cd-timeline-item">
+                <div v-for="(row, i) in changeRecordDisplayData" :key="i" class="cd-timeline-item">
                   <div class="cd-timeline-dot" />
                   <div class="cd-timeline-content">
                     <div class="cd-timeline-date">{{ row[1] }}</div>
@@ -451,6 +466,9 @@
                   </div>
                 </div>
               </div>
+              <button v-if="changeRecordData.data.length > 10 && !changeRecordExpanded" class="cd-scope-expand-btn" @click="changeRecordExpanded = true">
+                展开全部
+              </button>
             </template>
             <div v-else-if="!sectionLoading.changeRecord" class="cd-empty">
               <div class="cd-empty-divider"></div>
@@ -540,12 +558,31 @@ const route = useRoute()
 const companyId = computed(() => route.query.id as string | undefined)
 const company = ref<CompanyRecord | null>(null)
 const loading = ref(true)
+const trademarkPage = ref(1)
+const patentPage = ref(1)
+const shareholderPage = ref(1)
+const TRADEMARK_PAGE_SIZE = 9
+const PATENT_PAGE_SIZE = 9
+const SHAREHOLDER_PAGE_SIZE = 10
 const bizScopeExpanded = ref(false)
-const bizScopeNeedExpand = computed(() => {
-  if (!company.value?.company_business_scope) return false
-  const text = company.value.company_business_scope
-  return text.length > 150
-})
+const bizScopeRef = ref<HTMLElement | null>(null)
+const bizScopeNeedExpand = ref(false)
+const changeRecordExpanded = ref(false)
+
+function checkBizScopeOverflow() {
+  nextTick(() => {
+    const el = bizScopeRef.value
+    if (!el) { bizScopeNeedExpand.value = false; return }
+    // 临时移除折叠以测量完整高度
+    const hadCollapsed = el.classList.contains('cd-desc-text-collapsed')
+    if (hadCollapsed) el.classList.remove('cd-desc-text-collapsed')
+    const fullHeight = el.scrollHeight
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 22
+    const maxLines = 4
+    if (hadCollapsed) el.classList.add('cd-desc-text-collapsed')
+    bizScopeNeedExpand.value = fullHeight > lineHeight * maxLines + 2
+  })
+}
 
 // 新增接口数据
 const shareholderData = ref<ShareholderParsed | null>(null)
@@ -593,6 +630,9 @@ async function loadCompanyDetail() {
 
     // 找到企业后立即渲染页面，各接口独立并发调用，返回后直接更新
     loading.value = false
+
+    // 检查经营范围是否需要展开按钮
+    checkBizScopeOverflow()
 
     if (company.value?.company_credit_code) {
       const code = company.value.company_credit_code
@@ -646,7 +686,7 @@ const registerDisplayMap: Record<string, { label: string; icon: string }> = {
 // 股东饼图数据
 const shareholderChartOption = computed(() => {
   const latest = shareholderData.value?.latest
-  if (!latest?.data?.length) return null
+  if (!latest?.data?.length || latest.data.length <= 1) return null
   const columns = latest.column
   // 查找"直接持股比例"或"持股比例"列索引
   const ratioIdx = columns.findIndex((c: string) => c.includes('持股比例') || c.includes('持股'))
@@ -695,7 +735,7 @@ const shareholderTreeOption = computed(() => {
       const ratio = ratioIdx >= 0 ? parseFloat(row[ratioIdx]) || 0 : 0
       return { name: `${name}${ratio > 0 ? ` ${ratio}%` : ''}`, value: ratio }
     })
-    children.push({ name: '股东', children: shareholderChildren })
+    children.push({ name: '股东', children: shareholderChildren, symbolSize: 12, itemStyle: { color: '#8b5cf6', borderColor: '#8b5cf6', borderWidth: 2 } })
   }
 
   // 主要成员子节点
@@ -703,7 +743,7 @@ const shareholderTreeOption = computed(() => {
     const memberChildren = members.data.map((row: string[]) => {
       return { name: `${row[0] || '-'} (${row[1] || '-'})`, value: 1 }
     })
-    children.push({ name: '主要成员', children: memberChildren })
+    children.push({ name: '主要成员', children: memberChildren, symbolSize: 12, itemStyle: { color: '#06b6d4', borderColor: '#06b6d4', borderWidth: 2 } })
   }
 
   if (children.length === 0) return null
@@ -716,34 +756,40 @@ const shareholderTreeOption = computed(() => {
     } },
     series: [{
       type: 'tree' as const,
-      data: [{ name: companyName, children, symbolSize: 18, itemStyle: { color: '#4f46e5', borderColor: '#4f46e5', borderWidth: 2, shadowBlur: 6, shadowColor: 'rgba(79,70,229,0.3)' }, label: { fontSize: 14, fontWeight: 'bold', color: '#1e1b4b' } }],
-      top: '5%', left: '12%', bottom: '5%', right: '20%',
-      symbolSize: 10,
+      data: [{
+        name: companyName,
+        children,
+        symbolSize: 20,
+        itemStyle: { color: '#4f46e5', borderColor: '#4f46e5', borderWidth: 2, shadowBlur: 8, shadowColor: 'rgba(79,70,229,0.3)' },
+        label: { position: 'right' as const, align: 'left', fontSize: 13, fontWeight: 'bold', color: '#1e1b4b', backgroundColor: 'rgba(255,255,255,0.95)', padding: [4, 10], borderRadius: 6, distance: 10 },
+      }],
+      top: '10%', left: '10%', bottom: '5%', right: '18%',
+      symbolSize: 8,
       orient: 'LR' as const,
       roam: true,
       label: {
         position: 'left' as const,
         verticalAlign: 'middle',
         align: 'right',
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        padding: [3, 8],
-        borderRadius: 4,
-        distance: 8,
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#334155',
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        padding: [2, 6],
+        borderRadius: 3,
+        distance: 5,
       },
       leaves: {
         label: {
           position: 'right' as const,
           verticalAlign: 'middle',
           align: 'left',
-          fontSize: 11,
-          fontWeight: '500',
-          color: '#475569',
+          fontSize: 10,
+          fontWeight: '400',
+          color: '#64748b',
           backgroundColor: 'transparent',
-          padding: [2, 4],
-          distance: 6,
+          padding: [1, 2],
+          distance: 4,
         },
       },
       emphasis: { focus: 'descendant' as const, itemStyle: { color: '#4338ca', borderColor: '#4338ca', borderWidth: 3 } },
@@ -751,9 +797,12 @@ const shareholderTreeOption = computed(() => {
       initialTreeDepth: 2,
       animationDuration: 550,
       animationDurationUpdate: 750,
-      lineStyle: { color: '#c7d2fe', width: 1.5, curveness: 0.5 },
+      lineStyle: { color: '#c7d2fe', width: 1.5, curveness: 0 },
       itemStyle: { color: '#6366f1', borderColor: '#6366f1', borderWidth: 2 },
-      edgeForkPosition: '30%',
+      edgeShape: 'polyline' as const,
+      edgeForkPosition: '63%',
+      layerPadding: 160,
+      nodePadding: 30,
     }],
   }
 })
@@ -769,39 +818,48 @@ const memberGraphOption = computed(() => {
   const links: any[] = []
   const memberColorPalette = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
 
-  // 中心节点
+  // 中心节点 - 不显示名称，hover时tooltip展示
   nodes.push({
-    name: companyName,
-    symbolSize: 60,
+    name: 'root',
+    symbolSize: 56,
     x: 400,
-    y: 300,
+    y: 280,
     itemStyle: { color: '#4f46e5', shadowBlur: 12, shadowColor: 'rgba(79,70,229,0.3)' },
-    label: { show: true, fontSize: 13, fontWeight: 'bold', color: '#fff', position: 'inside' },
+    label: { show: true, fontSize: 12, fontWeight: 'bold', color: '#fff', position: 'inside', formatter: '企业' },
     category: 0,
+    fullName: companyName,
   })
 
-  const radius = 200
+  const shortRadius = 120
+  const longRadius = shortRadius * 1.8
   members.data.forEach((row: string[], i: number) => {
     const name = row[0] || '-'
     const title = row[1] || ''
-    const nodeName = name.length > 6 ? name.slice(0, 6) + '…' : name
+    const nodeName = name.length > 5 ? name.slice(0, 5) + '…' : name
     const color = memberColorPalette[i % memberColorPalette.length]
     const angle = (Math.PI * 2 * i) / memberCount - Math.PI / 2
-    const x = 400 + Math.cos(angle) * radius
-    const y = 300 + Math.sin(angle) * radius
+    const isLong = i % 2 === 0
+    const r = isLong ? longRadius : shortRadius
+    const x = 400 + Math.cos(angle) * r
+    const y = 280 + Math.sin(angle) * r
 
     nodes.push({
       name: nodeName,
-      symbolSize: 40,
+      symbolSize: 36,
       x,
       y,
       itemStyle: { color, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.1)', borderColor: '#fff', borderWidth: 2 },
       label: {
         show: true,
         position: 'bottom',
-        fontSize: 11,
+        fontSize: 12,
         color: '#1e293b',
-        formatter: (p: any) => `${p.data.fullName || p.name}\n${p.data.fullTitle || ''}`,
+        fontWeight: '500',
+        formatter: `{fullName|${name}}\n{fullTitle|${title}}`,
+        rich: {
+          fullName: { fontSize: 12, fontWeight: '600', color: '#1e293b', lineHeight: 18 },
+          fullTitle: { fontSize: 11, color: '#64748b', lineHeight: 16 },
+        },
       },
       category: 1,
       fullName: name,
@@ -809,13 +867,13 @@ const memberGraphOption = computed(() => {
     })
 
     links.push({
-      source: companyName,
+      source: 'root',
       target: nodeName,
       lineStyle: {
         color,
         width: 1.8,
-        curveness: i % 2 === 0 ? 0.15 : 0.35,
-        opacity: 0.7,
+        curveness: 0.2,
+        opacity: 0.6,
       },
     })
   })
@@ -824,8 +882,12 @@ const memberGraphOption = computed(() => {
     tooltip: {
       trigger: 'item' as const,
       formatter: (params: any) => {
-        if (params.dataType === 'node' && params.data?.fullName) {
-          return `${params.data.fullName}<br/>${params.data.fullTitle || ''}`
+        if (params.dataType === 'node') {
+          if (params.data?.fullName) {
+            return params.data.fullName === companyName
+              ? `${companyName}`
+              : `${params.data.fullName}<br/>${params.data.fullTitle || ''}`
+          }
         }
         return params.name
       },
@@ -843,7 +905,6 @@ const memberGraphOption = computed(() => {
         { name: '企业', itemStyle: { color: '#4f46e5' } },
         { name: '成员' },
       ],
-      focusNodeAdjacency: true,
       emphasis: {
         focus: 'adjacency' as const,
         itemStyle: { borderWidth: 2, borderColor: '#333' },
@@ -852,12 +913,43 @@ const memberGraphOption = computed(() => {
       edgeSymbol: ['none', 'none'],
       edgeLabel: { show: false },
       lineStyle: { opacity: 0.7, curveness: 0.25 },
-      scaleLimit: { min: 0.4, max: 3 },
+      scaleLimit: { min: 0.3, max: 3 },
+      zoom: 0.7,
+      center: [400, 280],
     }],
   }
 })
 
-// 商标状态分布图
+// 商标分页
+const trademarkPageData = computed(() => {
+  const data = trademarkData.value?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / TRADEMARK_PAGE_SIZE)
+  const start = (trademarkPage.value - 1) * TRADEMARK_PAGE_SIZE
+  return { items: data.slice(start, start + TRADEMARK_PAGE_SIZE), total, totalPages }
+})
+
+// 专利分页
+const patentPageData = computed(() => {
+  const data = patentData.value?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / PATENT_PAGE_SIZE)
+  const start = (patentPage.value - 1) * PATENT_PAGE_SIZE
+  return { items: data.slice(start, start + PATENT_PAGE_SIZE), total, totalPages }
+})
+
+// 最新股份分页
+const shareholderLatestPage = computed(() => {
+  const data = shareholderData.value?.latest?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / SHAREHOLDER_PAGE_SIZE)
+  const start = (shareholderPage.value - 1) * SHAREHOLDER_PAGE_SIZE
+  return { items: data.slice(start, start + SHAREHOLDER_PAGE_SIZE), total, totalPages }
+})
+
 const trademarkStatusOption = computed(() => {
   const data = trademarkData.value?.data
   if (!data?.length) return null
@@ -880,17 +972,27 @@ const trademarkStatusOption = computed(() => {
     legend: { bottom: 0, textStyle: { fontSize: 11 } },
     series: [{
       type: 'pie' as const,
-      radius: ['40%', '70%'],
-      avoidLabelOverlap: false,
+      radius: ['40%', '65%'],
+      center: ['50%', '45%'],
+      avoidLabelOverlap: true,
       itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
-      label: { show: true, formatter: '{b}: {c}项', fontSize: 11 },
-      emphasis: { label: { fontSize: 14, fontWeight: 'bold' } },
+      label: { show: true, formatter: '{b}: {c}项', fontSize: 11, position: 'outside' },
+      labelLine: { length: 15, length2: 10, smooth: true },
+      emphasis: { label: { fontSize: 13, fontWeight: 'bold' } },
       data: chartData,
     }],
   }
 })
 
-// 变更趋势图（按年份统计变更次数）
+// 变更记录展示数据（默认10条，展开后全部）
+const changeRecordDisplayData = computed(() => {
+  const data = changeRecordData.value?.data
+  if (!data) return []
+  if (changeRecordExpanded.value) return data
+  return data.slice(0, 10)
+})
+
+// 变更趋势图（按年份统计变更次数 - 折线图）
 const changeTrendOption = computed(() => {
   const data = changeRecordData.value?.data
   if (!data?.length) return null
@@ -908,12 +1010,13 @@ const changeTrendOption = computed(() => {
   if (sorted.length <= 1) return null
 
   return {
-    tooltip: { trigger: 'axis' as const, axisPointer: { type: 'shadow' as const } },
-    grid: { left: 40, right: 20, top: 10, bottom: 30 },
+    tooltip: { trigger: 'axis' as const },
+    grid: { left: 40, right: 20, top: 15, bottom: 30 },
     xAxis: {
       type: 'category' as const,
       data: sorted.map(([y]) => y),
       axisLabel: { fontSize: 11 },
+      boundaryGap: false,
     },
     yAxis: {
       type: 'value' as const,
@@ -921,20 +1024,23 @@ const changeTrendOption = computed(() => {
       axisLabel: { fontSize: 11 },
     },
     series: [{
-      type: 'bar' as const,
+      type: 'line' as const,
       data: sorted.map(([, v]) => v),
-      barWidth: '40%',
-      itemStyle: {
-        borderRadius: [4, 4, 0, 0],
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 8,
+      lineStyle: { color: '#6366f1', width: 2.5 },
+      itemStyle: { color: '#6366f1', borderColor: '#fff', borderWidth: 2 },
+      areaStyle: {
         color: {
           type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1,
           colorStops: [
-            { offset: 0, color: '#818cf8' },
-            { offset: 1, color: '#6366f1' },
+            { offset: 0, color: 'rgba(99,102,241,0.25)' },
+            { offset: 1, color: 'rgba(99,102,241,0.02)' },
           ],
         },
       },
-      emphasis: { itemStyle: { color: '#4f46e5' } },
+      emphasis: { itemStyle: { color: '#4f46e5', borderWidth: 3 } },
     }],
   }
 })
@@ -1511,7 +1617,7 @@ function getIndustryBg(industry: string): string {
 }
 .cd-desc-text-collapsed {
   display: -webkit-box;
-  -webkit-line-clamp: 6;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1799,7 +1905,7 @@ function getIndustryBg(industry: string): string {
 }
 .cd-member-graph {
   width: 100%;
-  height: 380px;
+  height: 420px;
 }
 
 /* ── 专利卡片样式 ───────────────────────── */
@@ -2009,6 +2115,42 @@ function getIndustryBg(industry: string): string {
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: cd-spin 0.7s linear infinite;
+}
+
+.cd-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 0 4px;
+}
+.cd-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s;
+}
+.cd-page-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.cd-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.cd-page-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 60px;
+  text-align: center;
 }
 
 </style>

@@ -862,9 +862,9 @@ export function useGeoLeafletMap() {
 
     refreshMarkers(companies)
 
-    setBlurFocus('wuhan')
-    flyToWuhan(0)
-    quickView.value = 'wuhan'
+    setBlurFocus('zone')
+    flyToZone()
+    quickView.value = 'zone'
 
     mapReady.value = true
     setTimeout(() => {

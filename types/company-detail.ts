@@ -114,7 +114,7 @@ export interface BasicInfoItem {
 }
 
 export async function fetchBasicInfo(code: string): Promise<BasicInfoItem[] | null> {
-  const res = await request.get<RawResponse['data']>('/company/basic', {
+  const res = await request.get<RawResponse['data']>('/company/basic/', {
     params: { code },
   })
   return parseRaw<BasicInfoItem[]>(res.data as unknown as RawResponse)
