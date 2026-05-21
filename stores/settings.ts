@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-export type ThemeId = 'dark' | 'light' | 'green' | 'purple' | 'warm'
+export type ThemeId = 'dark' | 'light' | 'purple' | 'warm'
 
 export interface ThemeMeta {
   id: ThemeId
@@ -23,20 +23,8 @@ export const THEMES: ThemeMeta[] = [
     desc: '深海墨蓝，带一层冷紫辉光',
     colors: ['#13131f', '#6366f1', '#a78bfa', '#1e1e3f']
   },
-  {
-    id: 'light' as ThemeId,
-    name: '云境霁白',
-    desc: '雾白界面，配清透蓝调高光',
-    colors: ['#f8f9fc', '#2563eb', '#7c3aed', '#eff6ff']
-  },
-  {
-    id: 'green' as ThemeId,
-    name: '松岚青研',
-    desc: '松针青绿，偏理性和研究感',
-    colors: ['#0e1812', '#34d399', '#6ee7b7', '#0d2a1e']
-  },
-  {
-    id: 'purple' as ThemeId,
+  { id: 'light' as ThemeId, name: '云境霁白', desc: '雾白界面，配清透蓝调高光', colors: ['#f8f9fc', '#2563eb', '#7c3aed', '#eff6ff'] },
+  { id: 'purple' as ThemeId,
     name: '霓幕绛夜',
     desc: '绛紫夜幕，点缀玫粉霓光',
     colors: ['#100d1e', '#a855f7', '#f472b6', '#2d1860']
@@ -50,7 +38,7 @@ export const THEMES: ThemeMeta[] = [
 ]
 
 export const useSettingsStore = defineStore('settings', () => {
-  const theme = ref<ThemeId>('dark')
+  const theme = ref<ThemeId>('warm')
   const ai = ref<AiConfig>({
     enabled: true,
     apiBase: 'http://119.96.30.33:8087/v1',
@@ -59,7 +47,7 @@ export const useSettingsStore = defineStore('settings', () => {
   })
 
   function loadFromStorage() {
-    if (typeof window === 'undefined') returng
+    if (typeof window === 'undefined') return
     try {
       const stored = localStorage.getItem('zhizhi_settings')
       if (stored) {

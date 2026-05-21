@@ -345,7 +345,6 @@ const chartTextColor = computed(() => {
 const chartTextStrong = computed(() => {
   const t = settingsStore.theme
   if (t === 'light') return '#0f1117'
-  if (t === 'green') return '#e8f5ee'
   if (t === 'purple') return '#f5f0ff'
   if (t === 'warm') return '#2a1f10'
   return '#f0f0ff'
@@ -354,7 +353,6 @@ const chartTextStrong = computed(() => {
 const chartSurfaceColor = computed(() => {
   const t = settingsStore.theme
   if (t === 'light') return '#ffffff'
-  if (t === 'green') return '#141f18'
   if (t === 'purple') return '#17132a'
   if (t === 'warm') return '#fffdf9'
   return '#13131f'

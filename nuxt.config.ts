@@ -6,6 +6,9 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
+      htmlAttrs: {
+        'data-theme': 'warm',
+      },
       title: '智知云 · 企业知识中台',
       meta: [
         { charset: 'utf-8' },

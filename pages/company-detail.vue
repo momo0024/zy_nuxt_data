@@ -25,19 +25,20 @@
 
     <template v-else>
       <div class="cd-hero">
-        <div class="cd-hero-logo" :style="{ background: getIndustryBg(company.company_industry) }">
+        <div class="cd-hero-logo" :style="{ background: getIndustryBg(company.product_type) }">
           <span class="cd-hero-logo-text">{{ company.company_name.slice(0, 2) }}</span>
         </div>
         <div class="cd-hero-info">
           <h1 class="cd-hero-name">
             {{ company.company_name }}
-            <span v-if="company.company_traded === 1" class="cd-hero-listed-badge">上市公司</span>
           </h1>
           <div class="cd-hero-meta">
-            <span class="cd-hero-type-badge">{{ company.company_type }}</span>
+            <span v-if="company.company_traded === 1" class="cd-hero-listed-badge">上市公司</span>
+            <span v-if="company.import_project === 1" class="cd-hero-project-badge">重大项目</span>
+            <span class="cd-hero-type-badge">{{ company.chain_name }}</span>
             <span class="cd-hero-industry">
               <UIcon name="i-lucide-briefcase" class="size-3.5" />
-              {{ company.company_industry }}
+              {{ company.product_type }}
             </span>
             <span class="cd-hero-founded">
               <UIcon name="i-lucide-calendar" class="size-3.5" />
@@ -122,16 +123,19 @@
               <div class="cd-biz-card">
                 <div class="cd-biz-card-header">
                   <UIcon name="i-lucide-briefcase" class="size-5 cd-biz-icon-industry" />
-                  <span>所属行业</span>
+                  <span>产品类型</span>
                 </div>
-                <div class="cd-biz-card-value">{{ company.company_industry }}</div>
-                <div class="cd-biz-card-desc">行业分类信息</div>
+                <div class="cd-biz-card-value">{{ company.product_type }}</div>
+                <div class="cd-biz-card-desc">主要产品分类</div>
               </div>
             </div>
 
             <div class="cd-desc-card">
               <h3 class="cd-desc-card-title">经营范围</h3>
-              <p class="cd-desc-text">{{ company.company_business_scope }}</p>
+              <p class="cd-desc-text" :class="{ 'cd-desc-text-collapsed': !bizScopeExpanded }">{{ company.company_business_scope }}</p>
+              <button v-if="bizScopeNeedExpand" class="cd-scope-expand-btn" @click="bizScopeExpanded = !bizScopeExpanded">
+                {{ bizScopeExpanded ? '收起' : '展开全部' }}
+              </button>
             </div>
             </template>
             <div v-else class="cd-empty">
@@ -151,8 +155,17 @@
               </span>
             </h2>
             <div class="cd-register-grid">
-              <template v-if="registerInfo?.length">
-                <div v-for="(item, idx) in registerInfo" :key="idx" class="cd-register-item">
+              <template v-if="basicInfo?.length">
+                <div v-for="(item, idx) in basicInfo.filter(i => !registerDisplayMap[i.key]?.hidden)" :key="idx" class="cd-register-item">
+                  <div class="cd-register-label">
+                    <UIcon :name="registerDisplayMap[item.key]?.icon || 'i-lucide-file-text'" class="size-3.5" />
+                    <span>{{ item.key }}</span>
+                  </div>
+                  <div class="cd-register-value">{{ item.value || '-' }}</div>
+                </div>
+              </template>
+              <template v-else-if="registerInfo?.length">
+                <div v-for="(item, idx) in registerInfo.filter(i => !registerDisplayMap[i.key]?.hidden)" :key="idx" class="cd-register-item">
                   <div class="cd-register-label">
                     <UIcon :name="registerDisplayMap[item.key]?.icon || 'i-lucide-file-text'" class="size-3.5" />
                     <span>{{ item.key }}</span>
@@ -171,16 +184,16 @@
                 <div class="cd-info-row-detail">
                   <div class="cd-info-row-left">
                     <UIcon name="i-lucide-tag" class="size-4" />
-                    <span>企业类型</span>
+                    <span>产品链名称</span>
                   </div>
-                  <span class="cd-info-row-right">{{ company.company_type }}</span>
+                  <span class="cd-info-row-right">{{ company.chain_name }}</span>
                 </div>
                 <div class="cd-info-row-detail">
                   <div class="cd-info-row-left">
                     <UIcon name="i-lucide-briefcase" class="size-4" />
-                    <span>所属行业</span>
+                    <span>产品类型</span>
                   </div>
-                  <span class="cd-info-row-right">{{ company.company_industry }}</span>
+                  <span class="cd-info-row-right">{{ company.product_type }}</span>
                 </div>
                 <div class="cd-info-row-detail">
                   <div class="cd-info-row-left">
@@ -277,16 +290,11 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="(row, ri) in shareholderLatestPage.items" :key="`lr-${ri}`">
+                      <tr v-for="(row, ri) in shareholderData.latest.data" :key="`lr-${ri}`">
                         <td v-for="(cell, ci) in row" :key="`lc-${ri}-${ci}`">{{ cell }}</td>
                       </tr>
                     </tbody>
                   </table>
-                </div>
-                <div v-if="shareholderLatestPage.totalPages > 1" class="cd-pagination">
-                  <button class="cd-page-btn" :disabled="shareholderPage <= 1" @click="shareholderPage--">&lt;</button>
-                  <span class="cd-page-info">{{ shareholderPage }} / {{ shareholderLatestPage.totalPages }}</span>
-                  <button class="cd-page-btn" :disabled="shareholderPage >= shareholderLatestPage.totalPages" @click="shareholderPage++">&gt;</button>
                 </div>
               </div>
               <!-- 主要成员 - 关系图 -->
@@ -332,7 +340,7 @@
               </div>
               <div class="cd-card-grid">
                 <div
-                  v-for="(row, ri) in trademarkPageData.items"
+                  v-for="(row, ri) in trademarkData.data"
                   :key="`t-${ri}`"
                   class="cd-info-card"
                 >
@@ -348,11 +356,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-              <div v-if="trademarkPageData.totalPages > 1" class="cd-pagination">
-                <button class="cd-page-btn" :disabled="trademarkPage <= 1" @click="trademarkPage--">&lt;</button>
-                <span class="cd-page-info">{{ trademarkPage }} / {{ trademarkPageData.totalPages }}</span>
-                <button class="cd-page-btn" :disabled="trademarkPage >= trademarkPageData.totalPages" @click="trademarkPage++">&gt;</button>
               </div>
             </template>
             <div v-else-if="!sectionLoading.trademark" class="cd-empty">
@@ -374,7 +377,7 @@
             <template v-if="patentData?.data?.length">
               <div class="cd-card-grid cd-card-grid-patent">
                 <div
-                  v-for="(row, ri) in patentPageData.items"
+                  v-for="(row, ri) in patentData.data"
                   :key="`p-${ri}`"
                   class="cd-info-card cd-info-card-patent"
                 >
@@ -390,11 +393,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-              <div v-if="patentPageData.totalPages > 1" class="cd-pagination">
-                <button class="cd-page-btn" :disabled="patentPage <= 1" @click="patentPage--">&lt;</button>
-                <span class="cd-page-info">{{ patentPage }} / {{ patentPageData.totalPages }}</span>
-                <button class="cd-page-btn" :disabled="patentPage >= patentPageData.totalPages" @click="patentPage++">&gt;</button>
               </div>
             </template>
             <div v-else-if="!sectionLoading.patent" class="cd-empty">
@@ -437,7 +435,7 @@
                 </ClientOnly>
               </div>
               <div class="cd-timeline">
-                <div v-for="(row, i) in changePageData.items" :key="i" class="cd-timeline-item">
+                <div v-for="(row, i) in changeRecordData.data" :key="i" class="cd-timeline-item">
                   <div class="cd-timeline-dot" />
                   <div class="cd-timeline-content">
                     <div class="cd-timeline-date">{{ row[1] }}</div>
@@ -452,11 +450,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-              <div v-if="changePageData.totalPages > 1" class="cd-pagination">
-                <button class="cd-page-btn" :disabled="changePage <= 1" @click="changePage--">&lt;</button>
-                <span class="cd-page-info">{{ changePage }} / {{ changePageData.totalPages }}</span>
-                <button class="cd-page-btn" :disabled="changePage >= changePageData.totalPages" @click="changePage++">&gt;</button>
               </div>
             </template>
             <div v-else-if="!sectionLoading.changeRecord" class="cd-empty">
@@ -477,9 +470,9 @@
               <div class="cd-info-row-detail">
                 <div class="cd-info-row-left">
                   <UIcon name="i-lucide-phone" class="size-4" />
-                  <span>联系电话</span>
+                  <span>联系方式</span>
                 </div>
-                <span class="cd-info-row-right cd-link-text">{{ company.company_phone || '-' }}</span>
+                <span class="cd-info-row-right cd-link-text">{{ company.contact_info || '-' }}</span>
               </div>
               <div class="cd-info-row-detail">
                 <div class="cd-info-row-left">
@@ -487,13 +480,6 @@
                   <span>官方网站</span>
                 </div>
                 <span class="cd-info-row-right cd-link-text">{{ company.company_website || '-' }}</span>
-              </div>
-              <div class="cd-info-row-detail">
-                <div class="cd-info-row-left">
-                  <UIcon name="i-lucide-mail" class="size-4" />
-                  <span>电子邮箱</span>
-                </div>
-                <span class="cd-info-row-right cd-link-text">{{ company.company_email || '-' }}</span>
               </div>
               <div class="cd-info-row-detail">
                 <div class="cd-info-row-left">
@@ -540,6 +526,8 @@ import {
   fetchChangeRecords,
   fetchPatents,
   fetchRegisterInfo,
+  fetchBasicInfo,
+  type BasicInfoItem,
 } from '~/types/company-detail'
 import {
   getIndustryColor,
@@ -552,6 +540,12 @@ const route = useRoute()
 const companyId = computed(() => route.query.id as string | undefined)
 const company = ref<CompanyRecord | null>(null)
 const loading = ref(true)
+const bizScopeExpanded = ref(false)
+const bizScopeNeedExpand = computed(() => {
+  if (!company.value?.company_business_scope) return false
+  const text = company.value.company_business_scope
+  return text.length > 150
+})
 
 // 新增接口数据
 const shareholderData = ref<ShareholderParsed | null>(null)
@@ -559,6 +553,7 @@ const trademarkData = ref<TrademarkTable | null>(null)
 const changeRecordData = ref<ChangeRecordTable | null>(null)
 const patentData = ref<PatentTable | null>(null)
 const registerInfo = ref<RegisterItem[] | null>(null)
+const basicInfo = ref<BasicInfoItem[] | null>(null)
 
 // 各接口独立加载状态
 const sectionLoading = ref({
@@ -567,50 +562,7 @@ const sectionLoading = ref({
   changeRecord: false,
   patent: false,
   register: false,
-})
-
-// 分页状态
-const PAGE_SIZE = 10
-const PATENT_PAGE_SIZE = 3
-const shareholderPage = ref(1)
-const trademarkPage = ref(1)
-const patentPage = ref(1)
-const changePage = ref(1)
-
-const shareholderLatestPage = computed(() => {
-  const data = shareholderData.value?.latest?.data
-  if (!data) return { items: [], total: 0, totalPages: 0 }
-  const total = data.length
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-  const start = (shareholderPage.value - 1) * PAGE_SIZE
-  return { items: data.slice(start, start + PAGE_SIZE), total, totalPages }
-})
-
-const trademarkPageData = computed(() => {
-  const data = trademarkData.value?.data
-  if (!data) return { items: [], total: 0, totalPages: 0 }
-  const total = data.length
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-  const start = (trademarkPage.value - 1) * PAGE_SIZE
-  return { items: data.slice(start, start + PAGE_SIZE), total, totalPages }
-})
-
-const patentPageData = computed(() => {
-  const data = patentData.value?.data
-  if (!data) return { items: [], total: 0, totalPages: 0 }
-  const total = data.length
-  const totalPages = Math.ceil(total / PATENT_PAGE_SIZE)
-  const start = (patentPage.value - 1) * PATENT_PAGE_SIZE
-  return { items: data.slice(start, start + PATENT_PAGE_SIZE), total, totalPages }
-})
-
-const changePageData = computed(() => {
-  const data = changeRecordData.value?.data
-  if (!data) return { items: [], total: 0, totalPages: 0 }
-  const total = data.length
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-  const start = (changePage.value - 1) * PAGE_SIZE
-  return { items: data.slice(start, start + PAGE_SIZE), total, totalPages }
+  basic: false,
 })
 
 async function loadCompanyDetail() {
@@ -655,6 +607,8 @@ async function loadCompanyDetail() {
       fetchPatents(code).then(r => { patentData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.patent = false })
       sectionLoading.value.register = true
       fetchRegisterInfo(code).then(r => { registerInfo.value = r }).catch(() => {}).finally(() => { sectionLoading.value.register = false })
+      sectionLoading.value.basic = true
+      fetchBasicInfo(code).then(r => { basicInfo.value = r }).catch(() => {}).finally(() => { sectionLoading.value.basic = false })
     }
   } catch (e) {
     console.error('[company-detail] 加载企业详情失败', e)
@@ -668,14 +622,15 @@ onMounted(() => {
 
 const registerDisplayMap: Record<string, { label: string; icon: string }> = {
   '企业名称': { label: '企业名称', icon: 'i-lucide-building-2' },
-  '企业类型': { label: '企业类型', icon: 'i-lucide-tag' },
+  '产品链名称': { label: '产品链名称', icon: 'i-lucide-tag' },
+  '产品类型': { label: '产品类型', icon: 'i-lucide-briefcase' },
   '统一社会信用代码': { label: '统一社会信用代码', icon: 'i-lucide-fingerprint' },
   '法定代表人': { label: '法定代表人', icon: 'i-lucide-user' },
   '注册资本': { label: '注册资本', icon: 'i-lucide-landmark' },
   '成立日期': { label: '成立日期', icon: 'i-lucide-calendar' },
   '经营状态': { label: '经营状态', icon: 'i-lucide-activity' },
   '注册地址': { label: '注册地址', icon: 'i-lucide-map-pin' },
-  '经营范围': { label: '经营范围', icon: 'i-lucide-file-text' },
+  '经营范围': { label: '经营范围', icon: 'i-lucide-file-text', hidden: true },
   '登记机关': { label: '登记机关', icon: 'i-lucide-shield' },
   '核准日期': { label: '核准日期', icon: 'i-lucide-check-circle' },
   '实缴资本': { label: '实缴资本', icon: 'i-lucide-coins' },
@@ -711,10 +666,10 @@ const shareholderChartOption = computed(() => {
     legend: { show: false },
     series: [{
       type: 'pie' as const,
-      radius: ['55%', '82%'],
+      radius: ['40%', '80%'],
       center: ['50%', '50%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+      itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 1 },
       label: { show: true, position: 'outside' as const, formatter: '{b}\n{d}%', fontSize: 11 },
       emphasis: { label: { fontSize: 14, fontWeight: 'bold' } },
       data: pieData,
@@ -762,8 +717,8 @@ const shareholderTreeOption = computed(() => {
     series: [{
       type: 'tree' as const,
       data: [{ name: companyName, children, symbolSize: 18, itemStyle: { color: '#4f46e5', borderColor: '#4f46e5', borderWidth: 2, shadowBlur: 6, shadowColor: 'rgba(79,70,229,0.3)' }, label: { fontSize: 14, fontWeight: 'bold', color: '#1e1b4b' } }],
-      top: '8%', left: '8%', bottom: '8%', right: '8%',
-      symbolSize: 12,
+      top: '5%', left: '12%', bottom: '5%', right: '20%',
+      symbolSize: 10,
       orient: 'LR' as const,
       roam: true,
       label: {
@@ -776,6 +731,7 @@ const shareholderTreeOption = computed(() => {
         backgroundColor: 'rgba(255,255,255,0.9)',
         padding: [3, 8],
         borderRadius: 4,
+        distance: 8,
       },
       leaves: {
         label: {
@@ -786,7 +742,8 @@ const shareholderTreeOption = computed(() => {
           fontWeight: '500',
           color: '#475569',
           backgroundColor: 'transparent',
-          padding: 0,
+          padding: [2, 4],
+          distance: 6,
         },
       },
       emphasis: { focus: 'descendant' as const, itemStyle: { color: '#4338ca', borderColor: '#4338ca', borderWidth: 3 } },
@@ -794,42 +751,58 @@ const shareholderTreeOption = computed(() => {
       initialTreeDepth: 2,
       animationDuration: 550,
       animationDurationUpdate: 750,
-      lineStyle: { color: '#c7d2fe', width: 1.5, curveness: 0.4 },
+      lineStyle: { color: '#c7d2fe', width: 1.5, curveness: 0.5 },
       itemStyle: { color: '#6366f1', borderColor: '#6366f1', borderWidth: 2 },
+      edgeForkPosition: '30%',
     }],
   }
 })
 
-// 主要成员关系图
+// 主要成员关系图 - 中心根节点 + 外环成员，风扇曲线
 const memberGraphOption = computed(() => {
   const members = shareholderData.value?.members
   if (!members?.data?.length) return null
   const companyName = company.value?.company_name || '企业'
+  const memberCount = members.data.length
 
-  const nodes: any[] = [
-    {
-      name: companyName,
-      symbolSize: 56,
-      itemStyle: { color: '#4f46e5', shadowBlur: 10, shadowColor: 'rgba(79,70,229,0.3)' },
-      label: { fontSize: 13, fontWeight: 'bold', color: '#1e1b4b' },
-      category: 0,
-    },
-  ]
-
-  const memberColorPalette = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
+  const nodes: any[] = []
   const links: any[] = []
+  const memberColorPalette = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
 
+  // 中心节点
+  nodes.push({
+    name: companyName,
+    symbolSize: 60,
+    x: 400,
+    y: 300,
+    itemStyle: { color: '#4f46e5', shadowBlur: 12, shadowColor: 'rgba(79,70,229,0.3)' },
+    label: { show: true, fontSize: 13, fontWeight: 'bold', color: '#fff', position: 'inside' },
+    category: 0,
+  })
+
+  const radius = 200
   members.data.forEach((row: string[], i: number) => {
     const name = row[0] || '-'
     const title = row[1] || ''
     const nodeName = name.length > 6 ? name.slice(0, 6) + '…' : name
     const color = memberColorPalette[i % memberColorPalette.length]
+    const angle = (Math.PI * 2 * i) / memberCount - Math.PI / 2
+    const x = 400 + Math.cos(angle) * radius
+    const y = 300 + Math.sin(angle) * radius
 
     nodes.push({
       name: nodeName,
-      symbolSize: 36,
-      itemStyle: { color, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.1)' },
-      label: { fontSize: 10, color: '#334155', formatter: `{bold|${nodeName}}\n{normal|${title}}`, rich: { bold: { fontWeight: 'bold', fontSize: 11 }, normal: { fontSize: 9, color: '#94a3b8' } } },
+      symbolSize: 40,
+      x,
+      y,
+      itemStyle: { color, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.1)', borderColor: '#fff', borderWidth: 2 },
+      label: {
+        show: true,
+        position: 'bottom',
+        fontSize: 11,
+        color: '#1e293b',
+        formatter: (p: any) => `${p.data.fullName || p.name}\n${p.data.fullTitle || ''}`,
+      },
       category: 1,
       fullName: name,
       fullTitle: title,
@@ -839,9 +812,9 @@ const memberGraphOption = computed(() => {
       source: companyName,
       target: nodeName,
       lineStyle: {
-        color: color,
+        color,
         width: 1.8,
-        curveness: i % 2 === 0 ? 0.2 : 0.4,
+        curveness: i % 2 === 0 ? 0.15 : 0.35,
         opacity: 0.7,
       },
     })
@@ -857,15 +830,11 @@ const memberGraphOption = computed(() => {
         return params.name
       },
     },
+    animationDuration: 600,
+    animationEasingUpdate: 'quinticInOut',
     series: [{
       type: 'graph' as const,
-      layout: 'force' as const,
-      force: {
-        repulsion: 350,
-        gravity: 0.12,
-        edgeLength: [120, 220],
-        layoutAnimation: true,
-      },
+      layout: 'none' as const,
       roam: true,
       draggable: true,
       data: nodes,
@@ -874,11 +843,7 @@ const memberGraphOption = computed(() => {
         { name: '企业', itemStyle: { color: '#4f46e5' } },
         { name: '成员' },
       ],
-      label: {
-        show: true,
-        position: 'right' as const,
-        fontSize: 11,
-      },
+      focusNodeAdjacency: true,
       emphasis: {
         focus: 'adjacency' as const,
         itemStyle: { borderWidth: 2, borderColor: '#333' },
@@ -886,7 +851,8 @@ const memberGraphOption = computed(() => {
       },
       edgeSymbol: ['none', 'none'],
       edgeLabel: { show: false },
-      lineStyle: { opacity: 0.7, curveness: 0.3 },
+      lineStyle: { opacity: 0.7, curveness: 0.25 },
+      scaleLimit: { min: 0.4, max: 3 },
     }],
   }
 })
@@ -1072,11 +1038,11 @@ function hasSectionData(key: string): boolean {
   const c = company.value
   switch (key) {
     case 'basic':
-      return !!(c.company_name || c.company_type || c.company_industry || c.company_legal_person || c.company_credit_code)
+      return !!(c.company_name || c.chain_name || c.product_type || c.company_legal_person || c.company_credit_code || basicInfo.value?.length)
     case 'business':
-      return !!(c.company_registered_capital || c.company_found_date || c.company_business_status || c.company_industry || c.company_business_scope)
+      return !!(c.company_registered_capital || c.company_found_date || c.company_business_status || c.product_type || c.company_business_scope)
     case 'contact':
-      return !!(c.company_phone || c.company_website || c.company_email || c.company_work_add)
+      return !!(c.contact_info || c.company_website || c.company_work_add)
     case 'shareholder':
       return !!(shareholderData.value?.latest?.data?.length || shareholderData.value?.members?.data?.length)
     case 'trademark':
@@ -1326,6 +1292,17 @@ function getIndustryBg(industry: string): string {
   color: #f472b6;
   vertical-align: middle;
 }
+.cd-hero-project-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 5px;
+  background: rgba(250, 204, 21, 0.2);
+  color: #ca8a04;
+  vertical-align: middle;
+}
 .cd-hero-meta {
   display: flex;
   align-items: center;
@@ -1531,6 +1508,25 @@ function getIndustryBg(industry: string): string {
   color: var(--text);
   line-height: 1.7;
   margin: 0;
+}
+.cd-desc-text-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cd-scope-expand-btn {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.cd-scope-expand-btn:hover {
+  text-decoration: underline;
 }
 
 .cd-info-table {
@@ -1818,10 +1814,14 @@ function getIndustryBg(industry: string): string {
 }
 .cd-patent-title {
   white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: unset !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
   word-break: break-word;
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  max-height: calc(1.5em * 3);
 }
 .cd-patent-meta {
   flex-direction: column;
@@ -2011,39 +2011,4 @@ function getIndustryBg(industry: string): string {
   animation: cd-spin 0.7s linear infinite;
 }
 
-.cd-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 12px 0 4px;
-}
-.cd-page-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  color: var(--text);
-  transition: all 0.15s;
-}
-.cd-page-btn:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-.cd-page-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-.cd-page-info {
-  font-size: 12px;
-  color: var(--text-muted);
-  min-width: 60px;
-  text-align: center;
-}
 </style>

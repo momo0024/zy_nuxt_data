@@ -20,6 +20,12 @@ export interface CompanyRecord {
   company_website: string
   company_email: string
   company_traded: number
+  product_type: string
+  chain_name: string
+  import_project: number
+  product: string
+  honors: string
+  contact_info: string
 }
 
 export interface CompanyListResponse {
@@ -51,5 +57,9 @@ export function getCompanyDisplayName(company: CompanyRecord): string {
 }
 
 export function getCompanyIndustry(company: CompanyRecord): string {
-  return company.company_industry || '未分类'
+  return company.product_type || company.company_industry || '未分类'
+}
+
+export function getCompanyChain(company: CompanyRecord): string {
+  return company.chain_name || company.company_type || '未分类'
 }

@@ -257,12 +257,11 @@ const PanelTitle = defineComponent({
 const THEME_VISUALS = {
   dark:   { bgTop:'#07101c', bgBottom:'#020811', panelTop:'rgba(18,88,148,0.52)',   panelBottom:'rgba(3,17,39,0.86)',  primary:'#2ce9ff', secondary:'#1b63ff', accent:'#ffd24a', line:'rgba(76,221,255,0.4)',  lineSoft:'rgba(76,221,255,0.14)', shadow:'rgba(22,150,255,0.2)',  titleGlow:'rgba(77,231,255,0.85)' },
   light:  { bgTop:'#091528', bgBottom:'#021020', panelTop:'rgba(28,98,172,0.46)',   panelBottom:'rgba(5,25,55,0.84)', primary:'#34d6ff', secondary:'#2563eb', accent:'#fbbf24', line:'rgba(89,208,255,0.36)', lineSoft:'rgba(89,208,255,0.13)', shadow:'rgba(37,99,235,0.2)',   titleGlow:'rgba(52,214,255,0.82)' },
-  green:  { bgTop:'#071612', bgBottom:'#020b09', panelTop:'rgba(22,110,86,0.48)',   panelBottom:'rgba(4,30,23,0.86)', primary:'#38f5c6', secondary:'#14b8a6', accent:'#fde047', line:'rgba(83,255,207,0.38)', lineSoft:'rgba(83,255,207,0.13)', shadow:'rgba(20,184,166,0.2)',  titleGlow:'rgba(56,245,198,0.8)'  },
   purple: { bgTop:'#100c22', bgBottom:'#050614', panelTop:'rgba(70,44,148,0.48)',   panelBottom:'rgba(16,10,40,0.86)',primary:'#b372ff', secondary:'#38bdf8', accent:'#f472b6', line:'rgba(191,122,255,0.4)', lineSoft:'rgba(191,122,255,0.14)',shadow:'rgba(168,85,247,0.24)', titleGlow:'rgba(179,114,255,0.78)'},
   warm:   { bgTop:'#1c1208', bgBottom:'#0e0703', panelTop:'rgba(144,86,17,0.46)',   panelBottom:'rgba(47,24,5,0.86)', primary:'#ffbf47', secondary:'#38bdf8', accent:'#fb7185', line:'rgba(255,202,92,0.36)', lineSoft:'rgba(255,202,92,0.14)', shadow:'rgba(217,119,6,0.24)', titleGlow:'rgba(255,191,71,0.76)' }
 } as const
 
-const palette = computed(() => THEME_VISUALS[settingsStore.theme])
+const palette = computed(() => THEME_VISUALS[settingsStore.theme] ?? THEME_VISUALS.warm)
 
 const screenVars = computed(() => ({
   '--op-bg-top':    palette.value.bgTop,

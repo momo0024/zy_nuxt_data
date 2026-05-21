@@ -106,3 +106,16 @@ export async function fetchRegisterInfo(code: string): Promise<RegisterItem[] | 
   })
   return parseRaw<RegisterItem[]>(res.data as unknown as RawResponse)
 }
+
+/* ─────────────── 企业基本信息 ─────────────── */
+export interface BasicInfoItem {
+  key: string
+  value: string
+}
+
+export async function fetchBasicInfo(code: string): Promise<BasicInfoItem[] | null> {
+  const res = await request.get<RawResponse['data']>('/company/basic', {
+    params: { code },
+  })
+  return parseRaw<BasicInfoItem[]>(res.data as unknown as RawResponse)
+}

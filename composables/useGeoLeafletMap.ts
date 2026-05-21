@@ -857,10 +857,10 @@ export function useGeoLeafletMap() {
 
     // 监听缩放事件，切换聚合/单点模式
     map.on('zoomend', () => {
-      refreshMarkers(zoneCompanies)
+      refreshMarkers(companies)
     })
 
-    refreshMarkers(zoneCompanies)
+    refreshMarkers(companies)
 
     setBlurFocus('wuhan')
     flyToWuhan(0)
@@ -872,7 +872,7 @@ export function useGeoLeafletMap() {
     }, 100)
     requestAnimationFrame(() => scheduleBlurSync())
 
-    return zoneCompanies
+    return companies
   }
 
   function destroyMap() {
