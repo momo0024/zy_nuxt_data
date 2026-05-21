@@ -155,7 +155,7 @@ async function handleLogin() {
   const result = authStore.login(form.username.trim(), form.password)
   loading.value = false
   if (result.success) {
-    await router.push('/')
+    await router.push('/geo-screen')
   } else {
     error.value = result.error || '登录失败'
   }

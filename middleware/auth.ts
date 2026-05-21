@@ -15,6 +15,6 @@ export default defineNuxtRouteMiddleware((to) => {
   }
 
   if (authStore.isLoggedIn && isPublic) {
-    return navigateTo('/')
+    return navigateTo('/geo-screen')
   }
 })

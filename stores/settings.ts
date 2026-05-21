@@ -40,7 +40,7 @@ export const THEMES: ThemeMeta[] = [
 export const useSettingsStore = defineStore('settings', () => {
   const theme = ref<ThemeId>('warm')
   const ai = ref<AiConfig>({
-    enabled: true,
+    enabled: false,
     apiBase: 'http://119.96.30.33:8087/v1',
     model: '/data/model/qwen3_6_27B_FP8/Qwen/Qwen3_6-27B-FP8',
     apiKey: 'EMPTY'

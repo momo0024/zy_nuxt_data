@@ -46,8 +46,8 @@
     </div>
 
     <!-- 数字人 FAB + 聊天面板 -->
-    <DigitalHumanAiFab />
-    <DigitalHumanChatPanel />
+    <DigitalHumanAiFab v-if="settingsStore.ai.enabled" />
+    <DigitalHumanChatPanel v-if="settingsStore.ai.enabled" />
   </div>
 </template>
 
@@ -68,6 +68,7 @@ type TabItem = {
 
 const route = useRoute()
 const router = useRouter()
+const settingsStore = useSettingsStore()
 const sidebarCollapsed = ref(false)
 const mobileMenuOpen = ref(false)
 

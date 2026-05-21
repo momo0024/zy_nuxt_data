@@ -12,7 +12,7 @@
     </div>
 
     <!-- 知识库统计小卡片 -->
-    <Transition name="fade-text">
+    <!-- <Transition name="fade-text">
       <div v-show="!collapsed" class="kb-stats-card">
         <div class="kb-stat-item">
           <span class="kb-stat-label">文档数</span>
@@ -24,7 +24,7 @@
           <span class="kb-stat-val">{{ hydrated ? (user?.allowedCategories?.length ?? 0) : '…' }}</span>
         </div>
       </div>
-    </Transition>
+    </Transition> -->
 
     <!-- 导航菜单 -->
     <nav class="sidebar-nav">
