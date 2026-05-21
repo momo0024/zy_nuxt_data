@@ -66,11 +66,6 @@
               <div class="gs-stat-num">{{ listedCount }}</div>
               <div class="gs-stat-lbl">上市公司</div>
             </div>
-            <div class="gs-stat-sep" />
-            <div class="gs-stat">
-              <div class="gs-stat-num">{{ industryCount }}</div>
-              <div class="gs-stat-lbl">行业类别</div>
-            </div>
           </div>
 
           <!-- 图例 (左下) -->
@@ -125,7 +120,17 @@
             <div class="cp-header">
               <UIcon name="i-lucide-building-2" class="size-[15px] text-primary flex-shrink-0" />
               <span class="cp-title">{{ panelTitle }}</span>
-              <span class="cp-count">{{ companyTotal }} 家</span>
+              <span class="cp-count">{{ bubbleCompanies ? bubbleCompanies.length : filteredCompanies.length }} 家</span>
+              <button
+                v-if="bubbleCompanies || selectedRegion"
+                type="button"
+                class="cp-reset-btn"
+                title="重置为全部企业"
+                @click="resetPanel()"
+              >
+                <UIcon name="i-lucide-rotate-ccw" class="size-3.5" />
+                <span>重置</span>
+              </button>
               <button
                 type="button"
                 class="cp-close"
@@ -167,13 +172,13 @@
                       {{ c.company_city }} · {{ c.conpany_district || '' }}
                     </span>
                   </div>
-                  <div v-if="c.company_found_date && c.company_found_date !== '-'" class="cp-founded">
-                    <UIcon name="i-lucide-calendar" class="size-3" />
-                    <span>{{ c.company_found_date }}</span>
-                  </div>
                   <div class="cp-tags">
                     <span v-if="c.company_industry && c.company_industry !== '-'" class="cp-tag">{{ c.company_industry }}</span>
                     <span v-if="c.company_type && c.company_type !== '-'" class="cp-type-tag">{{ c.company_type }}</span>
+                  </div>
+                  <div v-if="c.company_found_date && c.company_found_date !== '-'" class="cp-founded">
+                    <UIcon name="i-lucide-calendar" class="size-3" />
+                    <span>{{ c.company_found_date }}</span>
                   </div>
                 </div>
               </div>
@@ -183,7 +188,7 @@
                 <span>暂无匹配企业</span>
               </div>
 
-              <div v-if="hasMorePages" class="cp-load-more" @click="loadMore">
+              <div v-if="!bubbleCompanies && hasMorePages" class="cp-load-more" @click="loadMore">
                 <UIcon name="i-lucide-chevron-down" class="size-4" />
                 <span>加载更多</span>
               </div>
@@ -345,8 +350,10 @@ const isFullscreen = ref(false)
 const highlightedCompanyId = ref<string | null>(null)
 const panelOpen = ref(true)
 const selectedRegion = ref<RegionSelectPayload | null>(null)
+const bubbleCompanies = ref<CompanyRecord[] | null>(null)
+const bubbleLabel = ref('')
 const currentPage = ref(1)
-const pageSize = 20
+const pageSize = 200
 const companyTotal = ref(0)
 const loadingMore = ref(false)
 const scopeExpanded = ref(false)
@@ -358,12 +365,11 @@ const scopeNeedExpand = computed(() => {
 
 const listedCount = computed(() => allCompanies.value.filter(c => c.company_traded === 1).length)
 
-const industryCount = computed(() => new Set(allCompanies.value.map(c => c.company_industry)).size)
-
 const uniqueCompanyCount = computed(() => new Set(allCompanies.value.map(c => c.company_name)).size)
 const hasMorePages = computed(() => uniqueCompanyCount.value < companyTotal.value)
 
 const panelTitle = computed(() => {
+  if (bubbleLabel.value) return bubbleLabel.value
   const r = selectedRegion.value
   if (r?.type === 'city') return `${r.name} · 企业`
   if (r?.type === 'zone') return '高新区企业'
@@ -371,6 +377,18 @@ const panelTitle = computed(() => {
 })
 
 const filteredCompanies = computed(() => {
+  // 气泡模式：仅从气泡公司中检索
+  const bubble = bubbleCompanies.value
+  if (bubble) {
+    const q = companySearch.value.trim().toLowerCase()
+    if (!q) return bubble
+    return bubble.filter(c =>
+      c.company_name.toLowerCase().includes(q)
+      || c.company_industry.toLowerCase().includes(q)
+      || (c.conpany_district || '').toLowerCase().includes(q),
+    )
+  }
+  // 区域模式
   let list = allCompanies.value
   const region = selectedRegion.value
   if (region?.type === 'city') {
@@ -432,6 +450,7 @@ onMounted(async () => {
     const list = await initMap(allCompanies.value, {
       onCompany: company => openDetail(company),
       onRegion: payload => onRegionSelect(payload),
+      onBubble: (companies, label) => onBubbleClick(companies, label),
     })
     if (list && list.length > 0) {
       allCompanies.value = list
@@ -473,7 +492,26 @@ function onFsChange() {
 
 function onRegionSelect(payload: RegionSelectPayload) {
   selectedRegion.value = payload
+  bubbleCompanies.value = null
+  bubbleLabel.value = ''
   panelOpen.value = true
+  companySearch.value = ''
+  nextTick(() => invalidateSize())
+}
+
+function onBubbleClick(companies: CompanyRecord[], label: string) {
+  bubbleCompanies.value = companies
+  bubbleLabel.value = label
+  selectedRegion.value = null
+  panelOpen.value = true
+  companySearch.value = ''
+  nextTick(() => invalidateSize())
+}
+
+function resetPanel() {
+  bubbleCompanies.value = null
+  bubbleLabel.value = ''
+  selectedRegion.value = null
   companySearch.value = ''
   nextTick(() => invalidateSize())
 }
@@ -646,13 +684,16 @@ function closeDetail() {
 .gs-leaflet-map :deep(.leaflet-control-attribution) {
   display: none !important;
 }
-.gs-map-wrap :deep(> .gs-outside-blur) {
-  position: absolute;
-  inset: 0;
-  z-index: 400;
+.gs-leaflet-map :deep(.leaflet-container > .gs-outside-blur) {
   pointer-events: none;
-  backdrop-filter: blur(2.5px) brightness(0.92);
-  -webkit-backdrop-filter: blur(2.5px) brightness(0.92);
+  backdrop-filter: blur(8px) brightness(0.82) saturate(0.85);
+  -webkit-backdrop-filter: blur(8px) brightness(0.82) saturate(0.85);
+}
+.gs-leaflet-map :deep(.leaflet-marker-pane) {
+  z-index: 650 !important;
+}
+.gs-leaflet-map :deep(.leaflet-tooltip-pane) {
+  z-index: 700 !important;
 }
 .gs-leaflet-map :deep(.leaflet-interactive:focus) {
   outline: none !important;
@@ -679,14 +720,41 @@ function closeDetail() {
 .gs-leaflet-map :deep(.gs-company-icon) {
   background: transparent !important;
   border: none !important;
+  overflow: visible !important;
+}
+.gs-leaflet-map :deep(.gs-company-wrap) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 132px;
+  height: 36px;
+  pointer-events: none;
+}
+.gs-leaflet-map :deep(.gs-company-label) {
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
+  pointer-events: none;
+  margin-bottom: 3px;
+  line-height: 1.35;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .gs-leaflet-map :deep(.gs-company-dot) {
-  display: block;
+  flex-shrink: 0;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.65);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
 }
 .gs-leaflet-map :deep(.gs-cluster-icon) {
   background: transparent !important;
@@ -940,6 +1008,26 @@ function closeDetail() {
 .cp-close:hover {
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   color: var(--danger);
+}
+.cp-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.cp-reset-btn:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--primary);
+  border-color: var(--primary-border);
 }
 .cp-search-wrap {
   position: relative;

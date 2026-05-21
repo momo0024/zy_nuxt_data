@@ -216,12 +216,27 @@ export function getIndustryColor(industry: string): string {
   return INDUSTRY_COLORS[industry] || '#6366f1'
 }
 
-function makeCompanyIcon(L: typeof import('leaflet'), color: string) {
+const COMPANY_ICON_W = 132
+const COMPANY_ICON_H = 36
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function makeCompanyIcon(L: typeof import('leaflet'), color: string, name: string) {
+  const displayName = name.length > 12 ? `${name.slice(0, 12)}…` : name
   return L.divIcon({
     className: 'gs-company-icon',
-    html: `<span class="gs-company-dot" style="background:${color}"></span>`,
-    iconSize: [12, 12],
-    iconAnchor: [6, 6],
+    html: `<div class="gs-company-wrap">
+      <div class="gs-company-label">${escapeHtml(displayName)}</div>
+      <div class="gs-company-dot" style="background:${color}"></div>
+    </div>`,
+    iconSize: [COMPANY_ICON_W, COMPANY_ICON_H],
+    iconAnchor: [COMPANY_ICON_W / 2, COMPANY_ICON_H],
   })
 }
 
@@ -270,6 +285,7 @@ export function useGeoLeafletMap() {
 
   let onCompanyClick: ((c: CompanyRecord) => void) | undefined
   let onRegionSelect: ((payload: RegionSelectPayload) => void) | undefined
+  let onBubbleClick: ((companies: CompanyRecord[], label: string) => void) | undefined
 
   type HoverTarget =
     | { kind: 'zone' }
@@ -575,8 +591,13 @@ export function useGeoLeafletMap() {
 
     blurOverlayEl = document.createElement('div')
     blurOverlayEl.className = 'gs-outside-blur'
-    blurOverlayEl.style.backgroundColor = 'rgba(255, 255, 255, 0.06)'
-    wrap.appendChild(blurOverlayEl)
+    blurOverlayEl.style.backgroundColor = 'rgba(255, 255, 255, 0.14)'
+    // 放在 Leaflet 容器内、瓦片之上、标记点之下，避免 backdrop-filter 模糊企业点
+    blurOverlayEl.style.position = 'absolute'
+    blurOverlayEl.style.inset = '0'
+    blurOverlayEl.style.zIndex = '350'
+    blurOverlayEl.style.pointerEvents = 'none'
+    mapEl.appendChild(blurOverlayEl)
 
     syncBlurOverlay = () => {
       if (!blurOverlayEl || !map) return
@@ -646,7 +667,7 @@ export function useGeoLeafletMap() {
     if (zoom < clusterThreshold) {
       // 缩小模式：按网格聚合显示气泡
       const gridSize = 0.02 // 约2km网格
-      const grid = new Map<string, { lat: number, lng: number, count: number }>()
+      const grid = new Map<string, { lat: number, lng: number, count: number, companies: CompanyRecord[] }>()
 
       companies.forEach((c) => {
         const gridX = Math.floor(c.company_longitude / gridSize)
@@ -657,28 +678,42 @@ export function useGeoLeafletMap() {
           existing.count++
           existing.lat = (existing.lat * (existing.count - 1) + c.company_latitude) / existing.count
           existing.lng = (existing.lng * (existing.count - 1) + c.company_longitude) / existing.count
+          existing.companies.push(c)
         } else {
-          grid.set(key, { lat: c.company_latitude, lng: c.company_longitude, count: 1 })
+          grid.set(key, { lat: c.company_latitude, lng: c.company_longitude, count: 1, companies: [c] })
         }
       })
 
-      grid.forEach((cell) => {
+      grid.forEach((cell, key) => {
         if (cell.count >= 1) {
           const marker = L.marker([cell.lat, cell.lng], {
             icon: makeClusterIcon(L, cell.count),
+            pane: 'companyMarkerPane',
+            riseOnHover: true,
+            riseOffset: 800,
           })
           marker.bindTooltip(`${cell.count} 家企业`, { direction: 'top' })
+          marker.on('click', (e) => {
+            L!.DomEvent.stopPropagation(e)
+            const districtName = cell.companies[0]?.conpany_district || cell.companies[0]?.company_city || '附近'
+            onBubbleClick?.(cell.companies, `${districtName} · ${cell.count} 家企业`)
+          })
           clusterLayer!.addLayer(marker)
         }
       })
     } else {
-      // 正常模式：显示单个企业点
+      // 正常模式：显示单个企业点（带公司名标签）
       companies.forEach((c) => {
+        const lat = c.company_latitude
+        const lng = c.company_longitude
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
         const color = c.company_traded === 1 ? '#ef4444' : '#10b981'
-        const marker = L.marker([c.company_latitude, c.company_longitude], {
-          icon: makeCompanyIcon(L, color),
+        const marker = L.marker([lat, lng], {
+          icon: makeCompanyIcon(L, color, c.company_name),
+          pane: 'companyMarkerPane',
+          riseOnHover: true,
+          riseOffset: 800,
         })
-        marker.bindTooltip(c.company_name, { direction: 'top' })
         marker.on('click', (e) => {
           L!.DomEvent.stopPropagation(e)
           onCompanyClick?.(c)
@@ -693,10 +728,12 @@ export function useGeoLeafletMap() {
     handlers?: {
       onCompany?: (c: CompanyRecord) => void
       onRegion?: (payload: RegionSelectPayload) => void
+      onBubble?: (companies: CompanyRecord[], label: string) => void
     },
   ): Promise<CompanyRecord[]> {
     onCompanyClick = handlers?.onCompany
     onRegionSelect = handlers?.onRegion
+    onBubbleClick = handlers?.onBubble
 
     const [leaflet, region, zone, hubeiCities] = await Promise.all([
       import('leaflet'),
@@ -731,6 +768,10 @@ export function useGeoLeafletMap() {
     map.createPane('boundaryPane')
     const boundaryPane = map.getPane('boundaryPane')
     if (boundaryPane) boundaryPane.style.zIndex = '450'
+
+    map.createPane('companyMarkerPane')
+    const companyMarkerPane = map.getPane('companyMarkerPane')
+    if (companyMarkerPane) companyMarkerPane.style.zIndex = '650'
 
     const hubeiFeature = region.features.find(
       (f: any) => f.properties?.name === HIGHLIGHT_PROVINCE,
