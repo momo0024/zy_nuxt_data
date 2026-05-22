@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "nuxt build",
+    "build": "cross-env NODE_NO_WARNINGS=1 nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
@@ -31,6 +31,7 @@
     "@nuxt/ui": "^4.7.1",
     "@nuxtjs/tailwindcss": "^6.12.0",
     "@types/leaflet": "^1.9.21",
+    "cross-env": "^10.1.0",
     "nuxt": "^4.4.5",
     "tailwindcss": "^4.3.0",
     "vue": "^3.4.27",

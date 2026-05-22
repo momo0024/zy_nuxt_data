@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
-const API_BASE = import.meta.dev ? '/api' : 'http://119.96.30.33:8096'
+const DEFAULT_BASE = import.meta.dev ? '/api' : 'http://119.96.30.33:8096'
 
 interface ApiResponse<T = any> {
   code: number
@@ -9,11 +9,17 @@ interface ApiResponse<T = any> {
 }
 
 class Request {
-  private instance: AxiosInstance
+  private instance!: AxiosInstance
+  private _baseURL: string = DEFAULT_BASE
+  private _initialized = false
 
   constructor() {
+    this._createInstance()
+  }
+
+  private _createInstance() {
     this.instance = axios.create({
-      baseURL: API_BASE,
+      baseURL: this._baseURL,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
@@ -43,6 +49,16 @@ class Request {
         return Promise.reject(error)
       },
     )
+  }
+
+  /**
+   * 由 Nuxt 插件在客户端初始化时调用，传入 runtimeConfig 中的 apiBase
+   */
+  setBaseURL(baseURL: string) {
+    if (this._initialized && this._baseURL === baseURL) return
+    this._baseURL = baseURL
+    this._createInstance()
+    this._initialized = true
   }
 
   get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {

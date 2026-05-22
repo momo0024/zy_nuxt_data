@@ -348,7 +348,7 @@ const panelOpen = ref(true)
 const selectedRegion = ref<RegionSelectPayload | null>(null)
 const bubbleCompanies = ref<CompanyRecord[] | null>(null)
 const bubbleLabel = ref('')
-const pageSize = 200
+const pageSize = 500
 const companyTotal = ref(0)
 const scopeExpanded = ref(false)
 const scopeNeedExpand = computed(() => {
