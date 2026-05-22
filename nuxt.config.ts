@@ -11,10 +11,15 @@ export default defineNuxtConfig({
     public: {
       // 后端接口地址，开发环境通过 nitro devProxy 代理，生产环境直连
       apiBase: import.meta.dev ? '/api' : (process.env.NUXT_PUBLIC_API_BASE || 'http://119.96.30.33:8096'),
+      amapKey: process.env.NUXT_PUBLIC_AMAP_KEY || '',
+      amapSecurityCode: process.env.NUXT_PUBLIC_AMAP_SECURITY_CODE || '',
     },
   },
   sourcemap: { server: false, client: false },
   vite: {
+    ssr: {
+      external: ['@amap/amap-jsapi-loader'],
+    },
     logLevel: import.meta.dev ? 'info' : 'error',
     plugins: [
       {
