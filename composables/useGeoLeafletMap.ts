@@ -267,7 +267,6 @@ export function useGeoLeafletMap() {
 
   let cityFeatures: GeoJSON.Feature[] = []
   let zoneFeatures: GeoJSON.Feature[] = []
-  let zoneFeaturesGcj02: GeoJSON.Feature[] = []
   let otherProvinceFeatures: GeoJSON.Feature[] = []
   const cityPathsByAdcode = new Map<number, import('leaflet').Path[]>()
   const cityFeatureByAdcode = new Map<number, GeoJSON.Feature>()
@@ -412,9 +411,9 @@ export function useGeoLeafletMap() {
   }
 
   function getBlurHoleRings(): number[][][] {
-    // zone 模式：只保留高新区高亮，其他全部模糊（使用 GCJ-02 坐标匹配显示层）
+    // zone 模式：只保留高新区高亮，其他全部模糊
     if (blurFocusMode === 'zone') {
-      return zoneFeaturesGcj02
+      return zoneFeatures
         .filter(f => f.geometry)
         .flatMap(f => outerRingsFromGeometry(f.geometry!))
     }
@@ -736,11 +735,10 @@ export function useGeoLeafletMap() {
     onRegionSelect = handlers?.onRegion
     onBubbleClick = handlers?.onBubble
 
-    const [leaflet, region, zoneGcj02, zoneWgs84, zoneBoundary, hubeiCities] = await Promise.all([
+    const [leaflet, region, zoneGcj02, zoneBoundary, hubeiCities] = await Promise.all([
       import('leaflet'),
       $fetch<any>('/geo/region.json'),
       $fetch<GeoJSON.FeatureCollection>('/geo/高新区范围_gcj02.json'),
-      $fetch<GeoJSON.FeatureCollection>('/geo/高新区范围_wgs84.json'),
       $fetch<GeoJSON.FeatureCollection>('/geo/高新区边界_gcj02.json'),
       $fetch<any>('/geo/hubei-cities.json'),
     ])
@@ -748,8 +746,8 @@ export function useGeoLeafletMap() {
     await import('leaflet/dist/leaflet.css')
 
     L = leaflet
-    // 使用 WGS84 数据做点面判断（与后端返回的企业 WGS84 坐标匹配）
-    const zoneCompanies = filterCompaniesInZone(companies, zoneWgs84)
+    // 后端返回 GCJ-02 经纬度，统一使用 GCJ-02 数据做点面判断和显示
+    const zoneCompanies = filterCompaniesInZone(companies, zoneGcj02)
 
     if (!mapContainerRef.value) return []
 
@@ -831,9 +829,8 @@ export function useGeoLeafletMap() {
       },
     ).addTo(map)
 
-    // WGS84 数据用于点面判断（匹配企业 WGS84 坐标）
-    zoneFeatures = (zoneWgs84 as GeoJSON.FeatureCollection).features ?? []
-    zoneFeaturesGcj02 = (zoneGcj02 as GeoJSON.FeatureCollection).features ?? []
+    // GCJ-02 数据统一用于点面判断和高德地图显示
+    zoneFeatures = (zoneGcj02 as GeoJSON.FeatureCollection).features ?? []
     zonePaths.length = 0
 
     wuhanFeatureStored = cityFeatures.find(f => f.properties?.name === HIGHLIGHT_CITY) ?? null
@@ -859,7 +856,7 @@ export function useGeoLeafletMap() {
       interactive: false,
       style: () => ({
         color: '#a855f7',
-        weight: 3,
+        weight: 2,
         opacity: 0.9,
         fill: false,
         dashArray: '8 4',
