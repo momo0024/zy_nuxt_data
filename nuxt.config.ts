@@ -6,6 +6,9 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   modules: ['@nuxt/ui', '@pinia/nuxt'],
   css: ['~/assets/css/main.css'],
+  icon: {
+    localApiEndpoint: '/_nuxt_icon',
+  },
 
   runtimeConfig: {
     public: {

@@ -757,6 +757,10 @@ export function useGeoLeafletMap() {
       zoomControl: false,
       attributionControl: false,
       doubleClickZoom: false,
+      scrollWheelZoom: 'center',
+      wheelPxPerZoomLevel: 120,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
     })
 
     L.tileLayer(
@@ -856,7 +860,7 @@ export function useGeoLeafletMap() {
       interactive: false,
       style: () => ({
         color: '#a855f7',
-        weight: 2,
+        weight: 1,
         opacity: 0.9,
         fill: false,
         dashArray: '8 4',

@@ -494,6 +494,7 @@ function closeDetail() {
   detailCompany.value = null
   scopeExpanded.value = false
 }
+
 </script>
 
 <style scoped>
