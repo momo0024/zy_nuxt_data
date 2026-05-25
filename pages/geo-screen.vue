@@ -90,6 +90,13 @@
 
           <!-- Leaflet 高德地图 -->
           <div ref="mapContainerRef" class="gs-leaflet-map" />
+          <div class="gs-map-toggle">
+            <span class="gs-toggle-label">显示企业名称</span>
+            <USwitch
+              :model-value="showCompanyLabels"
+              @update:model-value="setCompanyLabelVisible"
+            />
+          </div>
 
           <!-- 加载中 -->
           <div v-if="!mapReady" class="gs-loading gs-loading-overlay">
@@ -329,12 +336,14 @@ const {
   mapContainerRef,
   mapReady,
   quickView,
+  showCompanyLabels,
   initMap,
   destroyMap,
   zoomIn,
   zoomOut,
   resetView,
   setQuickView,
+  setCompanyLabelVisible,
   invalidateSize,
 } = useGeoLeafletMap()
 
@@ -653,11 +662,6 @@ function closeDetail() {
 .gs-leaflet-map :deep(.leaflet-control-attribution) {
   display: none !important;
 }
-.gs-leaflet-map :deep(.leaflet-container > .gs-outside-blur) {
-  pointer-events: none;
-  backdrop-filter: blur(8px) brightness(0.82) saturate(0.85);
-  -webkit-backdrop-filter: blur(8px) brightness(0.82) saturate(0.85);
-}
 .gs-leaflet-map :deep(.leaflet-marker-pane) {
   z-index: 650 !important;
 }
@@ -686,6 +690,20 @@ function closeDetail() {
   border-radius: 3px;
   pointer-events: none;
 }
+.gs-leaflet-map :deep(.leaflet-tooltip.gs-company-name-tooltip) {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
+  line-height: 1.35;
+}
+.gs-leaflet-map :deep(.leaflet-tooltip.gs-company-name-tooltip::before) {
+  display: none;
+}
 .gs-leaflet-map :deep(.gs-company-icon) {
   background: transparent !important;
   border: none !important;
@@ -699,6 +717,11 @@ function closeDetail() {
   width: 132px;
   height: 36px;
   pointer-events: none;
+}
+.gs-leaflet-map :deep(.gs-company-wrap-dot-only) {
+  justify-content: center;
+  width: 16px;
+  height: 16px;
 }
 .gs-leaflet-map :deep(.gs-company-label) {
   white-space: nowrap;
@@ -778,6 +801,27 @@ function closeDetail() {
   padding: 5px 2px;
   z-index: 410;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+.gs-map-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  z-index: 410;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+.gs-toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
 }
 .gs-stat {
   display: flex;

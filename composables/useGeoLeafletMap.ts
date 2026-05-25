@@ -87,31 +87,31 @@ const HOVER_OUTLINE = {
 function getZoneStyle(hovered = false, focusMode: BlurFocusMode = 'wuhan') {
   if (hovered) {
     return {
-      color: '#7c3aed',
-      weight: 5,
+      color: '#dc2626',
+      weight: 3,
       opacity: 1,
       fillOpacity: 0,
       fill: false,
-      dashArray: '10 6',
+      dashArray: undefined as string | undefined,
     }
   }
   if (focusMode === 'zone') {
     return {
-      color: '#7c3aed',
-      weight: 5,
-      opacity: 1,
+      color: '#ea580c',
+      weight: 2.75,
+      opacity: 0.98,
       fillOpacity: 0,
       fill: false,
-      dashArray: '10 6',
+      dashArray: undefined as string | undefined,
     }
   }
   return {
-    color: '#7c3aed',
-    weight: 4.5,
-    opacity: 1,
+    color: '#ea580c',
+    weight: 2.5,
+    opacity: 0.95,
     fillOpacity: 0,
     fill: false,
-    dashArray: '10 6',
+    dashArray: undefined as string | undefined,
   }
 }
 
@@ -216,8 +216,11 @@ export function getIndustryColor(industry: string): string {
   return INDUSTRY_COLORS[industry] || '#6366f1'
 }
 
-const COMPANY_ICON_W = 132
-const COMPANY_ICON_H = 36
+const COMPANY_LABEL_ICON_W = 132
+const COMPANY_LABEL_ICON_H = 36
+const COMPANY_DOT_ICON_SIZE = 16
+const COMPANY_ICON_W = COMPANY_LABEL_ICON_W
+const COMPANY_ICON_H = COMPANY_LABEL_ICON_H
 
 function escapeHtml(text: string): string {
   return text
@@ -249,15 +252,37 @@ function makeClusterIcon(L: typeof import('leaflet'), count: number) {
   })
 }
 
+function makeCompanyMarkerIcon(
+  L: typeof import('leaflet'),
+  color: string,
+  name: string,
+  showLabel: boolean,
+) {
+  if (!showLabel) {
+    return L.divIcon({
+      className: 'gs-company-icon',
+      html: `<div class="gs-company-wrap gs-company-wrap-dot-only">
+        <div class="gs-company-dot" style="background:${color}"></div>
+      </div>`,
+      iconSize: [COMPANY_DOT_ICON_SIZE, COMPANY_DOT_ICON_SIZE],
+      iconAnchor: [COMPANY_DOT_ICON_SIZE / 2, COMPANY_DOT_ICON_SIZE / 2],
+    })
+  }
+
+  return makeCompanyIcon(L, color, name)
+}
+
 export function useGeoLeafletMap() {
   const mapContainerRef = ref<HTMLDivElement>()
   const mapReady = ref(false)
   const quickView = ref<'zone' | 'wuhan' | null>(null)
+  const showCompanyLabels = ref(true)
 
   let L: typeof import('leaflet') | null = null
   let map: import('leaflet').Map | null = null
   let markerLayer: import('leaflet').LayerGroup | null = null
   let clusterLayer: import('leaflet').LayerGroup | null = null
+  let latestCompanies: CompanyRecord[] = []
   let blurOverlayEl: HTMLDivElement | null = null
   let chinaProvincesLayer: import('leaflet').GeoJSON | null = null
   let hubeiCitiesLayer: import('leaflet').GeoJSON | null = null
@@ -282,6 +307,7 @@ export function useGeoLeafletMap() {
   let wuhanFeatureStored: GeoJSON.Feature | null = null
   let focusedCityFeature: GeoJSON.Feature | null = null
   let blurFocusMode: BlurFocusMode = 'wuhan'
+  let hoveringCompanyMarker = false
 
   let onCompanyClick: ((c: CompanyRecord) => void) | undefined
   let onRegionSelect: ((payload: RegionSelectPayload) => void) | undefined
@@ -341,7 +367,7 @@ export function useGeoLeafletMap() {
         if ('setOpacity' in layer) (layer as import('leaflet').Path).setOpacity(0)
       })
       chinaProvincesLayer?.eachLayer((layer) => {
-        if ('setOpacity' in layer) (layer as import('leaflet').Path).setOpacity(0.15)
+        if ('setOpacity' in layer) (layer as import('leaflet').Path).setOpacity(0)
       })
     }
     else {
@@ -567,6 +593,10 @@ export function useGeoLeafletMap() {
 
   function setupRegionHover(mapInstance: import('leaflet').Map) {
     mapInstance.on('mousemove', (e) => {
+      if (hoveringCompanyMarker) {
+        clearRegionHover()
+        return
+      }
       const target = findHoverTarget(e.latlng)
       if (target?.kind === 'zone') setZoneHover(e.latlng)
       else if (target?.kind === 'city') setCityHover(target.feature, e.latlng)
@@ -586,12 +616,11 @@ export function useGeoLeafletMap() {
 
   function setupBlurOverlay(mapInstance: import('leaflet').Map) {
     const mapEl = mapInstance.getContainer()
-    const wrap = mapEl.parentElement
-    if (!wrap) return
 
     blurOverlayEl = document.createElement('div')
-    blurOverlayEl.className = 'gs-outside-blur'
+    blurOverlayEl.className = 'gs-base-wash'
     blurOverlayEl.style.backgroundColor = 'rgba(255, 255, 255, 0.14)'
+    blurOverlayEl.style.position = 'absolute'
     // 放在 Leaflet 容器内、瓦片之上、标记点之下，避免 backdrop-filter 模糊企业点
     blurOverlayEl.style.position = 'absolute'
     blurOverlayEl.style.inset = '0'
@@ -599,49 +628,7 @@ export function useGeoLeafletMap() {
     blurOverlayEl.style.pointerEvents = 'none'
     mapEl.appendChild(blurOverlayEl)
 
-    syncBlurOverlay = () => {
-      if (!blurOverlayEl || !map) return
-      const size = map.getSize()
-      if (!size.x || !size.y) return
-
-      const holeRings = getBlurHoleRings()
-      if (!holeRings.length) {
-        blurOverlayEl.style.maskImage = 'none'
-        blurOverlayEl.style.webkitMaskImage = 'none'
-        return
-      }
-
-      const outer = `M 0 0 H ${size.x} V ${size.y} H 0 Z`
-      const holes = holeRings.map((ring) => {
-        const pts = ring.map(([lng, lat]) => {
-          const p = map!.latLngToContainerPoint([lat, lng])
-          return `${p.x.toFixed(1)},${p.y.toFixed(1)}`
-        })
-        return `M ${pts.join(' L ')} Z`
-      }).join(' ')
-
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size.x}" height="${size.y}"><path fill="white" fill-rule="evenodd" d="${outer} ${holes}"/></svg>`
-      const maskUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
-      blurOverlayEl.style.maskImage = maskUrl
-      blurOverlayEl.style.webkitMaskImage = maskUrl
-      blurOverlayEl.style.maskSize = '100% 100%'
-    }
-
-    syncBlurOverlay()
-    const onMapViewChange = () => scheduleBlurSync()
-    mapInstance.on('move zoom zoomend resize viewreset moveend', onMapViewChange)
-
-    blurResizeObserver = new ResizeObserver(() => {
-      mapInstance.invalidateSize({ animate: false })
-      scheduleBlurSync()
-    })
-    blurResizeObserver.observe(mapEl)
-    blurResizeObserver.observe(wrap)
-
-    const teardownMapListeners = () => {
-      mapInstance.off('move zoom zoomend resize viewreset moveend', onMapViewChange)
-    }
-    ;(mapInstance as any)._gsBlurTeardown = teardownMapListeners
+    syncBlurOverlay = () => {}
   }
 
   function teardownOutsideBlur() {
@@ -658,8 +645,10 @@ export function useGeoLeafletMap() {
 
   function refreshMarkers(companies: CompanyRecord[]) {
     if (!map || !markerLayer || !L || !clusterLayer) return
+    latestCompanies = companies
     markerLayer.clearLayers()
     clusterLayer.clearLayers()
+    hoveringCompanyMarker = false
 
     const zoom = map.getZoom()
     const clusterThreshold = 11
@@ -709,10 +698,22 @@ export function useGeoLeafletMap() {
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
         const color = c.company_traded === 1 ? '#ef4444' : '#10b981'
         const marker = L.marker([lat, lng], {
-          icon: makeCompanyIcon(L, color, c.company_name),
+          icon: makeCompanyMarkerIcon(L, color, c.company_name, showCompanyLabels.value),
           pane: 'companyMarkerPane',
           riseOnHover: true,
           riseOffset: 800,
+        })
+        marker.bindTooltip(c.company_name, {
+          direction: 'top',
+          offset: [0, -14],
+          className: 'gs-company-name-tooltip',
+        })
+        marker.on('mouseover', () => {
+          hoveringCompanyMarker = true
+          clearRegionHover()
+        })
+        marker.on('mouseout', () => {
+          hoveringCompanyMarker = false
         })
         marker.on('click', (e) => {
           L!.DomEvent.stopPropagation(e)
@@ -797,8 +798,6 @@ export function useGeoLeafletMap() {
     provincePathsByName.clear()
     provinceFeatureByName.clear()
 
-    setupBlurOverlay(map)
-
     chinaProvincesLayer = L.geoJSON(
       { type: 'FeatureCollection', features: allProvinceFeatures } as GeoJSON.FeatureCollection,
       {
@@ -859,18 +858,18 @@ export function useGeoLeafletMap() {
       pane: 'boundaryPane',
       interactive: false,
       style: () => ({
-        color: '#a855f7',
-        weight: 1,
-        opacity: 0.9,
+        color: 'rgba(255,255,255,0.96)',
+        weight: 5,
+        opacity: 0.95,
         fill: false,
-        dashArray: '8 4',
+        dashArray: undefined as string | undefined,
       }),
     }).addTo(map)
 
     zoneBounds = zoneLayer.getBounds()
-    zoneLayer.bringToFront()
     boundaryLayer.bringToFront()
     hubeiCitiesLayer.bringToFront()
+    zoneLayer.bringToFront()
 
     setupRegionHover(map)
 
@@ -909,6 +908,7 @@ export function useGeoLeafletMap() {
     zoneLayer = null
     zoneBounds = null
     wuhanBounds = null
+    latestCompanies = []
     cityFeatures = []
     zoneFeatures = []
     otherProvinceFeatures = []
@@ -921,6 +921,7 @@ export function useGeoLeafletMap() {
     wuhanFeatureStored = null
     focusedCityFeature = null
     blurFocusMode = 'wuhan'
+    hoveringCompanyMarker = false
     mapReady.value = false
   }
 
@@ -966,16 +967,24 @@ export function useGeoLeafletMap() {
     scheduleBlurSync()
   }
 
+  function setCompanyLabelVisible(visible: boolean) {
+    showCompanyLabels.value = visible
+    if (!map) return
+    refreshMarkers(latestCompanies)
+  }
+
   return {
     mapContainerRef,
     mapReady,
     quickView,
+    showCompanyLabels,
     initMap,
     destroyMap,
     zoomIn,
     zoomOut,
     resetView,
     setQuickView,
+    setCompanyLabelVisible,
     invalidateSize,
   }
 }
