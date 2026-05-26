@@ -738,10 +738,10 @@ export function useGeoLeafletMap() {
 
     const [leaflet, region, zoneGcj02, zoneBoundary, hubeiCities] = await Promise.all([
       import('leaflet'),
-      $fetch<any>('/geo/region.json'),
+      $fetch<any>('/geo/region_gcj02.json'),
       $fetch<GeoJSON.FeatureCollection>('/geo/高新区范围_gcj02.json'),
       $fetch<GeoJSON.FeatureCollection>('/geo/高新区边界_gcj02.json'),
-      $fetch<any>('/geo/hubei-cities.json'),
+      $fetch<any>('/geo/hubei-cities_gcj02.json'),
     ])
 
     await import('leaflet/dist/leaflet.css')

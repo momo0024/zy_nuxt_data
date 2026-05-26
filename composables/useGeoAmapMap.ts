@@ -1,0 +1,863 @@
+import type { CompanyRecord } from '~/types/company'
+import { useGeoLeafletMap as useLeafletFallback, type RegionSelectPayload } from '~/composables/useGeoLeafletMap'
+
+const HIGHLIGHT_PROVINCE = '\u6e56\u5317\u7701'
+const HIGHLIGHT_CITY = '\u6b66\u6c49\u5e02'
+const ZONE_LABEL = '\u9ad8\u65b0\u533a'
+
+const WUHAN_CENTER: [number, number] = [30.5928, 114.3055]
+const WUHAN_ZOOM = 12
+const WUHAN_FIT_MAX_ZOOM = 13
+
+type BlurFocusMode = 'hubei' | 'wuhan' | 'zone' | 'city'
+
+type HoverTarget =
+  | { kind: 'zone' }
+  | { kind: 'city', feature: GeoJSON.Feature }
+  | { kind: 'province', feature: GeoJSON.Feature }
+
+type AMapLike = any
+
+declare global {
+  interface Window {
+    AMap?: AMapLike
+    _AMapSecurityConfig?: Record<string, string>
+    __amapPromise__?: Promise<AMapLike>
+  }
+}
+
+const HOVER_OUTLINE = {
+  strokeColor: '#ea580c',
+  strokeWeight: 4,
+  strokeOpacity: 1,
+  fillOpacity: 0,
+  fillColor: 'transparent',
+}
+
+function getCityStyle(
+  feature: GeoJSON.Feature | undefined,
+  hovered = false,
+  focusMode: BlurFocusMode = 'wuhan',
+) {
+  if (hovered) return { ...HOVER_OUTLINE }
+  if (focusMode === 'zone') {
+    return {
+      strokeColor: 'transparent',
+      strokeWeight: 0,
+      strokeOpacity: 0,
+      fillOpacity: 0,
+      fillColor: 'transparent',
+    }
+  }
+  const isWuhan = feature?.properties?.name === HIGHLIGHT_CITY
+  if (!isWuhan) {
+    return {
+      strokeColor: 'transparent',
+      strokeWeight: 0,
+      strokeOpacity: 0,
+      fillOpacity: 0,
+      fillColor: 'transparent',
+    }
+  }
+  return {
+    strokeColor: '#0891b2',
+    strokeWeight: 2.5,
+    strokeOpacity: 0.95,
+    fillOpacity: 0,
+    fillColor: 'transparent',
+  }
+}
+
+function getProvinceStyle(
+  _feature: GeoJSON.Feature | undefined,
+  hovered = false,
+  focusMode: BlurFocusMode = 'wuhan',
+) {
+  if (hovered) return { ...HOVER_OUTLINE }
+  if (focusMode === 'zone') {
+    return {
+      strokeColor: 'transparent',
+      strokeWeight: 0,
+      strokeOpacity: 0,
+      fillOpacity: 0,
+      fillColor: 'transparent',
+    }
+  }
+  return {
+    strokeColor: '#94a3b8',
+    strokeWeight: 1.2,
+    strokeOpacity: 0.85,
+    strokeStyle: 'dashed',
+    fillOpacity: 0,
+    fillColor: 'transparent',
+  }
+}
+
+function getZoneStyle(hovered = false, focusMode: BlurFocusMode = 'wuhan') {
+  if (hovered) {
+    return {
+      strokeColor: '#dc2626',
+      strokeWeight: 3,
+      strokeOpacity: 1,
+      fillOpacity: 0,
+      fillColor: 'transparent',
+    }
+  }
+  if (focusMode === 'zone') {
+    return {
+      strokeColor: '#ea580c',
+      strokeWeight: 2.75,
+      strokeOpacity: 0.98,
+      fillOpacity: 0,
+      fillColor: 'transparent',
+    }
+  }
+  return {
+    strokeColor: '#ea580c',
+    strokeWeight: 2.5,
+    strokeOpacity: 0.95,
+    fillOpacity: 0,
+    fillColor: 'transparent',
+  }
+}
+
+function outerRingsFromGeometry(geometry: GeoJSON.Geometry): number[][][] {
+  if (geometry.type === 'Polygon') return [geometry.coordinates[0]]
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates.map(p => p[0])
+  return []
+}
+
+function ringBBoxArea(ring: number[][]): number {
+  let minLng = Infinity
+  let maxLng = -Infinity
+  let minLat = Infinity
+  let maxLat = -Infinity
+  for (const [lng, lat] of ring) {
+    minLng = Math.min(minLng, lng)
+    maxLng = Math.max(maxLng, lng)
+    minLat = Math.min(minLat, lat)
+    maxLat = Math.max(maxLat, lat)
+  }
+  return (maxLng - minLng) * (maxLat - minLat)
+}
+
+function featureHitArea(feature: GeoJSON.Feature): number {
+  const geom = feature.geometry
+  if (!geom) return Infinity
+  const rings = outerRingsFromGeometry(geom)
+  if (!rings.length) return Infinity
+  return Math.min(...rings.map(ringBBoxArea))
+}
+
+function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0]
+    const yi = ring[i][1]
+    const xj = ring[j][0]
+    const yj = ring[j][1]
+    const intersect = ((yi > lat) !== (yj > lat))
+      && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)
+    if (intersect) inside = !inside
+  }
+  return inside
+}
+
+function pointInGeoJSON(lng: number, lat: number, geometry: GeoJSON.Geometry): boolean {
+  if (geometry.type === 'Polygon') {
+    const [outer, ...holes] = geometry.coordinates
+    if (!pointInRing(lng, lat, outer)) return false
+    return !holes.some(h => pointInRing(lng, lat, h))
+  }
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates.some((poly) => {
+      const [outer, ...holes] = poly
+      if (!pointInRing(lng, lat, outer)) return false
+      return !holes.some(h => pointInRing(lng, lat, h))
+    })
+  }
+  return false
+}
+
+function findFeatureAt(
+  latlng: { lat: number, lng: number },
+  features: GeoJSON.Feature[],
+): GeoJSON.Feature | null {
+  const hits = features.filter((f) => {
+    if (!f.geometry) return false
+    return pointInGeoJSON(latlng.lng, latlng.lat, f.geometry)
+  })
+  if (!hits.length) return null
+  if (hits.length === 1) return hits[0]
+  return hits.reduce((best, f) => (featureHitArea(f) < featureHitArea(best) ? f : best))
+}
+
+function filterCompaniesInZone(companies: CompanyRecord[], zone: GeoJSON.FeatureCollection): CompanyRecord[] {
+  const polys = zone.features.filter(f => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon')
+  if (!polys.length) return companies
+  return companies.filter(c => polys.some(f => pointInGeoJSON(c.company_longitude, c.company_latitude, f.geometry!)))
+}
+
+function bboxFromGeometry(geometry: GeoJSON.Geometry): [number, number, number, number] | null {
+  const rings = outerRingsFromGeometry(geometry)
+  if (!rings.length) return null
+  let minLng = Infinity
+  let maxLng = -Infinity
+  let minLat = Infinity
+  let maxLat = -Infinity
+  rings.flat().forEach(([lng, lat]) => {
+    minLng = Math.min(minLng, lng)
+    maxLng = Math.max(maxLng, lng)
+    minLat = Math.min(minLat, lat)
+    maxLat = Math.max(maxLat, lat)
+  })
+  return [minLng, minLat, maxLng, maxLat]
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function companyLabelHtml(color: string, name: string) {
+  const displayName = name.length > 12 ? `${name.slice(0, 12)}...` : name
+  return `<div class="gs-company-wrap">
+    <div class="gs-company-label">${escapeHtml(displayName)}</div>
+    <div class="gs-company-dot" style="background:${color}"></div>
+  </div>`
+}
+
+function companyDotHtml(color: string) {
+  return `<div class="gs-company-wrap gs-company-wrap-dot-only">
+    <div class="gs-company-dot" style="background:${color}"></div>
+  </div>`
+}
+
+function clusterBubbleHtml(count: number) {
+  return `<div class="gs-cluster-bubble">${count}</div>`
+}
+
+function loadAmap(key: string, securityCode: string) {
+  if (typeof window === 'undefined') return Promise.reject(new Error('AMap only runs in browser'))
+  if ((window as any).AMap) return Promise.resolve((window as any).AMap)
+  if ((window as any).__amapPromise__) return (window as any).__amapPromise__
+
+  if (securityCode) {
+    window._AMapSecurityConfig = { securityJsCode: securityCode }
+  }
+
+  window.__amapPromise__ = new Promise((resolve, reject) => {
+    const callbackName = `__amap_init_${Date.now()}`
+    ;(window as any)[callbackName] = () => {
+      resolve((window as any).AMap)
+      delete (window as any)[callbackName]
+    }
+
+    const script = document.createElement('script')
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}&callback=${callbackName}`
+    script.async = true
+    script.onerror = () => {
+      delete (window as any)[callbackName]
+      reject(new Error('Failed to load AMap JS API'))
+    }
+    document.head.appendChild(script)
+  })
+
+  return window.__amapPromise__
+}
+
+export function useGeoAmapMap() {
+  const config = useRuntimeConfig()
+  if (!config.public.amapKey) return useLeafletFallback()
+
+  const mapContainerRef = ref<HTMLDivElement>()
+  const mapReady = ref(false)
+  const quickView = ref<'zone' | 'wuhan' | null>(null)
+  const showCompanyLabels = ref(true)
+
+  let AMap: AMapLike | null = null
+  let map: any = null
+  let latestCompanies: CompanyRecord[] = []
+  let hoveringCompanyMarker = false
+
+  let zoneFeatures: GeoJSON.Feature[] = []
+  let cityFeatures: GeoJSON.Feature[] = []
+  let otherProvinceFeatures: GeoJSON.Feature[] = []
+  let hubeiFeatureStored: GeoJSON.Feature | null = null
+  let wuhanFeatureStored: GeoJSON.Feature | null = null
+  let blurFocusMode: BlurFocusMode = 'wuhan'
+  let hoveredRegion: string | null = null
+
+  const zonePolygons: any[] = []
+  const zoneBoundaryPolygons: any[] = []
+  const zoneBoundaryHaloPolygons: any[] = []
+  const cityPolygonsByAdcode = new Map<number, any[]>()
+  const provincePolygonsByName = new Map<string, any[]>()
+
+  let markerOverlays: any[] = []
+  let clusterOverlays: any[] = []
+  let regionHoverText: any = null
+  let companyHoverText: any = null
+
+  let onCompanyClick: ((c: CompanyRecord) => void) | undefined
+  let onRegionSelect: ((payload: RegionSelectPayload) => void) | undefined
+  let onBubbleClick: ((companies: CompanyRecord[], label: string) => void) | undefined
+
+  function clearOverlayList(list: any[]) {
+    list.forEach(overlay => overlay?.setMap?.(null))
+    list.length = 0
+  }
+
+  function createPolygonsForFeature(feature: GeoJSON.Feature, options: Record<string, any>) {
+    if (!AMap || !feature.geometry) return []
+    const makePolygon = (path: any) => new AMap.Polygon({
+      path,
+      bubble: false,
+      cursor: 'default',
+      fillColor: 'transparent',
+      fillOpacity: 0,
+      ...options,
+    })
+
+    if (feature.geometry.type === 'Polygon') {
+      return [makePolygon(feature.geometry.coordinates)]
+    }
+    if (feature.geometry.type === 'MultiPolygon') {
+      return feature.geometry.coordinates.map(coords => makePolygon(coords))
+    }
+    return []
+  }
+
+  function setPolygonsStyle(polygons: any[], style: Record<string, any>) {
+    polygons.forEach(p => p.setOptions(style))
+  }
+
+  function clearRegionHover() {
+    if (hoveredRegion === 'zone') {
+      setPolygonsStyle(zonePolygons, getZoneStyle(false, blurFocusMode))
+    }
+    else if (hoveredRegion?.startsWith('city-')) {
+      const adcode = Number(hoveredRegion.slice(5))
+      const polygons = cityPolygonsByAdcode.get(adcode) ?? []
+      const feature = cityFeatures.find(f => f.properties?.adcode === adcode)
+      setPolygonsStyle(polygons, getCityStyle(feature, false, blurFocusMode))
+    }
+    else if (hoveredRegion?.startsWith('province-')) {
+      const name = hoveredRegion.slice(9)
+      const polygons = provincePolygonsByName.get(name) ?? []
+      const feature = otherProvinceFeatures.find(f => f.properties?.name === name) || hubeiFeatureStored || undefined
+      setPolygonsStyle(polygons, getProvinceStyle(feature, false, blurFocusMode))
+    }
+    hoveredRegion = null
+    regionHoverText?.setMap?.(null)
+    regionHoverText = null
+  }
+
+  function showRegionTooltip(label: string, lng: number, lat: number) {
+    if (!AMap || !map) return
+    const position = [lng, lat]
+    if (!regionHoverText) {
+      regionHoverText = new AMap.Text({
+        text: label,
+        position,
+        anchor: 'bottom-center',
+        offset: new AMap.Pixel(0, -8),
+        style: {
+          background: 'rgba(255,255,255,0.95)',
+          border: '1px solid #ea580c',
+          color: '#c2410c',
+          fontSize: '11px',
+          fontWeight: '700',
+          padding: '2px 6px',
+          borderRadius: '3px',
+          whiteSpace: 'nowrap',
+        },
+      })
+    }
+    else {
+      regionHoverText.setText(label)
+      regionHoverText.setPosition(position)
+    }
+    regionHoverText.setMap(map)
+  }
+
+  function showCompanyHoverLabel(name: string, lng: number, lat: number) {
+    if (!AMap || !map || showCompanyLabels.value) return
+    if (!companyHoverText) {
+      companyHoverText = new AMap.Text({
+        text: name,
+        position: [lng, lat],
+        anchor: 'bottom-center',
+        offset: new AMap.Pixel(0, -14),
+        style: {
+          background: 'rgba(255,255,255,0.96)',
+          border: '1px solid rgba(226,232,240,0.9)',
+          color: '#0f172a',
+          fontSize: '11px',
+          fontWeight: '600',
+          padding: '2px 7px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 6px rgba(15,23,42,0.14)',
+          lineHeight: '1.35',
+          whiteSpace: 'nowrap',
+        },
+      })
+    }
+    else {
+      companyHoverText.setText(name)
+      companyHoverText.setPosition([lng, lat])
+    }
+    companyHoverText.setMap(map)
+  }
+
+  function hideCompanyHoverLabel() {
+    companyHoverText?.setMap?.(null)
+  }
+
+  function isInZone(latlng: { lat: number, lng: number }) {
+    return zoneFeatures.some(f => f.geometry && pointInGeoJSON(latlng.lng, latlng.lat, f.geometry))
+  }
+
+  function isInWuhan(latlng: { lat: number, lng: number }) {
+    return !!(wuhanFeatureStored?.geometry && pointInGeoJSON(latlng.lng, latlng.lat, wuhanFeatureStored.geometry))
+  }
+
+  function findHoverTarget(latlng: { lat: number, lng: number }): HoverTarget | null {
+    if (blurFocusMode === 'zone') {
+      if (isInZone(latlng)) return { kind: 'zone' }
+      const provinceHit = findFeatureAt(latlng, otherProvinceFeatures)
+      if (provinceHit) return { kind: 'province', feature: provinceHit }
+      return null
+    }
+
+    if (isInZone(latlng)) return { kind: 'zone' }
+    if (isInWuhan(latlng) && wuhanFeatureStored) return { kind: 'city', feature: wuhanFeatureStored }
+
+    if (hubeiFeatureStored?.geometry && pointInGeoJSON(latlng.lng, latlng.lat, hubeiFeatureStored.geometry)) {
+      return { kind: 'province', feature: hubeiFeatureStored }
+    }
+
+    const provinceHit = findFeatureAt(latlng, otherProvinceFeatures)
+    if (provinceHit) return { kind: 'province', feature: provinceHit }
+    return null
+  }
+
+  function applyFocusVisuals() {
+    cityPolygonsByAdcode.forEach((polygons, adcode) => {
+      const feature = cityFeatures.find(f => f.properties?.adcode === adcode)
+      setPolygonsStyle(polygons, getCityStyle(feature, false, blurFocusMode))
+    })
+
+    provincePolygonsByName.forEach((polygons, name) => {
+      const feature = otherProvinceFeatures.find(f => f.properties?.name === name) || hubeiFeatureStored || undefined
+      setPolygonsStyle(polygons, getProvinceStyle(feature, false, blurFocusMode))
+    })
+
+    setPolygonsStyle(zonePolygons, getZoneStyle(false, blurFocusMode))
+  }
+
+  function setZoneHover(latlng: { lng: number, lat: number }) {
+    if (hoveredRegion === 'zone') {
+      showRegionTooltip(ZONE_LABEL, latlng.lng, latlng.lat)
+      return
+    }
+    clearRegionHover()
+    hoveredRegion = 'zone'
+    setPolygonsStyle(zonePolygons, getZoneStyle(true, blurFocusMode))
+    showRegionTooltip(ZONE_LABEL, latlng.lng, latlng.lat)
+  }
+
+  function setCityHover(feature: GeoJSON.Feature, latlng: { lng: number, lat: number }) {
+    if (blurFocusMode === 'zone' || isInZone(latlng)) return
+    const adcode = feature.properties?.adcode as number
+    if (!adcode) return
+    const regionKey = `city-${adcode}`
+    if (hoveredRegion === regionKey) {
+      const name = feature.properties?.name as string
+      if (name) showRegionTooltip(name, latlng.lng, latlng.lat)
+      return
+    }
+    clearRegionHover()
+    hoveredRegion = regionKey
+    setPolygonsStyle(cityPolygonsByAdcode.get(adcode) ?? [], getCityStyle(feature, true, blurFocusMode))
+    const name = feature.properties?.name as string
+    if (name) showRegionTooltip(name, latlng.lng, latlng.lat)
+  }
+
+  function setProvinceHover(feature: GeoJSON.Feature, latlng: { lng: number, lat: number }) {
+    const name = feature.properties?.name as string
+    if (!name) return
+    const regionKey = `province-${name}`
+    if (hoveredRegion === regionKey) {
+      showRegionTooltip(name, latlng.lng, latlng.lat)
+      return
+    }
+    clearRegionHover()
+    hoveredRegion = regionKey
+    setPolygonsStyle(provincePolygonsByName.get(name) ?? [], getProvinceStyle(feature, true, blurFocusMode))
+    showRegionTooltip(name, latlng.lng, latlng.lat)
+  }
+
+  function setBlurFocus(mode: BlurFocusMode) {
+    blurFocusMode = mode
+    clearRegionHover()
+    applyFocusVisuals()
+  }
+
+  function focusZone() {
+    flyToZone()
+    onRegionSelect?.({ type: 'zone', name: ZONE_LABEL })
+  }
+
+  function handleRegionClick(latlng: { lng: number, lat: number }) {
+    const target = findHoverTarget({ lng: latlng.lng, lat: latlng.lat })
+    if (target?.kind === 'zone') {
+      focusZone()
+      return
+    }
+    if (target?.kind === 'city') {
+      const cityHit = target.feature
+      const adcode = cityHit.properties?.adcode as number
+      const name = cityHit.properties?.name as string
+      if (!adcode || !name) return
+      if (name === HIGHLIGHT_CITY) {
+        quickView.value = 'wuhan'
+        setBlurFocus('wuhan')
+      }
+      else {
+        quickView.value = null
+        setBlurFocus('city')
+      }
+      fitOverlays(cityPolygonsByAdcode.get(adcode) ?? [], name === HIGHLIGHT_CITY ? WUHAN_FIT_MAX_ZOOM : 9)
+      onRegionSelect?.({ type: 'city', name, adcode })
+    }
+  }
+
+  function fitOverlays(overlays: any[], maxZoom: number) {
+    if (!map || !overlays.length) return
+    map.setFitView(overlays, false, [48, 48, 48, 48], maxZoom)
+  }
+
+  function flyToZone() {
+    quickView.value = 'zone'
+    setBlurFocus('zone')
+    fitOverlays(zonePolygons.concat(zoneBoundaryPolygons), 13)
+  }
+
+  function flyToWuhan() {
+    quickView.value = 'wuhan'
+    setBlurFocus('wuhan')
+    const wuhanFeature = cityFeatures.find(f => f.properties?.name === HIGHLIGHT_CITY)
+    const adcode = wuhanFeature?.properties?.adcode as number | undefined
+    const overlays = adcode ? cityPolygonsByAdcode.get(adcode) ?? [] : []
+    if (overlays.length) fitOverlays(overlays, WUHAN_FIT_MAX_ZOOM)
+    else map?.setZoomAndCenter?.(WUHAN_ZOOM, [WUHAN_CENTER[1], WUHAN_CENTER[0]])
+  }
+
+  function resetMarkers() {
+    markerOverlays.forEach(marker => marker.setMap(null))
+    clusterOverlays.forEach(marker => marker.setMap(null))
+    markerOverlays = []
+    clusterOverlays = []
+    hideCompanyHoverLabel()
+  }
+
+  function refreshMarkers(companies: CompanyRecord[]) {
+    if (!map || !AMap) return
+    latestCompanies = companies
+    resetMarkers()
+    hoveringCompanyMarker = false
+
+    const zoom = map.getZoom()
+    const clusterThreshold = 11
+
+    if (zoom < clusterThreshold) {
+      const gridSize = 0.02
+      const grid = new Map<string, { lat: number, lng: number, count: number, companies: CompanyRecord[] }>()
+
+      companies.forEach((c) => {
+        const gridX = Math.floor(c.company_longitude / gridSize)
+        const gridY = Math.floor(c.company_latitude / gridSize)
+        const key = `${gridX},${gridY}`
+        const existing = grid.get(key)
+        if (existing) {
+          existing.count++
+          existing.lat = (existing.lat * (existing.count - 1) + c.company_latitude) / existing.count
+          existing.lng = (existing.lng * (existing.count - 1) + c.company_longitude) / existing.count
+          existing.companies.push(c)
+        }
+        else {
+          grid.set(key, { lat: c.company_latitude, lng: c.company_longitude, count: 1, companies: [c] })
+        }
+      })
+
+      grid.forEach((cell) => {
+        const marker = new AMap.Marker({
+          position: [cell.lng, cell.lat],
+          content: clusterBubbleHtml(cell.count),
+          offset: new AMap.Pixel(-11, -11),
+          zIndex: 650,
+        })
+        marker.on('click', () => {
+          const districtName = cell.companies[0]?.conpany_district || cell.companies[0]?.company_city || '\u9644\u8fd1'
+          onBubbleClick?.(cell.companies, `${districtName} / ${cell.count} \u5bb6\u4f01\u4e1a`)
+        })
+        marker.setMap(map)
+        clusterOverlays.push(marker)
+      })
+      return
+    }
+
+    companies.forEach((c) => {
+      const lat = c.company_latitude
+      const lng = c.company_longitude
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+      const color = c.company_traded === 1 ? '#ef4444' : '#10b981'
+      const marker = new AMap.Marker({
+        position: [lng, lat],
+        content: showCompanyLabels.value ? companyLabelHtml(color, c.company_name) : companyDotHtml(color),
+        offset: new AMap.Pixel(showCompanyLabels.value ? -66 : -8, showCompanyLabels.value ? -36 : -8),
+        zIndex: 650,
+      })
+
+      marker.on('mouseover', () => {
+        hoveringCompanyMarker = true
+        clearRegionHover()
+        showCompanyHoverLabel(c.company_name, lng, lat)
+      })
+      marker.on('mouseout', () => {
+        hoveringCompanyMarker = false
+        hideCompanyHoverLabel()
+      })
+      marker.on('click', () => {
+        onCompanyClick?.(c)
+      })
+
+      marker.setMap(map)
+      markerOverlays.push(marker)
+    })
+  }
+
+  function setupMapEvents() {
+    if (!map) return
+    map.on('mousemove', (e: any) => {
+      if (hoveringCompanyMarker) {
+        clearRegionHover()
+        return
+      }
+      const lng = e.lnglat.getLng()
+      const lat = e.lnglat.getLat()
+      const target = findHoverTarget({ lng, lat })
+      if (target?.kind === 'zone') setZoneHover({ lng, lat })
+      else if (target?.kind === 'city') setCityHover(target.feature, { lng, lat })
+      else if (target?.kind === 'province') setProvinceHover(target.feature, { lng, lat })
+      else clearRegionHover()
+    })
+
+    map.on('mouseout', () => {
+      if (!hoveringCompanyMarker) clearRegionHover()
+    })
+
+    map.on('click', (e: any) => {
+      if (hoveringCompanyMarker) return
+      handleRegionClick({ lng: e.lnglat.getLng(), lat: e.lnglat.getLat() })
+    })
+
+    map.on('dblclick', (e: any) => {
+      const lng = e.lnglat.getLng()
+      const lat = e.lnglat.getLat()
+      if (!isInZone({ lng, lat })) return
+      focusZone()
+    })
+
+    map.on('zoomend', () => refreshMarkers(latestCompanies))
+  }
+
+  async function initMap(
+    companies: CompanyRecord[],
+    handlers?: {
+      onCompany?: (c: CompanyRecord) => void
+      onRegion?: (payload: RegionSelectPayload) => void
+      onBubble?: (companies: CompanyRecord[], label: string) => void
+    },
+  ): Promise<CompanyRecord[]> {
+    onCompanyClick = handlers?.onCompany
+    onRegionSelect = handlers?.onRegion
+    onBubbleClick = handlers?.onBubble
+
+    if (!mapContainerRef.value) return []
+
+    AMap = await loadAmap(config.public.amapKey, config.public.amapSecurityCode)
+
+    const [region, zoneGcj02, zoneBoundary, hubeiCities] = await Promise.all([
+      $fetch<any>('/geo/region_gcj02.json'),
+      $fetch<GeoJSON.FeatureCollection>('/geo/\u9ad8\u65b0\u533a\u8303\u56f4gcj02.json'),
+      $fetch<GeoJSON.FeatureCollection>('/geo/\u9ad8\u65b0\u533a\u8fb9\u754cgcj02.json'),
+      $fetch<any>('/geo/hubei-cities_gcj02.json'),
+    ])
+
+    const zoneCompanies = filterCompaniesInZone(companies, zoneGcj02)
+
+    map = new AMap.Map(mapContainerRef.value, {
+      center: [WUHAN_CENTER[1], WUHAN_CENTER[0]],
+      zoom: WUHAN_ZOOM,
+      mapStyle: 'amap://styles/normal',
+      viewMode: '2D',
+      showLabel: true,
+      showBuildingBlock: false,
+      isHotspot: false,
+      features: ['bg', 'road', 'point'],
+      zooms: [3, 18],
+      resizeEnable: true,
+      doubleClickZoom: false,
+    })
+
+    zoneFeatures = (zoneGcj02 as GeoJSON.FeatureCollection).features ?? []
+    cityFeatures = ((hubeiCities as GeoJSON.FeatureCollection).features ?? [])
+      .filter((f: GeoJSON.Feature) => f.properties?.name === HIGHLIGHT_CITY)
+    hubeiFeatureStored = (region.features.find((f: any) => f.properties?.name === HIGHLIGHT_PROVINCE) as GeoJSON.Feature | undefined) ?? null
+    wuhanFeatureStored = cityFeatures.find(f => f.properties?.name === HIGHLIGHT_CITY) ?? null
+    otherProvinceFeatures = (region.features as GeoJSON.Feature[]).filter(f => f.properties?.name !== HIGHLIGHT_PROVINCE)
+
+    provincePolygonsByName.clear()
+    otherProvinceFeatures.forEach((feature) => {
+      const name = feature.properties?.name as string
+      if (!name) return
+      const polygons = createPolygonsForFeature(feature, {
+        zIndex: 430,
+        ...getProvinceStyle(feature, false, blurFocusMode),
+      })
+      polygons.forEach((polygon) => polygon.setMap(map))
+      provincePolygonsByName.set(name, polygons)
+    })
+
+    cityPolygonsByAdcode.clear()
+    cityFeatures.forEach((feature) => {
+      const adcode = feature.properties?.adcode as number
+      if (!adcode) return
+      const polygons = createPolygonsForFeature(feature, {
+        zIndex: 450,
+        ...getCityStyle(feature, false, blurFocusMode),
+      })
+      polygons.forEach((polygon) => polygon.setMap(map))
+      cityPolygonsByAdcode.set(adcode, polygons)
+    })
+
+    clearOverlayList(zonePolygons)
+    zoneFeatures.forEach((feature) => {
+      createPolygonsForFeature(feature, {
+        zIndex: 520,
+        ...getZoneStyle(false, blurFocusMode),
+      }).forEach((polygon) => {
+        polygon.setMap(map)
+        zonePolygons.push(polygon)
+      })
+    })
+
+    clearOverlayList(zoneBoundaryHaloPolygons)
+    ;(zoneBoundary as GeoJSON.FeatureCollection).features.forEach((feature) => {
+      createPolygonsForFeature(feature, {
+        zIndex: 530,
+        strokeColor: 'rgba(255,255,255,0.96)',
+        strokeWeight: 5,
+        strokeOpacity: 0.95,
+      }).forEach((polygon) => {
+        polygon.setMap(map)
+        zoneBoundaryHaloPolygons.push(polygon)
+      })
+    })
+
+    clearOverlayList(zoneBoundaryPolygons)
+    ;(zoneBoundary as GeoJSON.FeatureCollection).features.forEach((feature) => {
+      createPolygonsForFeature(feature, {
+        zIndex: 540,
+        strokeColor: '#ea580c',
+        strokeWeight: 2.5,
+        strokeOpacity: 0.95,
+      }).forEach((polygon) => {
+        polygon.setMap(map)
+        zoneBoundaryPolygons.push(polygon)
+      })
+    })
+
+    setupMapEvents()
+    refreshMarkers(zoneCompanies)
+    setBlurFocus('zone')
+    flyToZone()
+    quickView.value = 'zone'
+
+    mapReady.value = true
+    return zoneCompanies
+  }
+
+  function destroyMap() {
+    clearRegionHover()
+    hideCompanyHoverLabel()
+    clearOverlayList(markerOverlays)
+    clearOverlayList(clusterOverlays)
+    clearOverlayList(zonePolygons)
+    clearOverlayList(zoneBoundaryPolygons)
+    clearOverlayList(zoneBoundaryHaloPolygons)
+    provincePolygonsByName.forEach(polygons => clearOverlayList(polygons))
+    cityPolygonsByAdcode.forEach(polygons => clearOverlayList(polygons))
+    provincePolygonsByName.clear()
+    cityPolygonsByAdcode.clear()
+    map?.destroy?.()
+    map = null
+    AMap = null
+    latestCompanies = []
+    zoneFeatures = []
+    cityFeatures = []
+    otherProvinceFeatures = []
+    hubeiFeatureStored = null
+    wuhanFeatureStored = null
+    blurFocusMode = 'wuhan'
+    hoveringCompanyMarker = false
+    mapReady.value = false
+  }
+
+  function zoomIn() { map?.zoomIn?.() }
+  function zoomOut() { map?.zoomOut?.() }
+
+  function resetView() {
+    flyToWuhan()
+  }
+
+  function setQuickView(view: 'zone' | 'wuhan') {
+    if (quickView.value === view) {
+      flyToWuhan()
+      return
+    }
+    if (view === 'zone') flyToZone()
+    else flyToWuhan()
+  }
+
+  function invalidateSize() {
+    map?.resize?.()
+  }
+
+  function setCompanyLabelVisible(visible: boolean) {
+    showCompanyLabels.value = visible
+    hideCompanyHoverLabel()
+    refreshMarkers(latestCompanies)
+  }
+
+  return {
+    mapContainerRef,
+    mapReady,
+    quickView,
+    showCompanyLabels,
+    initMap,
+    destroyMap,
+    zoomIn,
+    zoomOut,
+    resetView,
+    setQuickView,
+    setCompanyLabelVisible,
+    invalidateSize,
+  }
+}
