@@ -153,7 +153,7 @@
               <input
                 v-model="companySearch"
                 class="cp-search-input"
-                placeholder="搜索名称 / 产品 / 区域…"
+                placeholder="搜索名称 / 信用代码 / 产品 / 区域…"
               />
             </div>
 
@@ -384,6 +384,7 @@ const filteredCompanies = computed(() => {
     if (!q) return bubble
     return bubble.filter(c =>
       c.company_name.toLowerCase().includes(q)
+      || (c.company_credit_code || '').toLowerCase().includes(q)
       || (c.product_type || '').toLowerCase().includes(q)
       || (c.chain_name || '').toLowerCase().includes(q)
       || (c.product || '').toLowerCase().includes(q)
@@ -400,6 +401,7 @@ const filteredCompanies = computed(() => {
   if (q) {
     list = list.filter(c =>
       c.company_name.toLowerCase().includes(q)
+      || (c.company_credit_code || '').toLowerCase().includes(q)
       || (c.product_type || '').toLowerCase().includes(q)
       || (c.chain_name || '').toLowerCase().includes(q)
       || (c.product || '').toLowerCase().includes(q)

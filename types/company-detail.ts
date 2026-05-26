@@ -119,3 +119,53 @@ export async function fetchBasicInfo(code: string): Promise<BasicInfoItem[] | nu
   })
   return parseRaw<BasicInfoItem[]>(res.data as unknown as RawResponse)
 }
+
+/* ─────────────── 荣誉资质/上榜榜单/政府奖励 ─────────────── */
+export interface HonorTable {
+  column: string[]
+  data: string[][]
+}
+
+export interface HonorsParsed {
+  honor: HonorTable | null       // info_type 9 荣誉资质
+  ranking: HonorTable | null     // info_type 11 上榜榜单
+  govAward: HonorTable | null    // info_type 12 政府奖励项目
+}
+
+export async function fetchHonors(code: string): Promise<HonorsParsed> {
+  const res = await request.get<RawResponse['data']>('/company/honors/', {
+    params: { code },
+  })
+  const raw = res.data as unknown as RawResponse
+  const result: HonorsParsed = { honor: null, ranking: null, govAward: null }
+  if (raw.code !== 0 || !raw.data?.length) return result
+
+  for (const item of raw.data) {
+    try {
+      const parsed = JSON.parse(item.info_txt) as HonorTable
+      if (item.info_type === 9) result.honor = parsed
+      else if (item.info_type === 11) result.ranking = parsed
+      else if (item.info_type === 12) result.govAward = parsed
+    } catch { /* ignore */ }
+  }
+  return result
+}
+
+/* ─────────────── 集成电路布图 ─────────────── */
+export interface LayoutTable {
+  column: string[]
+  data: string[][]
+}
+
+export async function fetchLayout(code: string): Promise<LayoutTable | null> {
+  const res = await request.get<RawResponse['data']>('/company/layout', {
+    params: { code },
+  })
+  const raw = res.data as unknown as RawResponse
+  if (raw.code !== 0 || !raw.data?.length) return null
+  try {
+    return JSON.parse(raw.data[0].info_txt) as LayoutTable
+  } catch {
+    return null
+  }
+}

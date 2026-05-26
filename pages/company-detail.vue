@@ -477,6 +477,208 @@
             </div>
           </section>
 
+          <!-- 荣誉资质 -->
+          <section id="section-honor" class="cd-section" v-if="isSectionVisible('honor')">
+            <h2 class="cd-section-title">
+              <UIcon name="i-lucide-award" class="size-5" />
+              荣誉资质
+              <span v-if="sectionLoading.honor" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="honorsData?.honor?.data?.length">
+              <div class="cd-honor-grid">
+                <div v-for="(row, ri) in honorPageData.items" :key="`h-${ri}`" class="cd-honor-card">
+                  <div class="cd-honor-badge" :class="getHonorLevelStyle(row[2])">
+                    <UIcon name="i-lucide-award" class="size-4" />
+                    <span>{{ row[2] || '-' }}</span>
+                  </div>
+                  <div class="cd-honor-body">
+                    <div class="cd-honor-name">{{ row[0] || '-' }}</div>
+                    <div class="cd-honor-details">
+                      <span v-if="row[1] && row[1] !== '-'" class="cd-honor-detail-item">
+                        <UIcon name="i-lucide-hash" class="size-3" />
+                        许可证号: {{ row[1] }}
+                      </span>
+                      <span class="cd-honor-detail-item">
+                        <UIcon name="i-lucide-radio" class="size-3" />
+                        {{ row[3] || '-' }}
+                      </span>
+                      <span class="cd-honor-detail-item">
+                        <UIcon name="i-lucide-calendar" class="size-3" />
+                        发布: {{ row[4] || '-' }}
+                      </span>
+                      <span class="cd-honor-detail-item">
+                        <UIcon name="i-lucide-clock" class="size-3" />
+                        有效期至: {{ row[5] || '-' }}
+                      </span>
+                    </div>
+                    <div class="cd-honor-footer">
+                      <span class="cd-honor-status" :class="row[6] === '有效' ? 'cd-status-active' : 'cd-status-inactive'">{{ row[6] || '-' }}</span>
+                      <span class="cd-honor-org">{{ row[7] || '-' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="honorPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="honorPage <= 1" @click="honorPage--">&lt;</button>
+                <span class="cd-page-info">{{ honorPage }} / {{ honorPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="honorPage >= honorPageData.totalPages" @click="honorPage++">&gt;</button>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.honor" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 上榜榜单 -->
+          <section id="section-ranking" class="cd-section" v-if="isSectionVisible('ranking')">
+            <h2 class="cd-section-title">
+              <UIcon name="i-lucide-trophy" class="size-5" />
+              上榜榜单
+              <span v-if="sectionLoading.ranking" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="honorsData?.ranking?.data?.length">
+              <div class="cd-ranking-timeline">
+                <div v-for="group in rankingYearGroups" :key="group.year" class="cd-ranking-year-group">
+                  <div class="cd-ranking-year-label">{{ group.year }}年</div>
+                  <div class="cd-ranking-items">
+                    <div v-for="(row, ri) in group.items" :key="`r-${group.year}-${ri}`" class="cd-ranking-card">
+                      <div class="cd-ranking-rank">
+                        <span class="cd-ranking-rank-num">{{ formatRanking(row[1]) }}</span>
+                      </div>
+                      <div class="cd-ranking-body">
+                        <div class="cd-ranking-name">{{ row[0] || '-' }}</div>
+                        <div class="cd-ranking-meta">
+                          <span class="cd-ranking-publisher">
+                            <UIcon name="i-lucide-building" class="size-3" />
+                            {{ row[3] || '-' }}
+                          </span>
+                          <span class="cd-ranking-date">
+                            <UIcon name="i-lucide-calendar" class="size-3" />
+                            {{ row[2] || '-' }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.ranking" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 政府奖励项目 -->
+          <section id="section-govAward" class="cd-section" v-if="isSectionVisible('govAward')">
+            <h2 class="cd-section-title">
+              <UIcon name="i-lucide-gift" class="size-5" />
+              政府奖励项目
+              <span v-if="sectionLoading.govAward" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="honorsData?.govAward?.data?.length">
+              <div class="cd-gov-grid">
+                <div v-for="(row, ri) in govAwardPageData.items" :key="`g-${ri}`" class="cd-gov-card">
+                  <div class="cd-gov-ribbon" :class="getHonorLevelStyle(row[2])">
+                    <UIcon name="i-lucide-ribbon" class="size-3.5" />
+                    {{ row[2] || '-' }}
+                  </div>
+                  <div class="cd-gov-body">
+                    <div class="cd-gov-name">{{ row[0] || '-' }}</div>
+                    <div class="cd-gov-project">{{ row[1] || '-' }}</div>
+                    <div class="cd-gov-meta">
+                      <span class="cd-gov-year">
+                        <UIcon name="i-lucide-calendar" class="size-3" />
+                        {{ row[3] || '-' }}年
+                      </span>
+                      <span v-if="row[5] && row[5] !== '-'" class="cd-gov-person">
+                        <UIcon name="i-lucide-user" class="size-3" />
+                        {{ row[5] }}
+                      </span>
+                    </div>
+                    <div class="cd-gov-date">发布时间: {{ row[4] || '-' }}</div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="govAwardPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="govAwardPage <= 1" @click="govAwardPage--">&lt;</button>
+                <span class="cd-page-info">{{ govAwardPage }} / {{ govAwardPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="govAwardPage >= govAwardPageData.totalPages" @click="govAwardPage++">&gt;</button>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.govAward" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 集成电路布图 -->
+          <section id="section-layout" class="cd-section" v-if="isSectionVisible('layout')">
+            <h2 class="cd-section-title">
+              <UIcon name="i-lucide-circuit-board" class="size-5" />
+              集成电路布图
+              <span v-if="sectionLoading.layout" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="layoutData?.data?.length">
+              <div class="cd-layout-grid">
+                <div v-for="(row, ri) in layoutPageData.items" :key="`l-${ri}`" class="cd-layout-card">
+                  <div class="cd-layout-header">
+                    <div class="cd-layout-chip-icon">
+                      <UIcon name="i-lucide-cpu" class="size-5" />
+                    </div>
+                    <div class="cd-layout-reg">{{ row[4] || '-' }}</div>
+                  </div>
+                  <div class="cd-layout-name">{{ row[0] || '-' }}</div>
+                  <div class="cd-layout-tags" v-if="row[1] !== '-' || row[2] !== '-' || row[3] !== '-'">
+                    <span v-if="row[1] && row[1] !== '-'" class="cd-layout-tag cd-layout-tag-struct">{{ row[1] }}</span>
+                    <span v-if="row[2] && row[2] !== '-'" class="cd-layout-tag cd-layout-tag-tech">{{ row[2] }}</span>
+                    <span v-if="row[3] && row[3] !== '-'" class="cd-layout-tag cd-layout-tag-func">{{ row[3] }}</span>
+                  </div>
+                  <div class="cd-layout-info">
+                    <div class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">创作人</span>
+                      <span class="cd-layout-info-value">{{ row[8] || '-' }}</span>
+                    </div>
+                    <div class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">权利人</span>
+                      <span class="cd-layout-info-value">{{ row[9] || '-' }}</span>
+                    </div>
+                    <div class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">申请日期</span>
+                      <span class="cd-layout-info-value">{{ row[5] || '-' }}</span>
+                    </div>
+                    <div class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">公告日期</span>
+                      <span class="cd-layout-info-value">{{ row[6] || '-' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="layoutPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="layoutPage <= 1" @click="layoutPage--">&lt;</button>
+                <span class="cd-page-info">{{ layoutPage }} / {{ layoutPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="layoutPage >= layoutPageData.totalPages" @click="layoutPage++">&gt;</button>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.layout" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
           <!-- 联系方式 -->
           <section id="section-contact" class="cd-section" v-if="isSectionVisible('contact')">
             <h2 class="cd-section-title">
@@ -537,6 +739,8 @@ import type {
   ChangeRecordTable,
   PatentTable,
   RegisterItem,
+  HonorsParsed,
+  LayoutTable,
 } from '~/types/company-detail'
 import {
   fetchShareholders,
@@ -545,6 +749,8 @@ import {
   fetchPatents,
   fetchRegisterInfo,
   fetchBasicInfo,
+  fetchHonors,
+  fetchLayout,
   type BasicInfoItem,
 } from '~/types/company-detail'
 import {
@@ -591,6 +797,16 @@ const changeRecordData = ref<ChangeRecordTable | null>(null)
 const patentData = ref<PatentTable | null>(null)
 const registerInfo = ref<RegisterItem[] | null>(null)
 const basicInfo = ref<BasicInfoItem[] | null>(null)
+const honorsData = ref<HonorsParsed | null>(null)
+const layoutData = ref<LayoutTable | null>(null)
+const honorPage = ref(1)
+const rankingPage = ref(1)
+const govAwardPage = ref(1)
+const layoutPage = ref(1)
+const HONOR_PAGE_SIZE = 6
+const RANKING_PAGE_SIZE = 8
+const GOV_AWARD_PAGE_SIZE = 6
+const LAYOUT_PAGE_SIZE = 6
 
 // 各接口独立加载状态
 const sectionLoading = ref({
@@ -600,6 +816,10 @@ const sectionLoading = ref({
   patent: false,
   register: false,
   basic: false,
+  honor: false,
+  ranking: false,
+  govAward: false,
+  layout: false,
 })
 
 async function loadCompanyDetail() {
@@ -649,6 +869,12 @@ async function loadCompanyDetail() {
       fetchRegisterInfo(code).then(r => { registerInfo.value = r }).catch(() => {}).finally(() => { sectionLoading.value.register = false })
       sectionLoading.value.basic = true
       fetchBasicInfo(code).then(r => { basicInfo.value = r }).catch(() => {}).finally(() => { sectionLoading.value.basic = false })
+      sectionLoading.value.honor = true
+      sectionLoading.value.ranking = true
+      sectionLoading.value.govAward = true
+      fetchHonors(code).then(r => { honorsData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.honor = false; sectionLoading.value.ranking = false; sectionLoading.value.govAward = false })
+      sectionLoading.value.layout = true
+      fetchLayout(code).then(r => { layoutData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.layout = false })
     }
   } catch (e) {
     console.error('[company-detail] 加载企业详情失败', e)
@@ -950,6 +1176,75 @@ const shareholderLatestPage = computed(() => {
   return { items: data.slice(start, start + SHAREHOLDER_PAGE_SIZE), total, totalPages }
 })
 
+// 荣誉资质分页
+const honorPageData = computed(() => {
+  const data = honorsData.value?.honor?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / HONOR_PAGE_SIZE)
+  const start = (honorPage.value - 1) * HONOR_PAGE_SIZE
+  return { items: data.slice(start, start + HONOR_PAGE_SIZE), total, totalPages }
+})
+
+// 上榜榜单分页
+const rankingPageData = computed(() => {
+  const data = honorsData.value?.ranking?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / RANKING_PAGE_SIZE)
+  const start = (rankingPage.value - 1) * RANKING_PAGE_SIZE
+  return { items: data.slice(start, start + RANKING_PAGE_SIZE), total, totalPages }
+})
+
+// 政府奖励分页
+const govAwardPageData = computed(() => {
+  const data = honorsData.value?.govAward?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / GOV_AWARD_PAGE_SIZE)
+  const start = (govAwardPage.value - 1) * GOV_AWARD_PAGE_SIZE
+  return { items: data.slice(start, start + GOV_AWARD_PAGE_SIZE), total, totalPages }
+})
+
+// 集成电路布图分页
+const layoutPageData = computed(() => {
+  const data = layoutData.value?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / LAYOUT_PAGE_SIZE)
+  const start = (layoutPage.value - 1) * LAYOUT_PAGE_SIZE
+  return { items: data.slice(start, start + LAYOUT_PAGE_SIZE), total, totalPages }
+})
+
+// 上榜榜单年份分组
+const rankingYearGroups = computed(() => {
+  const data = honorsData.value?.ranking
+  if (!data?.data?.length) return []
+  const groups: Record<string, string[][]> = {}
+  data.data.forEach((row: string[]) => {
+    const dateStr = row[2] || ''
+    const year = dateStr.slice(0, 4) || '未知'
+    if (!groups[year]) groups[year] = []
+    groups[year].push(row)
+  })
+  return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0])).map(([year, items]) => ({ year, items }))
+})
+
+// 荣誉级别颜色映射
+function getHonorLevelStyle(level: string) {
+  if (level.includes('国家级')) return 'cd-level-national'
+  if (level.includes('省级') || level.includes('省')) return 'cd-level-provincial'
+  if (level.includes('市级') || level.includes('市')) return 'cd-level-city'
+  return 'cd-level-other'
+}
+
+// 排名数字格式化
+function formatRanking(rank: string) {
+  const n = parseInt(rank)
+  if (isNaN(n)) return rank
+  return `#${rank}`
+}
+
 const trademarkStatusOption = computed(() => {
   const data = trademarkData.value?.data
   if (!data?.length) return null
@@ -1081,7 +1376,7 @@ const changeTypeOption = computed(() => {
 })
 
 const activeMenu = ref('business')
-const expandedGroups = ref(new Set(['company-info', 'business-info', 'contact-info', 'detail-info']))
+const expandedGroups = ref(new Set(['company-info', 'business-info', 'contact-info', 'detail-info', 'honor-info', 'layout-info']))
 const contentRef = ref<HTMLElement | null>(null)
 const isScrolling = ref(false)
 
@@ -1104,6 +1399,24 @@ const menuGroups = [
       { key: 'trademark', label: '商标信息', icon: 'i-lucide-stamp' },
       { key: 'patent', label: '专利信息', icon: 'i-lucide-lightbulb' },
       { key: 'change', label: '变更记录', icon: 'i-lucide-history' },
+    ],
+  },
+  {
+    key: 'honor-info',
+    label: '荣誉资质',
+    icon: 'i-lucide-award',
+    children: [
+      { key: 'honor', label: '荣誉资质', icon: 'i-lucide-award' },
+      { key: 'ranking', label: '上榜榜单', icon: 'i-lucide-trophy' },
+      { key: 'govAward', label: '政府奖励', icon: 'i-lucide-gift' },
+    ],
+  },
+  {
+    key: 'layout-info',
+    label: '产业布局',
+    icon: 'i-lucide-circuit-board',
+    children: [
+      { key: 'layout', label: '集成电路布图', icon: 'i-lucide-circuit-board' },
     ],
   },
   {
@@ -1157,6 +1470,14 @@ function hasSectionData(key: string): boolean {
       return !!(patentData.value?.data?.length)
     case 'change':
       return !!(changeRecordData.value?.data?.length)
+    case 'honor':
+      return !!(honorsData.value?.honor?.data?.length)
+    case 'ranking':
+      return !!(honorsData.value?.ranking?.data?.length)
+    case 'govAward':
+      return !!(honorsData.value?.govAward?.data?.length)
+    case 'layout':
+      return !!(layoutData.value?.data?.length)
     default:
       return true
   }
@@ -1174,6 +1495,10 @@ function isSectionVisible(key: string): boolean {
     trademark: 'trademark',
     patent: 'patent',
     change: 'changeRecord',
+    honor: 'honor',
+    ranking: 'ranking',
+    govAward: 'govAward',
+    layout: 'layout',
   }
   const loadKey = loadingMap[key]
   if (loadKey) {
@@ -2151,6 +2476,451 @@ function getIndustryBg(industry: string): string {
   color: var(--text-muted);
   min-width: 60px;
   text-align: center;
+}
+
+/* ── 荣誉资质样式 ───────────────────────── */
+.cd-honor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 14px;
+}
+.cd-honor-card {
+  display: flex;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.cd-honor-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  border-radius: 4px 0 0 4px;
+}
+.cd-honor-card:hover {
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+}
+.cd-honor-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: 56px;
+  flex-shrink: 0;
+}
+.cd-level-national {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+.cd-level-provincial {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+.cd-level-city {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+.cd-level-other {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.cd-honor-body {
+  flex: 1;
+  min-width: 0;
+}
+.cd-honor-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+.cd-honor-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.cd-honor-detail-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.cd-honor-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cd-honor-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+.cd-status-active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+.cd-status-inactive {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+.cd-honor-org {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── 上榜榜单样式 ───────────────────────── */
+.cd-ranking-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.cd-ranking-year-group {
+  position: relative;
+}
+.cd-ranking-year-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  padding: 4px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  letter-spacing: 0.02em;
+}
+.cd-ranking-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  margin-left: 8px;
+}
+.cd-ranking-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  transition: all 0.2s;
+  position: relative;
+}
+.cd-ranking-card::before {
+  content: '';
+  position: absolute;
+  left: -17px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.cd-ranking-card:hover {
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+.cd-ranking-rank {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-weight: 800;
+}
+.cd-ranking-rank-num {
+  font-size: 15px;
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+.cd-ranking-body {
+  flex: 1;
+  min-width: 0;
+}
+.cd-ranking-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.cd-ranking-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.cd-ranking-publisher,
+.cd-ranking-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── 政府奖励样式 ───────────────────────── */
+.cd-gov-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 14px;
+}
+.cd-gov-card {
+  position: relative;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+.cd-gov-card:hover {
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.cd-gov-ribbon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 14px 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 0 14px 0 10px;
+}
+.cd-gov-ribbon.cd-level-national {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #78350f;
+  border: none;
+}
+.cd-gov-ribbon.cd-level-provincial {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  color: #fff;
+  border: none;
+}
+.cd-gov-ribbon.cd-level-city {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #fff;
+  border: none;
+}
+.cd-gov-ribbon.cd-level-other {
+  background: linear-gradient(135deg, #9ca3af, #6b7280);
+  color: #fff;
+  border: none;
+}
+.cd-gov-body {
+  padding-top: 4px;
+}
+.cd-gov-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 6px;
+  padding-right: 60px;
+  line-height: 1.4;
+}
+.cd-gov-project {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cd-gov-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.cd-gov-year,
+.cd-gov-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cd-gov-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* ── 集成电路布图样式 ───────────────────────── */
+.cd-layout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+.cd-layout-card {
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.cd-layout-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6);
+  border-radius: 14px 14px 0 0;
+}
+.cd-layout-card:hover {
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.3);
+  transform: translateY(-1px);
+}
+.cd-layout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.cd-layout-chip-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+  color: #fff;
+  flex-shrink: 0;
+}
+.cd-layout-reg {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0891b2;
+  background: rgba(6, 182, 212, 0.1);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+}
+.cd-layout-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 10px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cd-layout-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.cd-layout-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.cd-layout-tag-struct {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+.cd-layout-tag-tech {
+  background: rgba(6, 182, 212, 0.1);
+  color: #0891b2;
+}
+.cd-layout-tag-func {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+.cd-layout-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cd-layout-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cd-layout-info-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 56px;
+  flex-shrink: 0;
+}
+.cd-layout-info-value {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 新模块响应式 ────────────────────────── */
+@media (max-width: 768px) {
+  .cd-honor-grid {
+    grid-template-columns: 1fr;
+  }
+  .cd-gov-grid {
+    grid-template-columns: 1fr;
+  }
+  .cd-layout-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 </style>
