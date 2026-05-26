@@ -137,6 +137,13 @@
                 {{ bizScopeExpanded ? '收起' : '展开全部' }}
               </button>
             </div>
+
+            <div v-if="company.product && company.product !== '-'" class="cd-desc-card">
+              <h3 class="cd-desc-card-title">经营产品</h3>
+              <div class="cd-product-list">
+                <span v-for="(p, pi) in company.product.split(/[、,，;；]/).filter(s => s.trim())" :key="pi" class="cd-product-tag">{{ p.trim() }}</span>
+              </div>
+            </div>
             </template>
             <div v-else class="cd-empty">
               <div class="cd-empty-divider"></div>
@@ -427,9 +434,9 @@
               </span>
             </h2>
             <template v-if="changeRecordData?.data?.length">
-              <!-- 变更趋势图 -->
+              <!-- 变更次数图 -->
               <div v-if="changeTrendOption" class="cd-sub-section">
-                <h3 class="cd-sub-title">变更趋势</h3>
+                <h3 class="cd-sub-title">变更次数</h3>
                 <ClientOnly>
                   <VChart
                     :option="changeTrendOption"
@@ -490,32 +497,28 @@
               <div class="cd-honor-grid">
                 <div v-for="(row, ri) in honorPageData.items" :key="`h-${ri}`" class="cd-honor-card">
                   <div class="cd-honor-badge" :class="getHonorLevelStyle(row[2])">
-                    <UIcon name="i-lucide-award" class="size-4" />
+                    <UIcon name="i-lucide-award" class="size-3" />
                     <span>{{ row[2] || '-' }}</span>
                   </div>
                   <div class="cd-honor-body">
                     <div class="cd-honor-name">{{ row[0] || '-' }}</div>
                     <div class="cd-honor-details">
                       <span v-if="row[1] && row[1] !== '-'" class="cd-honor-detail-item">
-                        <UIcon name="i-lucide-hash" class="size-3" />
                         许可证号: {{ row[1] }}
                       </span>
-                      <span class="cd-honor-detail-item">
-                        <UIcon name="i-lucide-radio" class="size-3" />
-                        {{ row[3] || '-' }}
+                      <span v-if="row[3] && row[3] !== '-'" class="cd-honor-detail-item">
+                        公布状态: {{ row[3] }}
                       </span>
-                      <span class="cd-honor-detail-item">
-                        <UIcon name="i-lucide-calendar" class="size-3" />
-                        发布: {{ row[4] || '-' }}
+                      <span v-if="row[4] && row[4] !== '-'" class="cd-honor-detail-item">
+                        发布日期: {{ row[4] }}
                       </span>
-                      <span class="cd-honor-detail-item">
-                        <UIcon name="i-lucide-clock" class="size-3" />
-                        有效期至: {{ row[5] || '-' }}
+                      <span v-if="row[5] && row[5] !== '-'" class="cd-honor-detail-item">
+                        有效期至: {{ row[5] }}
                       </span>
                     </div>
                     <div class="cd-honor-footer">
-                      <span class="cd-honor-status" :class="row[6] === '有效' ? 'cd-status-active' : 'cd-status-inactive'">{{ row[6] || '-' }}</span>
-                      <span class="cd-honor-org">{{ row[7] || '-' }}</span>
+                      <span v-if="row[6] && row[6] !== '-'" class="cd-honor-status" :class="row[6] === '有效' ? 'cd-status-active' : 'cd-status-inactive'">{{ row[6] }}</span>
+                      <span v-if="row[7] && row[7] !== '-'" class="cd-honor-org">发布单位: {{ row[7] }}</span>
                     </div>
                   </div>
                 </div>
@@ -552,15 +555,15 @@
                         <span class="cd-ranking-rank-num">{{ formatRanking(row[1]) }}</span>
                       </div>
                       <div class="cd-ranking-body">
-                        <div class="cd-ranking-name">{{ row[0] || '-' }}</div>
+                        <div class="cd-ranking-name"><span class="cd-ranking-label">榜单名称</span>{{ row[0] || '-' }}</div>
                         <div class="cd-ranking-meta">
                           <span class="cd-ranking-publisher">
                             <UIcon name="i-lucide-building" class="size-3" />
-                            {{ row[3] || '-' }}
+                            发布方: {{ row[3] || '-' }}
                           </span>
                           <span class="cd-ranking-date">
                             <UIcon name="i-lucide-calendar" class="size-3" />
-                            {{ row[2] || '-' }}
+                            发布日期: {{ row[2] || '-' }}
                           </span>
                         </div>
                       </div>
@@ -598,11 +601,11 @@
                     <div class="cd-gov-meta">
                       <span class="cd-gov-year">
                         <UIcon name="i-lucide-calendar" class="size-3" />
-                        {{ row[3] || '-' }}年
+                        奖励年份: {{ row[3] || '-' }}年
                       </span>
                       <span v-if="row[5] && row[5] !== '-'" class="cd-gov-person">
                         <UIcon name="i-lucide-user" class="size-3" />
-                        {{ row[5] }}
+                        相关人员: {{ row[5] }}
                       </span>
                     </div>
                     <div class="cd-gov-date">发布时间: {{ row[4] || '-' }}</div>
@@ -638,30 +641,54 @@
                     <div class="cd-layout-chip-icon">
                       <UIcon name="i-lucide-cpu" class="size-5" />
                     </div>
+                    <div class="cd-layout-name">{{ row[0] || '-' }}</div>
                     <div class="cd-layout-reg">{{ row[4] || '-' }}</div>
                   </div>
-                  <div class="cd-layout-name">{{ row[0] || '-' }}</div>
                   <div class="cd-layout-tags" v-if="row[1] !== '-' || row[2] !== '-' || row[3] !== '-'">
                     <span v-if="row[1] && row[1] !== '-'" class="cd-layout-tag cd-layout-tag-struct">{{ row[1] }}</span>
                     <span v-if="row[2] && row[2] !== '-'" class="cd-layout-tag cd-layout-tag-tech">{{ row[2] }}</span>
                     <span v-if="row[3] && row[3] !== '-'" class="cd-layout-tag cd-layout-tag-func">{{ row[3] }}</span>
                   </div>
                   <div class="cd-layout-info">
-                    <div class="cd-layout-info-row">
+                    <div v-if="row[8] && row[8] !== '-'" class="cd-layout-info-row">
                       <span class="cd-layout-info-label">创作人</span>
-                      <span class="cd-layout-info-value">{{ row[8] || '-' }}</span>
+                      <span class="cd-layout-info-value">{{ row[8] }}</span>
                     </div>
-                    <div class="cd-layout-info-row">
+                    <div v-if="row[9] && row[9] !== '-'" class="cd-layout-info-row">
                       <span class="cd-layout-info-label">权利人</span>
-                      <span class="cd-layout-info-value">{{ row[9] || '-' }}</span>
+                      <span class="cd-layout-info-value">{{ row[9] }}</span>
                     </div>
-                    <div class="cd-layout-info-row">
+                    <div v-if="row[5] && row[5] !== '-'" class="cd-layout-info-row">
                       <span class="cd-layout-info-label">申请日期</span>
-                      <span class="cd-layout-info-value">{{ row[5] || '-' }}</span>
+                      <span class="cd-layout-info-value">{{ row[5] }}</span>
                     </div>
-                    <div class="cd-layout-info-row">
+                    <div v-if="row[6] && row[6] !== '-'" class="cd-layout-info-row">
                       <span class="cd-layout-info-label">公告日期</span>
-                      <span class="cd-layout-info-value">{{ row[6] || '-' }}</span>
+                      <span class="cd-layout-info-value">{{ row[6] }}</span>
+                    </div>
+                    <div v-if="row[7] && row[7] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">公告号</span>
+                      <span class="cd-layout-info-value">{{ row[7] }}</span>
+                    </div>
+                    <div v-if="row[10] && row[10] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">代理机构</span>
+                      <span class="cd-layout-info-value">{{ row[10] }}</span>
+                    </div>
+                    <div v-if="row[11] && row[11] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">代理人</span>
+                      <span class="cd-layout-info-value">{{ row[11] }}</span>
+                    </div>
+                    <div v-if="row[12] && row[12] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">创作完成日期</span>
+                      <span class="cd-layout-info-value">{{ row[12] }}</span>
+                    </div>
+                    <div v-if="row[13] && row[13] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">首次商业利用日</span>
+                      <span class="cd-layout-info-value">{{ row[13] }}</span>
+                    </div>
+                    <div v-if="row[14] && row[14] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">保护期届满日</span>
+                      <span class="cd-layout-info-value">{{ row[14] }}</span>
                     </div>
                   </div>
                 </div>
@@ -1242,7 +1269,7 @@ function getHonorLevelStyle(level: string) {
 function formatRanking(rank: string) {
   const n = parseInt(rank)
   if (isNaN(n)) return rank
-  return `#${rank}`
+  return `第${rank}名`
 }
 
 const trademarkStatusOption = computed(() => {
@@ -1960,6 +1987,29 @@ function getIndustryBg(industry: string): string {
   text-decoration: underline;
 }
 
+.cd-product-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cd-product-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  padding: 4px 12px;
+  border-radius: 6px;
+  line-height: 1.4;
+  transition: all 0.15s;
+}
+.cd-product-tag:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
 .cd-info-table {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -2485,25 +2535,13 @@ function getIndustryBg(industry: string): string {
   gap: 14px;
 }
 .cd-honor-card {
-  display: flex;
-  gap: 16px;
+  position: relative;
   padding: 18px 20px;
   background: var(--surface);
   border: 1px solid var(--border-light);
   border-radius: 14px;
   transition: all 0.2s;
-  position: relative;
   overflow: hidden;
-}
-.cd-honor-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, #6366f1, #8b5cf6);
-  border-radius: 4px 0 0 4px;
 }
 .cd-honor-card:hover {
   box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
@@ -2511,18 +2549,18 @@ function getIndustryBg(industry: string): string {
   transform: translateY(-1px);
 }
 .cd-honor-badge {
+  position: absolute;
+  top: 0;
+  left: 4px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 11px;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 0 0 8px 0;
+  font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
-  min-width: 56px;
-  flex-shrink: 0;
+  line-height: 1.4;
 }
 .cd-level-national {
   background: linear-gradient(135deg, #fef3c7, #fde68a);
@@ -2547,12 +2585,14 @@ function getIndustryBg(industry: string): string {
 .cd-honor-body {
   flex: 1;
   min-width: 0;
+  padding-top: 4px;
 }
 .cd-honor-name {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-strong);
   margin-bottom: 10px;
+  margin-top: 16px;
   line-height: 1.4;
 }
 .cd-honor-details {
@@ -2683,6 +2723,17 @@ function getIndustryBg(industry: string): string {
   margin-bottom: 6px;
   line-height: 1.4;
 }
+.cd-ranking-label {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
 .cd-ranking-meta {
   display: flex;
   align-items: center;
@@ -2805,16 +2856,6 @@ function getIndustryBg(industry: string): string {
   position: relative;
   overflow: hidden;
 }
-.cd-layout-card::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6);
-  border-radius: 14px 14px 0 0;
-}
 .cd-layout-card:hover {
   box-shadow: 0 4px 16px rgba(6, 182, 212, 0.1);
   border-color: rgba(6, 182, 212, 0.3);
@@ -2823,13 +2864,14 @@ function getIndustryBg(industry: string): string {
 .cd-layout-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 10px;
 }
 .cd-layout-chip-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2845,17 +2887,17 @@ function getIndustryBg(industry: string): string {
   padding: 3px 10px;
   border-radius: 6px;
   font-family: 'Courier New', monospace;
+  flex-shrink: 0;
 }
 .cd-layout-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-strong);
-  margin-bottom: 10px;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.4;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 .cd-layout-tags {
   display: flex;
