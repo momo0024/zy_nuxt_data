@@ -641,8 +641,8 @@
                     <div class="cd-layout-chip-icon">
                       <UIcon name="i-lucide-cpu" class="size-5" />
                     </div>
-                    <div class="cd-layout-name">{{ row[0] || '-' }}</div>
-                    <div class="cd-layout-reg">{{ row[4] || '-' }}</div>
+                    <div class="cd-layout-name" :title="row[0] || '-'">{{ row[0] || '-' }}</div>
+                    <div class="cd-layout-reg" :title="row[4] || '-'">{{ row[4] || '-' }}</div>
                   </div>
                   <div class="cd-layout-tags" v-if="row[1] !== '-' || row[2] !== '-' || row[3] !== '-'">
                     <span v-if="row[1] && row[1] !== '-'" class="cd-layout-tag cd-layout-tag-struct">{{ row[1] }}</span>
@@ -947,15 +947,19 @@ const shareholderChartOption = computed(() => {
   const nameIdx = 0 // 股东名称通常是第一列
 
   const pieData = latest.data.map((row: string[]) => {
-    const name = row[nameIdx]?.length > 12 ? row[nameIdx].slice(0, 12) + '...' : row[nameIdx]
+    const fullName = row[nameIdx] || '-'
+    const name = fullName.length > 12 ? fullName.slice(0, 12) + '...' : fullName
     const ratio = parseFloat(row[ratioIdx]) || 0
-    return { name, value: ratio }
+    return { name, fullName, value: ratio }
   }).filter((d: { value: number }) => d.value > 0)
 
   if (pieData.length === 0) return null
 
   return {
-    tooltip: { trigger: 'item' as const, formatter: '{b}: {c}%' },
+    tooltip: { trigger: 'item' as const, formatter: (params: any) => {
+      const fullName = params.data?.fullName || params.name
+      return `${fullName}: ${params.value}%`
+    } },
     legend: { show: false },
     series: [{
       type: 'pie' as const,
@@ -984,9 +988,10 @@ const shareholderTreeOption = computed(() => {
     const columns = latest.column
     const ratioIdx = columns.findIndex((c: string) => c.includes('持股比例') || c.includes('持股'))
     const shareholderChildren = latest.data.map((row: string[]) => {
-      const name = row[0]?.length > 10 ? row[0].slice(0, 10) + '…' : row[0]
+      const fullName = row[0] || '-'
+      const name = fullName.length > 14 ? fullName.slice(0, 14) + '…' : fullName
       const ratio = ratioIdx >= 0 ? parseFloat(row[ratioIdx]) || 0 : 0
-      return { name: `${name}${ratio > 0 ? ` ${ratio}%` : ''}`, value: ratio }
+      return { name: `${name}${ratio > 0 ? ` ${ratio}%` : ''}`, fullName, value: ratio }
     })
     children.push({ name: '股东', children: shareholderChildren, symbolSize: 12, itemStyle: { color: '#8b5cf6', borderColor: '#8b5cf6', borderWidth: 2 } })
   }
@@ -1003,9 +1008,10 @@ const shareholderTreeOption = computed(() => {
 
   return {
     tooltip: { trigger: 'item' as const, triggerOn: 'mousemove', formatter: (params: any) => {
-      const name = params.data?.name || ''
+      const fullName = params.data?.fullName || params.data?.name || ''
       const value = params.data?.value
-      return value > 1 ? `${name}<br/>持股比例: ${value}%` : name
+      if (value > 1) return `${fullName}<br/>持股比例: ${value}%`
+      return fullName
     } },
     series: [{
       type: 'tree' as const,
@@ -1088,7 +1094,7 @@ const memberGraphOption = computed(() => {
   members.data.forEach((row: string[], i: number) => {
     const name = row[0] || '-'
     const title = row[1] || ''
-    const nodeName = name.length > 5 ? name.slice(0, 5) + '…' : name
+    const nodeName = name.length > 8 ? name.slice(0, 8) + '…' : name
     const color = memberColorPalette[i % memberColorPalette.length]
     const angle = (Math.PI * 2 * i) / memberCount - Math.PI / 2
     const isLong = i % 2 === 0
@@ -1286,12 +1292,18 @@ const trademarkStatusOption = computed(() => {
     statusMap.set(status, (statusMap.get(status) || 0) + 1)
   })
 
-  const chartData = Array.from(statusMap.entries()).map(([name, value]) => ({ name, value }))
+  const chartData = Array.from(statusMap.entries()).map(([name, value]) => {
+    const shortName = name.length > 8 ? name.slice(0, 8) + '…' : name
+    return { name: shortName, fullName: name, value }
+  })
   if (chartData.length <= 1) return null
 
   return {
-    tooltip: { trigger: 'item' as const },
-    legend: { bottom: 0, textStyle: { fontSize: 11 } },
+    tooltip: { trigger: 'item' as const, formatter: (params: any) => {
+      const fullName = params.data?.fullName || params.name
+      return `${fullName}: ${params.value}项`
+    } },
+    legend: { bottom: 0, textStyle: { fontSize: 11 }, type: 'scroll' as const },
     series: [{
       type: 'pie' as const,
       radius: ['40%', '65%'],
@@ -1373,21 +1385,25 @@ const changeTypeOption = computed(() => {
   if (!data?.length) return null
 
   const typeMap = new Map<string, number>()
+  const typeFullMap = new Map<string, string>()
   data.forEach((row: string[]) => {
     const type = row[0] || '未知'
-    // 简化类型名称
     const shortType = type.length > 10 ? type.slice(0, 10) + '…' : type
     typeMap.set(shortType, (typeMap.get(shortType) || 0) + 1)
+    if (!typeFullMap.has(shortType)) typeFullMap.set(shortType, type)
   })
 
   const chartData = Array.from(typeMap.entries())
     .sort((a, b) => b[1] - a[1])
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, value]) => ({ name, fullName: typeFullMap.get(name) || name, value }))
 
   if (chartData.length <= 1) return null
 
   return {
-    tooltip: { trigger: 'item' as const },
+    tooltip: { trigger: 'item' as const, formatter: (params: any) => {
+      const fullName = params.data?.fullName || params.name
+      return `${fullName}<br/>${params.value}次`
+    } },
     legend: { bottom: 0, textStyle: { fontSize: 11 }, type: 'scroll' as const },
     series: [{
       type: 'pie' as const,
@@ -2276,7 +2292,7 @@ function getIndustryBg(industry: string): string {
 }
 .cd-tree-chart {
   width: 100%;
-  height: 420px;
+  height: 500px;
 }
 .cd-member-graph {
   width: 100%;

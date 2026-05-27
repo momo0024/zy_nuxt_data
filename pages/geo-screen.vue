@@ -3,7 +3,7 @@
     <div ref="screenRef" class="geo-screen" :class="{ 'geo-fullscreen': isFullscreen }">
 
       <!-- ── 顶部工具栏 ────────────────────────────── -->
-      <div class="gs-toolbar">
+      <div class="gs-toolbar" @click="closeMenus">
         <div class="gs-toolbar-left">
           <span class="gs-title-icon">
             <UIcon name="i-lucide-map-pin" class="size-[15px]" />
@@ -14,6 +14,30 @@
           </span>
         </div>
         <div class="gs-toolbar-right">
+          <!-- 区域选择下拉 -->
+          <div class="gs-area-select" @click.stop>
+            <button class="gs-area-btn" @click="showAreaDropdown = !showAreaDropdown">
+              <UIcon :name="areaOptions.find(a => a.value === selectedAreaView)?.icon || 'i-lucide-locate-fixed'" class="size-3.5" />
+              <span>{{ areaOptions.find(a => a.value === selectedAreaView)?.label }}</span>
+              <UIcon name="i-lucide-chevron-down" class="size-3" />
+            </button>
+            <Transition name="gs-dropdown">
+              <div v-if="showAreaDropdown" class="gs-dropdown">
+                <button
+                  v-for="opt in areaOptions"
+                  :key="opt.value"
+                  class="gs-dropdown-item"
+                  :class="{ 'gs-dropdown-active': selectedAreaView === opt.value }"
+                  @click="handleAreaChange(opt.value); showAreaDropdown = false"
+                >
+                  <UIcon :name="opt.icon" class="size-3.5" />
+                  <span>{{ opt.label }}</span>
+                  <UIcon v-if="selectedAreaView === opt.value" name="i-lucide-check" class="size-3 gs-dropdown-check" />
+                </button>
+              </div>
+            </Transition>
+          </div>
+
           <div class="gs-btn-group">
             <button class="gs-tool-btn" title="缩小" @click="zoomOut">
               <UIcon name="i-lucide-minus" class="size-3.5" />
@@ -25,24 +49,30 @@
               <UIcon name="i-lucide-rotate-ccw" class="size-3.5" />
             </button>
           </div>
-          <div class="gs-quick-btns">
-            <button
-              class="gs-quick-btn"
-              :class="{ 'gs-quick-active': quickView === 'zone' }"
-              @click="setQuickView('zone')"
-            >
-              <UIcon name="i-lucide-locate-fixed" class="size-3.5" />
-              高新区
+
+          <!-- 主题切换 -->
+          <div class="gs-theme-wrap" @click.stop>
+            <button class="gs-tool-btn" title="地图主题" @click="toggleThemeMenu">
+              <UIcon :name="themeOptions.find(t => t.value === currentTheme)?.icon || 'i-lucide-map'" class="size-3.5" />
             </button>
-            <button
-              class="gs-quick-btn"
-              :class="{ 'gs-quick-active': quickView === 'wuhan' }"
-              @click="setQuickView('wuhan')"
-            >
-              <UIcon name="i-lucide-building" class="size-3.5" />
-              武汉市
-            </button>
+            <Transition name="gs-dropdown">
+              <div v-if="showThemeMenu" class="gs-dropdown gs-dropdown-right">
+                <div class="gs-dropdown-header">地图主题</div>
+                <button
+                  v-for="opt in themeOptions"
+                  :key="opt.value"
+                  class="gs-dropdown-item"
+                  :class="{ 'gs-dropdown-active': currentTheme === opt.value }"
+                  @click="selectTheme(opt.value)"
+                >
+                  <UIcon :name="opt.icon" class="size-3.5" />
+                  <span>{{ opt.label }}</span>
+                  <UIcon v-if="currentTheme === opt.value" name="i-lucide-check" class="size-3 gs-dropdown-check" />
+                </button>
+              </div>
+            </Transition>
           </div>
+
           <button class="gs-tool-btn gs-fullscreen-btn" :title="isFullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
             <UIcon :name="isFullscreen ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'" class="size-3.5" />
           </button>
@@ -240,21 +270,21 @@
                 <div class="cd-metric">
                   <UIcon name="i-lucide-landmark" class="size-[18px] text-primary flex-shrink-0" />
                   <div>
-                    <div class="cd-metric-val">{{ detailCompany.company_registered_capital }}</div>
+                    <div class="cd-metric-val" :title="detailCompany.company_registered_capital">{{ detailCompany.company_registered_capital }}</div>
                     <div class="cd-metric-lbl">注册资本</div>
                   </div>
                 </div>
                 <div class="cd-metric">
                   <UIcon name="i-lucide-map-pin" class="size-[18px] text-warning flex-shrink-0" />
                   <div>
-                    <div class="cd-metric-val">{{ detailCompany.company_city }} · {{ detailCompany.conpany_district || '' }}</div>
+                    <div class="cd-metric-val" :title="`${detailCompany.company_city} · ${detailCompany.conpany_district || ''}`">{{ detailCompany.company_city }} · {{ detailCompany.conpany_district || '' }}</div>
                     <div class="cd-metric-lbl">所在区域</div>
                   </div>
                 </div>
                 <div class="cd-metric">
                   <UIcon name="i-lucide-activity" class="size-[18px] text-success flex-shrink-0" />
                   <div>
-                    <div class="cd-metric-val">{{ detailCompany.company_business_status }}</div>
+                    <div class="cd-metric-val" :title="detailCompany.company_business_status">{{ detailCompany.company_business_status }}</div>
                     <div class="cd-metric-lbl">经营状态</div>
                   </div>
                 </div>
@@ -328,6 +358,7 @@ import {
   getIndustryColor,
   useGeoLeafletMap,
   type RegionSelectPayload,
+  type MapTheme,
 } from '~/composables/useGeoLeafletMap'
 
 definePageMeta({ middleware: 'auth' })
@@ -337,6 +368,7 @@ const {
   mapReady,
   quickView,
   showCompanyLabels,
+  currentTheme,
   initMap,
   destroyMap,
   zoomIn,
@@ -344,6 +376,7 @@ const {
   resetView,
   setQuickView,
   setCompanyLabelVisible,
+  setMapTheme,
   invalidateSize,
 } = useGeoLeafletMap()
 
@@ -360,6 +393,20 @@ const bubbleLabel = ref('')
 const pageSize = 500
 const companyTotal = ref(0)
 const scopeExpanded = ref(false)
+const selectedAreaView = ref<'zone' | 'wuhan'>('zone')
+const showThemeMenu = ref(false)
+const showAreaDropdown = ref(false)
+
+const themeOptions: { value: MapTheme, label: string, icon: string }[] = [
+  { value: 'standard', label: '标准', icon: 'i-lucide-map' },
+  { value: 'dark', label: '暗色', icon: 'i-lucide-moon' },
+  { value: 'satellite', label: '卫星', icon: 'i-lucide-satellite' },
+]
+
+const areaOptions = [
+  { value: 'zone' as const, label: '高新区', icon: 'i-lucide-locate-fixed' },
+  { value: 'wuhan' as const, label: '武汉市', icon: 'i-lucide-building' },
+]
 const scopeNeedExpand = computed(() => {
   if (!detailCompany.value?.company_business_scope) return false
   const text = detailCompany.value.company_business_scope
@@ -367,6 +414,26 @@ const scopeNeedExpand = computed(() => {
 })
 
 const listedCount = computed(() => allCompanies.value.filter(c => c.company_traded === 1).length)
+
+function handleAreaChange(val: 'zone' | 'wuhan') {
+  selectedAreaView.value = val
+  setQuickView(val)
+}
+
+function toggleThemeMenu() {
+  showThemeMenu.value = !showThemeMenu.value
+  showAreaDropdown.value = false
+}
+
+function selectTheme(theme: MapTheme) {
+  setMapTheme(theme)
+  showThemeMenu.value = false
+}
+
+function closeMenus() {
+  showThemeMenu.value = false
+  showAreaDropdown.value = false
+}
 
 const panelTitle = computed(() => {
   if (bubbleLabel.value) return bubbleLabel.value
@@ -471,6 +538,8 @@ function onFsChange() {
 
 function onRegionSelect(payload: RegionSelectPayload) {
   selectedRegion.value = payload
+  if (payload.type === 'zone') selectedAreaView.value = 'zone'
+  else if (payload.name === '武汉市') selectedAreaView.value = 'wuhan'
   bubbleCompanies.value = null
   bubbleLabel.value = ''
   panelOpen.value = true
@@ -491,6 +560,7 @@ function resetPanel() {
   bubbleCompanies.value = null
   bubbleLabel.value = ''
   selectedRegion.value = null
+  selectedAreaView.value = 'zone'
   companySearch.value = ''
   nextTick(() => invalidateSize())
 }
@@ -619,12 +689,11 @@ function closeDetail() {
   background: #fff;
 }
 
-/* ── 快速视图按钮 ────────────────────────────────────── */
-.gs-quick-btns {
-  display: flex;
-  gap: 6px;
+/* ── 区域选择下拉 ────────────────────────────────────── */
+.gs-area-select {
+  position: relative;
 }
-.gs-quick-btn {
+.gs-area-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -634,19 +703,81 @@ function closeDetail() {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  color: #64748b;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.gs-quick-btn:hover {
-  background: #f8fafc;
-  color: #2563eb;
-  border-color: #93c5fd;
-}
-.gs-quick-btn.gs-quick-active {
-  background: #eff6ff;
   color: #1d4ed8;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.gs-area-btn:hover {
+  background: #eff6ff;
   border-color: #3b82f6;
+}
+
+/* ── 下拉菜单通用 ────────────────────────────────────── */
+.gs-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 140px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 999;
+}
+.gs-dropdown-right {
+  left: auto;
+  right: 0;
+}
+.gs-dropdown-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 10px 4px;
+}
+.gs-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #334155;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.gs-dropdown-item:hover {
+  background: #f1f5f9;
+}
+.gs-dropdown-active {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+.gs-dropdown-check {
+  margin-left: auto;
+  color: #3b82f6;
+}
+
+/* ── 主题切换 ────────────────────────────────────── */
+.gs-theme-wrap {
+  position: relative;
+}
+
+/* ── 下拉动画 ────────────────────────────────────── */
+.gs-dropdown-enter-active,
+.gs-dropdown-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
+}
+.gs-dropdown-enter-from,
+.gs-dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 /* ── Leaflet 高德地图 ───────────────────────────────────── */
@@ -1296,10 +1427,6 @@ function closeDetail() {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-}
-.cd-metric:hover .cd-metric-val {
-  white-space: nowrap;
-  overflow: visible;
 }
 .cd-metric-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 .cd-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }

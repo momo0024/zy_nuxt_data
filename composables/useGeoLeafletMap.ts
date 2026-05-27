@@ -272,14 +272,26 @@ function makeCompanyMarkerIcon(
   return makeCompanyIcon(L, color, name)
 }
 
+export type MapTheme = 'standard' | 'dark' | 'satellite'
+
+const TILE_URLS: Record<MapTheme, string> = {
+  standard: 'https://webrd0{s}.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scale=1&style=8',
+  dark: 'https://webrd0{s}.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scale=1&style=8',
+  satellite: 'https://webst0{s}.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&style=6',
+}
+
+const TILE_SUBDOMAINS = ['1', '2', '3', '4']
+
 export function useGeoLeafletMap() {
   const mapContainerRef = ref<HTMLDivElement>()
   const mapReady = ref(false)
   const quickView = ref<'zone' | 'wuhan' | null>(null)
   const showCompanyLabels = ref(true)
+  const currentTheme = ref<MapTheme>('standard')
 
   let L: typeof import('leaflet') | null = null
   let map: import('leaflet').Map | null = null
+  let tileLayer: import('leaflet').TileLayer | null = null
   let markerLayer: import('leaflet').LayerGroup | null = null
   let clusterLayer: import('leaflet').LayerGroup | null = null
   let latestCompanies: CompanyRecord[] = []
@@ -764,10 +776,10 @@ export function useGeoLeafletMap() {
       zoomDelta: 0.5,
     })
 
-    L.tileLayer(
-      'https://webrd0{s}.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scale=1&style=8',
+    tileLayer = L.tileLayer(
+      TILE_URLS.standard,
       {
-        subdomains: ['1', '2', '3', '4'],
+        subdomains: TILE_SUBDOMAINS,
         maxZoom: 18,
       },
     ).addTo(map)
@@ -973,11 +985,60 @@ export function useGeoLeafletMap() {
     refreshMarkers(latestCompanies)
   }
 
+  function setMapTheme(theme: MapTheme) {
+    if (!L || !map) return
+    currentTheme.value = theme
+
+    // 暗色主题：复用标准瓦片 + CSS滤镜反转实现暗色效果
+    if (tileLayer) map.removeLayer(tileLayer)
+    const tileUrl = theme === 'satellite' ? TILE_URLS.satellite : TILE_URLS.standard
+    tileLayer = L.tileLayer(tileUrl, {
+      subdomains: TILE_SUBDOMAINS,
+      maxZoom: 18,
+    }).addTo(map)
+    tileLayer.bringToBack()
+
+    // 对瓦片层应用/移除暗色滤镜
+    const tilePane = map.getPane('tilePane')
+    if (tilePane) {
+      if (theme === 'dark') {
+        tilePane.style.filter = 'invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.92)'
+      } else {
+        tilePane.style.filter = 'none'
+      }
+    }
+
+    // 暗色主题调整模糊蒙版和地图容器背景
+    if (blurOverlayEl) {
+      blurOverlayEl.style.backgroundColor = theme === 'dark' ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.14)'
+    }
+    const mapEl = map.getContainer()
+    if (mapEl) {
+      mapEl.style.backgroundColor = theme === 'dark' ? '#0a0a0a' : ''
+    }
+  }
+
+  function flyToCoordinate(lat: number, lng: number, zoom = 15) {
+    if (!map) return
+    map.flyTo([lat, lng], zoom, { duration: 0.8 })
+  }
+
+  function getMapCenter() {
+    if (!map) return null
+    const c = map.getCenter()
+    return { lat: c.lat, lng: c.lng }
+  }
+
+  function getMapZoom() {
+    return map?.getZoom() ?? null
+  }
+
   return {
     mapContainerRef,
     mapReady,
     quickView,
     showCompanyLabels,
+    currentTheme,
     initMap,
     destroyMap,
     zoomIn,
@@ -985,6 +1046,10 @@ export function useGeoLeafletMap() {
     resetView,
     setQuickView,
     setCompanyLabelVisible,
+    setMapTheme,
+    flyToCoordinate,
+    getMapCenter,
+    getMapZoom,
     invalidateSize,
   }
 }
