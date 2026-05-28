@@ -96,6 +96,11 @@
               <div class="gs-stat-num">{{ listedCount }}</div>
               <div class="gs-stat-lbl">上市公司</div>
             </div>
+            <div class="gs-stat-sep" />
+            <div class="gs-stat gs-stat-project">
+              <div class="gs-stat-num">{{ majorCount }}</div>
+              <div class="gs-stat-lbl">重大项目</div>
+            </div>
           </div>
 
           <!-- 图例 (左下) -->
@@ -118,8 +123,8 @@
 
           </div>
 
-          <!-- Leaflet 高德地图 -->
-          <div ref="mapContainerRef" class="gs-leaflet-map" />
+          <!-- 高德地图 -->
+          <div ref="mapContainerRef" class="gs-map-container" />
           <div class="gs-map-toggle">
             <span class="gs-toggle-label">显示企业名称</span>
             <USwitch
@@ -258,7 +263,7 @@
                 </div>
                 <div class="cd-sub">
                   <span v-if="detailCompany.company_traded === 1" class="cd-type-badge type-listed">上市公司</span>
-                  <span v-if="detailCompany.import_project === 1" class="cd-type-badge type-project">重大项目</span>
+                  <span v-if="detailCompany.import_project === 1" class="cd-type-badge type-project">⚡重大项目</span>
                   <span v-if="detailCompany.chain_name && detailCompany.chain_name !== '-'" class="cd-type-badge type-info">{{ detailCompany.chain_name }}</span>
                   <span v-if="detailCompany.product && detailCompany.product !== '-'" class="cd-type-badge type-product">{{ detailCompany.product }}</span>
                   <span v-if="detailCompany.product_type && detailCompany.product_type !== '-'" class="cd-type-badge type-product-type">{{ detailCompany.product_type }}</span>
@@ -356,10 +361,10 @@ import type { CompanyRecord } from '~/types/company'
 import { fetchCompanies, isListedCompany } from '~/types/company'
 import {
   getIndustryColor,
-  useGeoLeafletMap,
+  useGeoAmapMap,
   type RegionSelectPayload,
   type MapTheme,
-} from '~/composables/useGeoLeafletMap'
+} from '~/composables/useGeoAmapMap'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -378,7 +383,8 @@ const {
   setCompanyLabelVisible,
   setMapTheme,
   invalidateSize,
-} = useGeoLeafletMap()
+  isInZone,
+} = useGeoAmapMap()
 
 const screenRef = ref<HTMLDivElement>()
 const allCompanies = ref<CompanyRecord[]>([])
@@ -414,6 +420,7 @@ const scopeNeedExpand = computed(() => {
 })
 
 const listedCount = computed(() => allCompanies.value.filter(c => c.company_traded === 1).length)
+const majorCount = computed(() => allCompanies.value.filter(c => c.import_project === 1).length)
 
 function handleAreaChange(val: 'zone' | 'wuhan') {
   selectedAreaView.value = val
@@ -461,6 +468,9 @@ const filteredCompanies = computed(() => {
   // 区域模式
   let list = allCompanies.value
   const region = selectedRegion.value
+  if (region?.type === 'zone') {
+    list = list.filter(c => isInZone({ lat: c.company_latitude, lng: c.company_longitude }))
+  }
   if (region?.type === 'city') {
     list = list.filter(c => c.company_city === region.name)
   }
@@ -780,125 +790,14 @@ function closeDetail() {
   transform: translateY(-4px);
 }
 
-/* ── Leaflet 高德地图 ───────────────────────────────────── */
-.gs-leaflet-map {
+/* ── 高德地图容器 ───────────────────────────────────── */
+.gs-map-container {
   position: absolute;
   inset: 0;
   z-index: 0;
 }
-.gs-leaflet-map :deep(.leaflet-container) {
-  width: 100%;
-  height: 100%;
-  background: #e8eef5;
-  font-family: inherit;
-}
-.gs-leaflet-map :deep(.leaflet-control-attribution) {
-  display: none !important;
-}
-.gs-leaflet-map :deep(.leaflet-marker-pane) {
-  z-index: 650 !important;
-}
-.gs-leaflet-map :deep(.leaflet-tooltip-pane) {
-  z-index: 700 !important;
-}
-.gs-leaflet-map :deep(.leaflet-interactive:focus) {
-  outline: none !important;
-}
-.gs-leaflet-map :deep(.leaflet-tooltip) {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #e2e8f0;
-  color: #334155;
-  font-size: 12px;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
-}
-.gs-leaflet-map :deep(.gs-city-tooltip) {
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #ea580c;
-  box-shadow: none;
-  color: #c2410c;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 3px;
-  pointer-events: none;
-}
-.gs-leaflet-map :deep(.leaflet-tooltip.gs-company-name-tooltip) {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  color: #0f172a;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
-  line-height: 1.35;
-}
-.gs-leaflet-map :deep(.leaflet-tooltip.gs-company-name-tooltip::before) {
-  display: none;
-}
-.gs-leaflet-map :deep(.gs-company-icon) {
-  background: transparent !important;
-  border: none !important;
-  overflow: visible !important;
-}
-.gs-leaflet-map :deep(.gs-company-wrap) {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  width: 132px;
-  height: 36px;
-  pointer-events: none;
-}
-.gs-leaflet-map :deep(.gs-company-wrap-dot-only) {
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-}
-.gs-leaflet-map :deep(.gs-company-label) {
-  white-space: nowrap;
-  font-size: 11px;
-  font-weight: 600;
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.96);
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
-  pointer-events: none;
-  margin-bottom: 3px;
-  line-height: 1.35;
-  max-width: 132px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.gs-leaflet-map :deep(.gs-company-dot) {
-  flex-shrink: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
-}
-.gs-leaflet-map :deep(.gs-cluster-icon) {
-  background: transparent !important;
-  border: none !important;
-}
-.gs-leaflet-map :deep(.gs-cluster-bubble) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(37, 99, 235, 0.85);
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  border: 1.5px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 1px 6px rgba(37, 99, 235, 0.4);
-}
+
+/* ── 地图统计浮层等其余样式保留 ─── */
 .gs-loading-overlay {
   position: absolute;
   inset: 0;
@@ -979,6 +878,13 @@ function closeDetail() {
   width: 1px;
   height: 22px;
   background: #e2e8f0;
+}
+.gs-stat-project .gs-stat-num {
+  color: #d97706;
+}
+.gs-stat-project .gs-stat-lbl {
+  color: #f59e0b;
+  font-weight: 600;
 }
 
 /* ── 图例 ──────────────────────────────────────────────── */
@@ -1251,7 +1157,41 @@ function closeDetail() {
 .type-private { background: rgba(34, 197, 94, 0.15);  color: #4ade80; }
 .type-foreign { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 .type-listed  { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
-.type-project  { background: rgba(250, 204, 21, 0.2); color: #ca8a04; }
+.type-project {
+  background: linear-gradient(135deg, #ff6b35, #f5af19);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  box-shadow: 0 0 14px rgba(245, 175, 25, 0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+  border: 1px solid rgba(255, 200, 50, 0.6);
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  position: relative;
+  overflow: hidden;
+}
+.type-project::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(255,255,255,0.15) 45%,
+    rgba(255,255,255,0.25) 50%,
+    rgba(255,255,255,0.15) 55%,
+    transparent 60%
+  );
+  animation: project-shine 2.5s ease-in-out infinite;
+}
+@keyframes project-shine {
+  0% { transform: translateX(-100%) translateY(-100%); }
+  100% { transform: translateX(100%) translateY(100%); }
+}
 .cp-tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
 .cp-tag {
   font-size: 10px;
@@ -1498,7 +1438,41 @@ function closeDetail() {
 
 .type-listed { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
 .type-info { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
-.type-project { background: rgba(250, 204, 21, 0.2); color: #ca8a04; }
+.type-project {
+  background: linear-gradient(135deg, #ff6b35, #f5af19);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  box-shadow: 0 0 14px rgba(245, 175, 25, 0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+  border: 1px solid rgba(255, 200, 50, 0.6);
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  position: relative;
+  overflow: hidden;
+}
+.type-project::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(255,255,255,0.15) 45%,
+    rgba(255,255,255,0.25) 50%,
+    rgba(255,255,255,0.15) 55%,
+    transparent 60%
+  );
+  animation: project-shine 2.5s ease-in-out infinite;
+}
+@keyframes project-shine {
+  0% { transform: translateX(-100%) translateY(-100%); }
+  100% { transform: translateX(100%) translateY(100%); }
+}
 .type-product { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
 .type-product-type { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
 
@@ -1519,14 +1493,16 @@ function closeDetail() {
   display: inline-flex;
   align-items: center;
   font-size: 10px;
-  font-weight: 600;
-  padding: 0 5px;
-  height: 16px;
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  font-weight: 700;
+  padding: 0 6px;
+  height: 18px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #fff;
   border-radius: 3px;
   margin-left: 4px;
   vertical-align: middle;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
+  line-height: 18px;
 }
 .cp-type-tag {
   font-size: 10px;

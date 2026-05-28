@@ -1,5 +1,38 @@
 import type { CompanyRecord } from '~/types/company'
-import { useGeoLeafletMap as useLeafletFallback, type RegionSelectPayload } from '~/composables/useGeoLeafletMap'
+
+export type RegionSelectPayload =
+  | { type: 'zone', name: string }
+  | { type: 'city', name: string, adcode: number }
+
+export type MapTheme = 'standard' | 'dark' | 'satellite'
+
+const MAP_STYLE_MAP: Record<MapTheme, string> = {
+  standard: 'amap://styles/normal',
+  dark: 'amap://styles/dark',
+  satellite: 'amap://styles/satellite',
+}
+
+const INDUSTRY_COLORS: Record<string, string> = {
+  '信息技术': '#6366f1', '人工智能': '#8b5cf6', '云计算': '#3b82f6',
+  '半导体': '#0ea5e9', '网络安全': '#06b6d4', '金融科技': '#10b981',
+  '新能源': '#22c55e', '新能源汽车': '#84cc16', '汽车制造': '#eab308',
+  '智能制造': '#f59e0b', '节能环保': '#14b8a6', '新材料': '#a855f7',
+  '高端装备': '#f97316', '电子': '#0ea5e9', '通信': '#6366f1',
+  '软件': '#8b5cf6', '信息服务': '#3b82f6', '医疗健康': '#ec4899',
+  '仪器仪表': '#f43f5e', '技术服务': '#14b8a6', '建筑': '#64748b',
+  '电力': '#f59e0b', '制造': '#78716c', '生物': '#22c55e',
+  '化工': '#84cc16', '食品': '#f97316', '物流': '#06b6d4',
+  '金融服务': '#10b981', '房地产': '#ef4444', '制药': '#ec4899',
+  '医疗器械': '#f43f5e', '测绘': '#6366f1', '检测': '#14b8a6',
+  '科研服务': '#8b5cf6', '科技': '#3b82f6', '工程技术': '#0ea5e9',
+  '环保工程': '#14b8a6', '农业': '#22c55e', '文化创意': '#a855f7',
+  '电子商务': '#f97316', '批发零售': '#64748b', '租赁': '#78716c',
+  '其他': '#94a3b8',
+}
+
+export function getIndustryColor(industry: string): string {
+  return INDUSTRY_COLORS[industry] || '#6366f1'
+}
 
 const HIGHLIGHT_PROVINCE = '\u6e56\u5317\u7701'
 const HIGHLIGHT_CITY = '\u6b66\u6c49\u5e02'
@@ -52,9 +85,10 @@ function getCityStyle(
   const isWuhan = feature?.properties?.name === HIGHLIGHT_CITY
   if (!isWuhan) {
     return {
-      strokeColor: 'transparent',
-      strokeWeight: 0,
-      strokeOpacity: 0,
+      strokeColor: '#cbd5e1',
+      strokeWeight: 1,
+      strokeOpacity: 0.7,
+      strokeStyle: 'dashed',
       fillOpacity: 0,
       fillColor: 'transparent',
     }
@@ -222,10 +256,11 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function companyLabelHtml(color: string, name: string) {
+function companyLabelHtml(color: string, name: string, isProject = false) {
   const displayName = name.length > 12 ? `${name.slice(0, 12)}...` : name
-  return `<div class="gs-company-wrap">
-    <div class="gs-company-label">${escapeHtml(displayName)}</div>
+  const badge = isProject ? '<span class="gs-company-badge">重</span>' : ''
+  return `<div class="gs-company-wrap${isProject ? ' gs-company-wrap-project' : ''}">
+    <div class="gs-company-label">${badge}${escapeHtml(displayName)}</div>
     <div class="gs-company-dot" style="background:${color}"></div>
   </div>`
 }
@@ -271,12 +306,12 @@ function loadAmap(key: string, securityCode: string) {
 
 export function useGeoAmapMap() {
   const config = useRuntimeConfig()
-  if (!config.public.amapKey) return useLeafletFallback()
 
   const mapContainerRef = ref<HTMLDivElement>()
   const mapReady = ref(false)
   const quickView = ref<'zone' | 'wuhan' | null>(null)
   const showCompanyLabels = ref(true)
+  const currentTheme = ref<MapTheme>('standard')
 
   let AMap: AMapLike | null = null
   let map: any = null
@@ -299,6 +334,7 @@ export function useGeoAmapMap() {
 
   let markerOverlays: any[] = []
   let clusterOverlays: any[] = []
+  let maskPolygons: any[] = []
   let regionHoverText: any = null
   let companyHoverText: any = null
 
@@ -428,20 +464,18 @@ export function useGeoAmapMap() {
   function findHoverTarget(latlng: { lat: number, lng: number }): HoverTarget | null {
     if (blurFocusMode === 'zone') {
       if (isInZone(latlng)) return { kind: 'zone' }
-      const provinceHit = findFeatureAt(latlng, otherProvinceFeatures)
-      if (provinceHit) return { kind: 'province', feature: provinceHit }
       return null
     }
 
     if (isInZone(latlng)) return { kind: 'zone' }
-    if (isInWuhan(latlng) && wuhanFeatureStored) return { kind: 'city', feature: wuhanFeatureStored }
+
+    const cityHit = findFeatureAt(latlng, cityFeatures)
+    if (cityHit) return { kind: 'city', feature: cityHit }
 
     if (hubeiFeatureStored?.geometry && pointInGeoJSON(latlng.lng, latlng.lat, hubeiFeatureStored.geometry)) {
       return { kind: 'province', feature: hubeiFeatureStored }
     }
 
-    const provinceHit = findFeatureAt(latlng, otherProvinceFeatures)
-    if (provinceHit) return { kind: 'province', feature: provinceHit }
     return null
   }
 
@@ -452,8 +486,8 @@ export function useGeoAmapMap() {
     })
 
     provincePolygonsByName.forEach((polygons, name) => {
-      const feature = otherProvinceFeatures.find(f => f.properties?.name === name) || hubeiFeatureStored || undefined
-      setPolygonsStyle(polygons, getProvinceStyle(feature, false, blurFocusMode))
+      if (name !== HIGHLIGHT_PROVINCE) return
+      setPolygonsStyle(polygons, getProvinceStyle(hubeiFeatureStored ?? undefined, false, blurFocusMode))
     })
 
     setPolygonsStyle(zonePolygons, getZoneStyle(false, blurFocusMode))
@@ -509,7 +543,6 @@ export function useGeoAmapMap() {
 
   function focusZone() {
     flyToZone()
-    onRegionSelect?.({ type: 'zone', name: ZONE_LABEL })
   }
 
   function handleRegionClick(latlng: { lng: number, lat: number }) {
@@ -545,6 +578,7 @@ export function useGeoAmapMap() {
     quickView.value = 'zone'
     setBlurFocus('zone')
     fitOverlays(zonePolygons.concat(zoneBoundaryPolygons), 13)
+    onRegionSelect?.({ type: 'zone', name: ZONE_LABEL })
   }
 
   function flyToWuhan() {
@@ -565,6 +599,64 @@ export function useGeoAmapMap() {
     hideCompanyHoverLabel()
   }
 
+  function getCellThreshold(count: number): number {
+    if (count >= 15) return 15
+    if (count >= 10) return 14
+    if (count >= 5) return 13
+    if (count >= 3) return 12
+    if (count >= 2) return 11
+    return 10
+  }
+
+  function createClusterMarker(cell: { lat: number, lng: number, count: number, companies: CompanyRecord[] }) {
+    const marker = new AMap.Marker({
+      position: [cell.lng, cell.lat],
+      content: clusterBubbleHtml(cell.count),
+      offset: new AMap.Pixel(-11, -11),
+      zIndex: 670,
+    })
+    marker.on('click', () => {
+      const districtName = cell.companies[0]?.conpany_district || cell.companies[0]?.company_city || '\u9644\u8fd1'
+      onBubbleClick?.(cell.companies, `${districtName} / ${cell.count} \u5bb6\u4f01\u4e1a`)
+    })
+    marker.setMap(map)
+    clusterOverlays.push(marker)
+  }
+
+  function createIndividualMarker(c: CompanyRecord) {
+    const lat = c.company_latitude
+    const lng = c.company_longitude
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+    const color = c.company_traded === 1 ? '#ef4444' : c.import_project === 1 ? '#7c3aed' : '#10b981'
+    const isProject = c.import_project === 1
+    const content = showCompanyLabels.value
+      ? companyLabelHtml(color, c.company_name, isProject)
+      : companyDotHtml(color)
+    const marker = new AMap.Marker({
+      position: [lng, lat],
+      content,
+      offset: new AMap.Pixel(showCompanyLabels.value ? -66 : -8, showCompanyLabels.value ? -36 : -8),
+      zIndex: isProject ? 680 : 650,
+    })
+
+    marker.on('mouseover', () => {
+      hoveringCompanyMarker = true
+      clearRegionHover()
+      showCompanyHoverLabel(c.company_name, lng, lat)
+    })
+    marker.on('mouseout', () => {
+      hoveringCompanyMarker = false
+      hideCompanyHoverLabel()
+    })
+    marker.on('click', () => {
+      onCompanyClick?.(c)
+    })
+
+    marker.setMap(map)
+    markerOverlays.push(marker)
+  }
+
   function refreshMarkers(companies: CompanyRecord[]) {
     if (!map || !AMap) return
     latestCompanies = companies
@@ -572,78 +664,45 @@ export function useGeoAmapMap() {
     hoveringCompanyMarker = false
 
     const zoom = map.getZoom()
-    const clusterThreshold = 11
-
-    if (zoom < clusterThreshold) {
-      const gridSize = 0.02
-      const grid = new Map<string, { lat: number, lng: number, count: number, companies: CompanyRecord[] }>()
-
-      companies.forEach((c) => {
-        const gridX = Math.floor(c.company_longitude / gridSize)
-        const gridY = Math.floor(c.company_latitude / gridSize)
-        const key = `${gridX},${gridY}`
-        const existing = grid.get(key)
-        if (existing) {
-          existing.count++
-          existing.lat = (existing.lat * (existing.count - 1) + c.company_latitude) / existing.count
-          existing.lng = (existing.lng * (existing.count - 1) + c.company_longitude) / existing.count
-          existing.companies.push(c)
-        }
-        else {
-          grid.set(key, { lat: c.company_latitude, lng: c.company_longitude, count: 1, companies: [c] })
-        }
-      })
-
-      grid.forEach((cell) => {
-        const marker = new AMap.Marker({
-          position: [cell.lng, cell.lat],
-          content: clusterBubbleHtml(cell.count),
-          offset: new AMap.Pixel(-11, -11),
-          zIndex: 650,
-        })
-        marker.on('click', () => {
-          const districtName = cell.companies[0]?.conpany_district || cell.companies[0]?.company_city || '\u9644\u8fd1'
-          onBubbleClick?.(cell.companies, `${districtName} / ${cell.count} \u5bb6\u4f01\u4e1a`)
-        })
-        marker.setMap(map)
-        clusterOverlays.push(marker)
-      })
-      return
-    }
+    const gridSize = 0.02
+    const grid = new Map<string, { lat: number, lng: number, count: number, companies: CompanyRecord[] }>()
 
     companies.forEach((c) => {
-      const lat = c.company_latitude
-      const lng = c.company_longitude
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+      const gridX = Math.floor(c.company_longitude / gridSize)
+      const gridY = Math.floor(c.company_latitude / gridSize)
+      const key = `${gridX},${gridY}`
+      const existing = grid.get(key)
+      if (existing) {
+        existing.count++
+        existing.lat = (existing.lat * (existing.count - 1) + c.company_latitude) / existing.count
+        existing.lng = (existing.lng * (existing.count - 1) + c.company_longitude) / existing.count
+        existing.companies.push(c)
+      }
+      else {
+        grid.set(key, { lat: c.company_latitude, lng: c.company_longitude, count: 1, companies: [c] })
+      }
+    })
 
-      const color = c.company_traded === 1 ? '#ef4444' : '#10b981'
-      const marker = new AMap.Marker({
-        position: [lng, lat],
-        content: showCompanyLabels.value ? companyLabelHtml(color, c.company_name) : companyDotHtml(color),
-        offset: new AMap.Pixel(showCompanyLabels.value ? -66 : -8, showCompanyLabels.value ? -36 : -8),
-        zIndex: 650,
-      })
-
-      marker.on('mouseover', () => {
-        hoveringCompanyMarker = true
-        clearRegionHover()
-        showCompanyHoverLabel(c.company_name, lng, lat)
-      })
-      marker.on('mouseout', () => {
-        hoveringCompanyMarker = false
-        hideCompanyHoverLabel()
-      })
-      marker.on('click', () => {
-        onCompanyClick?.(c)
-      })
-
-      marker.setMap(map)
-      markerOverlays.push(marker)
+    grid.forEach((cell) => {
+      const threshold = getCellThreshold(cell.count)
+      if (zoom < threshold) {
+        createClusterMarker(cell)
+      }
+      else {
+        cell.companies.forEach(c => createIndividualMarker(c))
+      }
     })
   }
 
   function setupMapEvents() {
     if (!map) return
+
+    let lastHoverLng = -999
+    let lastHoverLat = -999
+    let hoverTimer: ReturnType<typeof setTimeout> | null = null
+    const HOVER_THROTTLE_MS = 50
+    const HOVER_MIN_DIST = 0.003
+
     map.on('mousemove', (e: any) => {
       if (hoveringCompanyMarker) {
         clearRegionHover()
@@ -651,14 +710,25 @@ export function useGeoAmapMap() {
       }
       const lng = e.lnglat.getLng()
       const lat = e.lnglat.getLat()
-      const target = findHoverTarget({ lng, lat })
-      if (target?.kind === 'zone') setZoneHover({ lng, lat })
-      else if (target?.kind === 'city') setCityHover(target.feature, { lng, lat })
-      else if (target?.kind === 'province') setProvinceHover(target.feature, { lng, lat })
-      else clearRegionHover()
+
+      const dist = Math.abs(lng - lastHoverLng) + Math.abs(lat - lastHoverLat)
+      if (hoverTimer && dist < HOVER_MIN_DIST) return
+
+      if (hoverTimer) clearTimeout(hoverTimer)
+      hoverTimer = setTimeout(() => {
+        hoverTimer = null
+        lastHoverLng = lng
+        lastHoverLat = lat
+        const target = findHoverTarget({ lng, lat })
+        if (target?.kind === 'zone') setZoneHover({ lng, lat })
+        else if (target?.kind === 'city') setCityHover(target.feature, { lng, lat })
+        else if (target?.kind === 'province') setProvinceHover(target.feature, { lng, lat })
+        else clearRegionHover()
+      }, HOVER_THROTTLE_MS)
     })
 
     map.on('mouseout', () => {
+      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null }
       if (!hoveringCompanyMarker) clearRegionHover()
     })
 
@@ -695,8 +765,8 @@ export function useGeoAmapMap() {
 
     const [region, zoneGcj02, zoneBoundary, hubeiCities] = await Promise.all([
       $fetch<any>('/geo/region_gcj02.json'),
-      $fetch<GeoJSON.FeatureCollection>('/geo/\u9ad8\u65b0\u533a\u8303\u56f4gcj02.json'),
-      $fetch<GeoJSON.FeatureCollection>('/geo/\u9ad8\u65b0\u533a\u8fb9\u754cgcj02.json'),
+      $fetch<GeoJSON.FeatureCollection>('/geo/\u9ad8\u65b0\u533a\u8303\u56f4_gcj02.json'),
+      $fetch<GeoJSON.FeatureCollection>('/geo/\u9ad8\u65b0\u533a\u8fb9\u754c_gcj02.json'),
       $fetch<any>('/geo/hubei-cities_gcj02.json'),
     ])
 
@@ -718,22 +788,48 @@ export function useGeoAmapMap() {
 
     zoneFeatures = (zoneGcj02 as GeoJSON.FeatureCollection).features ?? []
     cityFeatures = ((hubeiCities as GeoJSON.FeatureCollection).features ?? [])
-      .filter((f: GeoJSON.Feature) => f.properties?.name === HIGHLIGHT_CITY)
     hubeiFeatureStored = (region.features.find((f: any) => f.properties?.name === HIGHLIGHT_PROVINCE) as GeoJSON.Feature | undefined) ?? null
     wuhanFeatureStored = cityFeatures.find(f => f.properties?.name === HIGHLIGHT_CITY) ?? null
     otherProvinceFeatures = (region.features as GeoJSON.Feature[]).filter(f => f.properties?.name !== HIGHLIGHT_PROVINCE)
 
     provincePolygonsByName.clear()
-    otherProvinceFeatures.forEach((feature) => {
-      const name = feature.properties?.name as string
-      if (!name) return
-      const polygons = createPolygonsForFeature(feature, {
-        zIndex: 430,
-        ...getProvinceStyle(feature, false, blurFocusMode),
-      })
-      polygons.forEach((polygon) => polygon.setMap(map))
-      provincePolygonsByName.set(name, polygons)
-    })
+
+    const hubeiOuterRings = hubeiFeatureStored
+      ? outerRingsFromGeometry(hubeiFeatureStored.geometry)
+      : []
+
+    if (hubeiFeatureStored) {
+      const name = hubeiFeatureStored.properties?.name as string
+      if (name) {
+        const polygons = createPolygonsForFeature(hubeiFeatureStored, {
+          zIndex: 435,
+          ...getProvinceStyle(hubeiFeatureStored, false, blurFocusMode),
+        })
+        polygons.forEach((polygon) => polygon.setMap(map))
+        provincePolygonsByName.set(name, polygons)
+      }
+    }
+
+    if (hubeiOuterRings.length > 0 && AMap) {
+      const worldRing: [number, number][] = [
+        [-180, -90], [180, -90], [180, 90], [-180, 90],
+      ]
+      try {
+        const maskPolygon = new AMap.Polygon({
+          path: [worldRing, ...hubeiOuterRings],
+          fillColor: 'rgba(0,0,0,0.42)',
+          fillOpacity: 1,
+          strokeColor: 'transparent',
+          strokeWeight: 0,
+          zIndex: 425,
+          bubble: false,
+          cursor: 'default',
+        })
+        maskPolygon.setMap(map)
+        maskPolygons.push(maskPolygon)
+      }
+      catch { /* fallback: mask not supported */ }
+    }
 
     cityPolygonsByAdcode.clear()
     cityFeatures.forEach((feature) => {
@@ -785,13 +881,13 @@ export function useGeoAmapMap() {
     })
 
     setupMapEvents()
-    refreshMarkers(zoneCompanies)
+    refreshMarkers(companies)
     setBlurFocus('zone')
     flyToZone()
     quickView.value = 'zone'
 
     mapReady.value = true
-    return zoneCompanies
+    return companies
   }
 
   function destroyMap() {
@@ -799,6 +895,7 @@ export function useGeoAmapMap() {
     hideCompanyHoverLabel()
     clearOverlayList(markerOverlays)
     clearOverlayList(clusterOverlays)
+    clearOverlayList(maskPolygons)
     clearOverlayList(zonePolygons)
     clearOverlayList(zoneBoundaryPolygons)
     clearOverlayList(zoneBoundaryHaloPolygons)
@@ -846,11 +943,31 @@ export function useGeoAmapMap() {
     refreshMarkers(latestCompanies)
   }
 
+  function setMapTheme(theme: MapTheme) {
+    currentTheme.value = theme
+    if (!map || !AMap) return
+    if (theme === 'satellite') {
+      try {
+        map.setLayers([
+          new AMap.TileLayer.Satellite(),
+          new AMap.TileLayer.RoadNet(),
+        ])
+      }
+      catch {
+        map.setMapStyle(MAP_STYLE_MAP[theme])
+      }
+    }
+    else {
+      map.setMapStyle(MAP_STYLE_MAP[theme])
+    }
+  }
+
   return {
     mapContainerRef,
     mapReady,
     quickView,
     showCompanyLabels,
+    currentTheme,
     initMap,
     destroyMap,
     zoomIn,
@@ -858,6 +975,8 @@ export function useGeoAmapMap() {
     resetView,
     setQuickView,
     setCompanyLabelVisible,
+    setMapTheme,
     invalidateSize,
+    isInZone,
   }
 }

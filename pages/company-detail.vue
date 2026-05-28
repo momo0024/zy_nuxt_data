@@ -782,7 +782,7 @@ import {
 } from '~/types/company-detail'
 import {
   getIndustryColor,
-} from '~/composables/useGeoLeafletMap'
+} from '~/composables/useGeoAmapMap'
 import VChart from 'vue-echarts'
 
 definePageMeta({ middleware: 'auth', layout: 'blank' })

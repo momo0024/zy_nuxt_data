@@ -20,9 +20,6 @@ export default defineNuxtConfig({
   },
   sourcemap: { server: false, client: false },
   vite: {
-    ssr: {
-      external: ['@amap/amap-jsapi-loader'],
-    },
     logLevel: import.meta.dev ? 'info' : 'error',
     plugins: [
       {
