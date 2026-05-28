@@ -52,15 +52,6 @@
       <!-- 分隔线 -->
       <div class="topbar-divider" />
 
-      <!-- 租户信息 -->
-      <div class="topbar-tenant">
-        <UIcon name="i-lucide-building-2" class="size-4" />
-        <span>{{ user?.tenant }}</span>
-      </div>
-
-      <!-- 分隔线 -->
-      <div class="topbar-divider" />
-
       <!-- 用户头像 -->
       <div class="topbar-user">
         <UAvatar :text="userInitials" icon="i-lucide-user-round" size="sm" class="user-avatar-shell" />
@@ -178,14 +169,6 @@ onMounted(() => {
   width: 1px;
   height: 20px;
   background: var(--border);
-}
-
-.topbar-tenant {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
 }
 
 .topbar-user {

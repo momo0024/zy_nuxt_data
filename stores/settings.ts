@@ -31,7 +31,7 @@ export const THEMES: ThemeMeta[] = [
   },
   {
     id: 'warm' as ThemeId,
-    name: '琥珀书页',
+    name: '素笺暖光',
     desc: '暖纸米杏，适合长时间阅读',
     colors: ['#faf6f0', '#b45309', '#d97706', '#fef3e2']
   }

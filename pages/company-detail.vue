@@ -90,8 +90,8 @@
         <div ref="contentRef" class="cd-content">
           <!-- 经营状况（合并企业概览） -->
           <section id="section-business" class="cd-section" v-if="isSectionVisible('business')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-bar-chart-3" class="size-5" />
+            <h2 class="cd-section-title cd-title-business">
+              <span class="cd-title-icon"><UIcon name="i-lucide-bar-chart-3" class="size-5" /></span>
               经营状况
             </h2>
             <template v-if="hasSectionData('business')">
@@ -154,8 +154,8 @@
 
           <!-- 基本信息（含工商信息） -->
           <section id="section-basic" class="cd-section" v-if="isSectionVisible('basic')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-file-text" class="size-5" />
+            <h2 class="cd-section-title cd-title-basic">
+              <span class="cd-title-icon"><UIcon name="i-lucide-file-text" class="size-5" /></span>
               基本信息
               <span v-if="sectionLoading.register" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -257,8 +257,8 @@
 
           <!-- 股东信息 -->
           <section id="section-shareholder" class="cd-section" v-if="isSectionVisible('shareholder')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-users" class="size-5" />
+            <h2 class="cd-section-title cd-title-shareholder">
+              <span class="cd-title-icon"><UIcon name="i-lucide-users" class="size-5" /></span>
               股东信息
               <span v-if="sectionLoading.shareholder" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -331,8 +331,8 @@
 
           <!-- 商标信息 -->
           <section id="section-trademark" class="cd-section" v-if="isSectionVisible('trademark')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-stamp" class="size-5" />
+            <h2 class="cd-section-title cd-title-trademark">
+              <span class="cd-title-icon"><UIcon name="i-lucide-stamp" class="size-5" /></span>
               商标信息
               <span v-if="sectionLoading.trademark" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -384,8 +384,8 @@
 
           <!-- 专利信息 -->
           <section id="section-patent" class="cd-section" v-if="isSectionVisible('patent')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-lightbulb" class="size-5" />
+            <h2 class="cd-section-title cd-title-patent">
+              <span class="cd-title-icon"><UIcon name="i-lucide-lightbulb" class="size-5" /></span>
               专利信息
               <span v-if="sectionLoading.patent" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -426,8 +426,8 @@
 
           <!-- 变更记录 -->
           <section id="section-change" class="cd-section" v-if="isSectionVisible('change')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-history" class="size-5" />
+            <h2 class="cd-section-title cd-title-change">
+              <span class="cd-title-icon"><UIcon name="i-lucide-history" class="size-5" /></span>
               变更记录
               <span v-if="sectionLoading.changeRecord" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -486,8 +486,8 @@
 
           <!-- 荣誉资质 -->
           <section id="section-honor" class="cd-section" v-if="isSectionVisible('honor')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-award" class="size-5" />
+            <h2 class="cd-section-title cd-title-honor">
+              <span class="cd-title-icon"><UIcon name="i-lucide-award" class="size-5" /></span>
               荣誉资质
               <span v-if="sectionLoading.honor" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -538,8 +538,8 @@
 
           <!-- 上榜榜单 -->
           <section id="section-ranking" class="cd-section" v-if="isSectionVisible('ranking')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-trophy" class="size-5" />
+            <h2 class="cd-section-title cd-title-ranking">
+              <span class="cd-title-icon"><UIcon name="i-lucide-trophy" class="size-5" /></span>
               上榜榜单
               <span v-if="sectionLoading.ranking" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -581,8 +581,8 @@
 
           <!-- 政府奖励项目 -->
           <section id="section-govAward" class="cd-section" v-if="isSectionVisible('govAward')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-gift" class="size-5" />
+            <h2 class="cd-section-title cd-title-govAward">
+              <span class="cd-title-icon"><UIcon name="i-lucide-gift" class="size-5" /></span>
               政府奖励项目
               <span v-if="sectionLoading.govAward" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -627,8 +627,8 @@
 
           <!-- 集成电路布图 -->
           <section id="section-layout" class="cd-section" v-if="isSectionVisible('layout')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-circuit-board" class="size-5" />
+            <h2 class="cd-section-title cd-title-layout">
+              <span class="cd-title-icon"><UIcon name="i-lucide-circuit-board" class="size-5" /></span>
               集成电路布图
               <span v-if="sectionLoading.layout" class="cd-section-loading">
                 <span class="cd-mini-spinner" />
@@ -708,8 +708,8 @@
 
           <!-- 联系方式 -->
           <section id="section-contact" class="cd-section" v-if="isSectionVisible('contact')">
-            <h2 class="cd-section-title">
-              <UIcon name="i-lucide-phone-call" class="size-5" />
+            <h2 class="cd-section-title cd-title-contact">
+              <span class="cd-title-icon"><UIcon name="i-lucide-phone-call" class="size-5" /></span>
               联系方式
             </h2>
             <template v-if="hasSectionData('contact')">
@@ -1894,7 +1894,7 @@ function getIndustryBg(industry: string): string {
 .cd-menu-item {
   display: flex;
   align-items: center;
-  padding: 9px 14px 9px 28px;
+  padding: 9px 14px 9px 14px;
   margin: 2px 6px;
   font-size: 13px;
   font-weight: 500;
@@ -1902,41 +1902,15 @@ function getIndustryBg(industry: string): string {
   cursor: pointer;
   transition: all 0.2s;
   border-radius: 8px;
-  position: relative;
-}
-.cd-menu-item::before {
-  content: '';
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  opacity: 0.35;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .cd-menu-item:hover {
   background: var(--surface-alt);
   color: var(--text);
 }
-.cd-menu-item:hover::before {
-  opacity: 0.6;
-}
 .cd-menu-active {
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--primary);
   font-weight: 600;
-}
-.cd-menu-active::before {
-  width: 4px;
-  height: 16px;
-  border-radius: 2px;
-  background: var(--primary);
-  opacity: 1;
-  top: 50%;
-  transform: translateY(-50%);
 }
 
 .cd-content {
@@ -1958,11 +1932,58 @@ function getIndustryBg(industry: string): string {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-strong);
   margin: 0 0 20px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
 }
+.cd-title-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* ── 各模块标题配色 ───────────────────────── */
+.cd-title-business { --s-color: #3b82f6; --s-bg: rgba(59,130,246,0.06); }
+.cd-title-business .cd-title-icon { background: rgba(59,130,246,0.12); color: #3b82f6; }
+
+.cd-title-basic { --s-color: #10b981; --s-bg: rgba(16,185,129,0.06); }
+.cd-title-basic .cd-title-icon { background: rgba(16,185,129,0.12); color: #10b981; }
+
+.cd-title-shareholder { --s-color: #8b5cf6; --s-bg: rgba(139,92,246,0.06); }
+.cd-title-shareholder .cd-title-icon { background: rgba(139,92,246,0.12); color: #8b5cf6; }
+
+.cd-title-trademark { --s-color: #f59e0b; --s-bg: rgba(245,158,11,0.06); }
+.cd-title-trademark .cd-title-icon { background: rgba(245,158,11,0.12); color: #f59e0b; }
+
+.cd-title-patent { --s-color: #14b8a6; --s-bg: rgba(20,184,166,0.06); }
+.cd-title-patent .cd-title-icon { background: rgba(20,184,166,0.12); color: #14b8a6; }
+
+.cd-title-change { --s-color: #f43f5e; --s-bg: rgba(244,63,94,0.06); }
+.cd-title-change .cd-title-icon { background: rgba(244,63,94,0.12); color: #f43f5e; }
+
+.cd-title-honor { --s-color: #eab308; --s-bg: rgba(234,179,8,0.06); }
+.cd-title-honor .cd-title-icon { background: rgba(234,179,8,0.12); color: #eab308; }
+
+.cd-title-ranking { --s-color: #f97316; --s-bg: rgba(249,115,22,0.06); }
+.cd-title-ranking .cd-title-icon { background: rgba(249,115,22,0.12); color: #f97316; }
+
+.cd-title-govAward { --s-color: #ec4899; --s-bg: rgba(236,72,153,0.06); }
+.cd-title-govAward .cd-title-icon { background: rgba(236,72,153,0.12); color: #ec4899; }
+
+.cd-title-layout { --s-color: #06b6d4; --s-bg: rgba(6,182,212,0.06); }
+.cd-title-layout .cd-title-icon { background: rgba(6,182,212,0.12); color: #06b6d4; }
+
+.cd-title-contact { --s-color: #0ea5e9; --s-bg: rgba(14,165,233,0.06); }
+.cd-title-contact .cd-title-icon { background: rgba(14,165,233,0.12); color: #0ea5e9; }
 
 .cd-desc-card {
   background: var(--surface);
@@ -2038,8 +2059,11 @@ function getIndustryBg(industry: string): string {
 .cd-info-table .cd-info-row-detail:nth-child(odd) {
   background: var(--surface);
 }
+.cd-info-table .cd-info-row-detail {
+  transition: all 0.15s;
+}
 .cd-info-table .cd-info-row-detail:hover {
-  background: color-mix(in srgb, var(--primary) 5%, var(--surface-alt));
+  background: rgba(14, 165, 233, 0.04);
 }
 .cd-link-text {
   color: var(--primary) !important;
@@ -2057,10 +2081,16 @@ function getIndustryBg(industry: string): string {
   margin-bottom: 24px;
 }
 .cd-biz-card {
-  padding: 22px 24px;
+  padding: 22px 26px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-light);
+  border-top: 3px solid var(--border-light);
   border-radius: 12px;
+  transition: all 0.2s;
+}
+.cd-biz-card:hover {
+  border-top-color: #3b82f6;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.1);
 }
 .cd-biz-card-header {
   display: flex;
@@ -2095,18 +2125,22 @@ function getIndustryBg(industry: string): string {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  gap: 12px;
+  padding: 48px 20px;
+  gap: 14px;
+}
+.cd-empty :deep(.size-8) {
+  color: var(--text-muted);
+  opacity: 0.35;
 }
 .cd-empty-divider {
   width: 40px;
   height: 1px;
-  background: var(--border);
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
 }
 .cd-empty-text {
   font-size: 13px;
   color: var(--text-muted);
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 /* 子模块标题 */
@@ -2121,8 +2155,9 @@ function getIndustryBg(industry: string): string {
   font-weight: 600;
   color: var(--text-strong);
   margin: 0 0 12px;
-  padding-left: 10px;
-  border-left: 3px solid var(--primary);
+  padding-left: 12px;
+  border-left: 3px solid;
+  border-image: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 30%, transparent)) 1;
 }
 
 /* 数据表格 - 美化版 */
@@ -2147,8 +2182,8 @@ function getIndustryBg(industry: string): string {
   font-weight: 600;
   font-size: 12px;
   color: var(--text-muted);
-  background: var(--surface-alt);
-  border-bottom: 2px solid var(--border);
+  background: linear-gradient(180deg, var(--surface-alt), color-mix(in srgb, var(--primary) 3%, var(--surface-alt)));
+  border-bottom: 2px solid color-mix(in srgb, var(--primary) 20%, var(--border));
   white-space: nowrap;
   letter-spacing: 0.02em;
 }
@@ -2211,7 +2246,7 @@ function getIndustryBg(industry: string): string {
   top: 6px;
   bottom: 6px;
   width: 2px;
-  background: var(--border);
+  background: linear-gradient(180deg, #f43f5e, rgba(244,63,94,0.2));
   border-radius: 1px;
 }
 .cd-timeline-item {
@@ -2228,9 +2263,9 @@ function getIndustryBg(industry: string): string {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--primary);
+  background: #f43f5e;
   border: 2px solid var(--surface);
-  box-shadow: 0 0 0 2px var(--primary);
+  box-shadow: 0 0 0 2px rgba(244,63,94,0.3);
 }
 .cd-timeline-content {
   background: var(--surface);
@@ -2339,16 +2374,20 @@ function getIndustryBg(industry: string): string {
 .cd-register-item {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 13px 18px;
   background: var(--surface);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
-  gap: 12px;
-  transition: all 0.15s;
+  border-left: 3px solid var(--border-light);
+  border-radius: 10px;
+  gap: 14px;
+  transition: all 0.2s;
 }
 .cd-register-item:hover {
-  border-color: var(--primary);
-  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.08);
+  border-color: #10b981;
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.03);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.08);
+  transform: translateX(2px);
 }
 .cd-register-label {
   display: flex;
@@ -2359,6 +2398,10 @@ function getIndustryBg(industry: string): string {
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 100px;
+}
+.cd-register-label :deep(.size-3\\.5),
+.cd-register-label :deep(svg) {
+  color: #10b981;
 }
 .cd-register-value {
   font-size: 13px;
@@ -2417,15 +2460,16 @@ function getIndustryBg(industry: string): string {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px;
+  padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border-light);
   border-radius: 10px;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition: all 0.2s;
 }
 .cd-info-card:hover {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   border-color: var(--border);
+  transform: translateY(-2px);
 }
 .cd-info-card-icon {
   width: 40px;
@@ -2437,12 +2481,12 @@ function getIndustryBg(industry: string): string {
   flex-shrink: 0;
 }
 .cd-trademark-icon {
-  background: #fef3c7;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
   color: #d97706;
 }
 .cd-patent-icon {
-  background: #dcfce7;
-  color: #16a34a;
+  background: linear-gradient(135deg, #ccfbf1, #99f6e4);
+  color: #0f766e;
 }
 .cd-info-card-body {
   flex: 1;
@@ -2473,6 +2517,16 @@ function getIndustryBg(industry: string): string {
 
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 768px) {
+  .cd-section-title {
+    font-size: 15px;
+    padding: 10px 14px;
+    border-radius: 10px;
+  }
+  .cd-title-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
   .cd-business-cards {
     grid-template-columns: 1fr;
   }
@@ -2519,19 +2573,21 @@ function getIndustryBg(industry: string): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 13px;
   cursor: pointer;
   color: var(--text);
-  transition: all 0.15s;
+  transition: all 0.2s;
 }
 .cd-page-btn:hover:not(:disabled) {
   border-color: var(--primary);
-  color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
 }
 .cd-page-btn:disabled {
   opacity: 0.35;
@@ -2560,9 +2616,9 @@ function getIndustryBg(industry: string): string {
   overflow: hidden;
 }
 .cd-honor-card:hover {
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
-  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(234, 179, 8, 0.14);
+  border-color: rgba(234, 179, 8, 0.35);
+  transform: translateY(-2px);
 }
 .cd-honor-badge {
   position: absolute;
@@ -2570,13 +2626,14 @@ function getIndustryBg(industry: string): string {
   left: 4px;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 3px 8px;
+  gap: 4px;
+  padding: 4px 10px;
   border-radius: 0 0 8px 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
   line-height: 1.4;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 .cd-level-national {
   background: linear-gradient(135deg, #fef3c7, #fde68a);
@@ -2666,50 +2723,48 @@ function getIndustryBg(industry: string): string {
 .cd-ranking-year-label {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
-  padding: 4px 16px;
+  color: #f97316;
+  background: rgba(249, 115, 22, 0.08);
+  padding: 5px 18px;
   border-radius: 8px;
   margin-bottom: 12px;
   letter-spacing: 0.02em;
+}
+.cd-ranking-year-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f97316;
 }
 .cd-ranking-items {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding-left: 12px;
-  border-left: 2px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  border-left: 2px solid rgba(249, 115, 22, 0.25);
   margin-left: 8px;
 }
 .cd-ranking-card {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 16px;
+  padding: 13px 18px;
   background: var(--surface);
   border: 1px solid var(--border-light);
+  border-left: 3px solid var(--border-light);
   border-radius: 10px;
   transition: all 0.2s;
   position: relative;
 }
-.cd-ranking-card::before {
-  content: '';
-  position: absolute;
-  left: -17px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  border: 2px solid var(--surface);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
-}
 .cd-ranking-card:hover {
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 2px 12px rgba(249, 115, 22, 0.1);
+  border-color: rgba(249, 115, 22, 0.3);
+  border-left-color: #f97316;
+  transform: translateX(2px);
 }
 .cd-ranking-rank {
   flex-shrink: 0;
@@ -2719,9 +2774,10 @@ function getIndustryBg(industry: string): string {
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #f97316, #ea580c);
   color: #fff;
   font-weight: 800;
+  box-shadow: 0 3px 10px rgba(249, 115, 22, 0.3);
 }
 .cd-ranking-rank-num {
   font-size: 15px;
@@ -2776,13 +2832,16 @@ function getIndustryBg(industry: string): string {
   padding: 20px 22px;
   background: var(--surface);
   border: 1px solid var(--border-light);
+  border-top: 3px solid var(--border-light);
   border-radius: 14px;
   overflow: hidden;
   transition: all 0.2s;
 }
 .cd-gov-card:hover {
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.12);
+  border-color: rgba(236, 72, 153, 0.3);
+  border-top-color: #ec4899;
+  transform: translateY(-2px);
 }
 .cd-gov-ribbon {
   position: absolute;
@@ -2872,10 +2931,25 @@ function getIndustryBg(industry: string): string {
   position: relative;
   overflow: hidden;
 }
+.cd-layout-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #06b6d4, #0891b2, #06b6d4);
+  border-radius: 3px 3px 0 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.cd-layout-card:hover::before {
+  opacity: 1;
+}
 .cd-layout-card:hover {
-  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.1);
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.12);
   border-color: rgba(6, 182, 212, 0.3);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 .cd-layout-header {
   display: flex;
