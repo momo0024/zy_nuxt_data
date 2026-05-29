@@ -374,12 +374,16 @@ const {
   quickView,
   showCompanyLabels,
   currentTheme,
+  cityList,
   initMap,
   destroyMap,
   zoomIn,
   zoomOut,
   resetView,
   setQuickView,
+  flyToCity,
+  flyToZone,
+  flyToWuhan,
   setCompanyLabelVisible,
   setMapTheme,
   invalidateSize,
@@ -399,7 +403,7 @@ const bubbleLabel = ref('')
 const pageSize = 500
 const companyTotal = ref(0)
 const scopeExpanded = ref(false)
-const selectedAreaView = ref<'zone' | 'wuhan'>('zone')
+const selectedAreaView = ref<string>('zone')
 const showThemeMenu = ref(false)
 const showAreaDropdown = ref(false)
 
@@ -409,10 +413,20 @@ const themeOptions: { value: MapTheme, label: string, icon: string }[] = [
   { value: 'satellite', label: '卫星', icon: 'i-lucide-satellite' },
 ]
 
-const areaOptions = [
-  { value: 'zone' as const, label: '高新区', icon: 'i-lucide-locate-fixed' },
-  { value: 'wuhan' as const, label: '武汉市', icon: 'i-lucide-building' },
-]
+const areaOptions = computed(() => {
+  const base = [
+    { value: 'zone', label: '高新区', icon: 'i-lucide-locate-fixed' },
+    { value: 'wuhan', label: '武汉市', icon: 'i-lucide-building' },
+  ]
+  const cities = (cityList.value || [])
+    .filter(c => c.name !== '武汉市')
+    .map(c => ({
+      value: `city-${c.adcode}`,
+      label: c.name,
+      icon: 'i-lucide-map-pin',
+    }))
+  return [...base, ...cities]
+})
 const scopeNeedExpand = computed(() => {
   if (!detailCompany.value?.company_business_scope) return false
   const text = detailCompany.value.company_business_scope
@@ -422,9 +436,22 @@ const scopeNeedExpand = computed(() => {
 const listedCount = computed(() => allCompanies.value.filter(c => c.company_traded === 1).length)
 const majorCount = computed(() => allCompanies.value.filter(c => c.import_project === 1).length)
 
-function handleAreaChange(val: 'zone' | 'wuhan') {
+function handleAreaChange(val: string) {
   selectedAreaView.value = val
-  setQuickView(val)
+  if (val.startsWith('city-')) {
+    const adcode = Number(val.slice(5))
+    const city = cityList.value.find(c => c.adcode === adcode)
+    if (city) flyToCity(city.adcode, city.name)
+    return
+  }
+  if (val === 'zone') {
+    flyToZone()
+    return
+  }
+  if (val === 'wuhan') {
+    flyToWuhan()
+    return
+  }
 }
 
 function toggleThemeMenu() {
@@ -550,6 +577,7 @@ function onRegionSelect(payload: RegionSelectPayload) {
   selectedRegion.value = payload
   if (payload.type === 'zone') selectedAreaView.value = 'zone'
   else if (payload.name === '武汉市') selectedAreaView.value = 'wuhan'
+  else selectedAreaView.value = `city-${payload.adcode}`
   bubbleCompanies.value = null
   bubbleLabel.value = ''
   panelOpen.value = true
@@ -727,7 +755,9 @@ function closeDetail() {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 140px;
+  min-width: 160px;
+  max-height: 400px;
+  overflow-y: auto;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
@@ -1158,18 +1188,23 @@ function closeDetail() {
 .type-foreign { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 .type-listed  { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
 .type-project {
-  background: linear-gradient(135deg, #ff6b35, #f5af19);
+  background: linear-gradient(135deg, #dc2626 0%, #ea580c 30%, #f59e0b 70%, #fbbf24 100%);
   color: #fff;
-  font-weight: 700;
-  font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 4px;
-  box-shadow: 0 0 14px rgba(245, 175, 25, 0.55), inset 0 1px 0 rgba(255,255,255,0.25);
-  border: 1px solid rgba(255, 200, 50, 0.6);
+  font-weight: 800;
+  font-size: 13px;
+  padding: 4px 12px 4px 8px;
+  border-radius: 6px;
+  box-shadow:
+    0 0 18px rgba(245, 158, 11, 0.6),
+    0 0 36px rgba(239, 68, 68, 0.3),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  border: 2px solid rgba(255, 220, 100, 0.7);
   letter-spacing: 0.5px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
   position: relative;
   overflow: hidden;
+  animation: project-pulse 2s ease-in-out infinite;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%);
 }
 .type-project::before {
   content: '';
@@ -1180,17 +1215,33 @@ function closeDetail() {
   height: 200%;
   background: linear-gradient(
     45deg,
-    transparent 40%,
-    rgba(255,255,255,0.15) 45%,
-    rgba(255,255,255,0.25) 50%,
-    rgba(255,255,255,0.15) 55%,
+    transparent 30%,
+    rgba(255,255,255,0.1) 35%,
+    rgba(255,255,255,0.3) 40%,
+    rgba(255,255,255,0.4) 45%,
+    rgba(255,255,255,0.3) 50%,
+    rgba(255,255,255,0.1) 55%,
     transparent 60%
   );
-  animation: project-shine 2.5s ease-in-out infinite;
+  animation: project-shine 2s ease-in-out infinite;
+}
+.type-project::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  background: rgba(255,255,255,0.35);
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
 }
 @keyframes project-shine {
   0% { transform: translateX(-100%) translateY(-100%); }
   100% { transform: translateX(100%) translateY(100%); }
+}
+@keyframes project-pulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(245, 158, 11, 0.6), 0 0 36px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255,255,255,0.3); }
+  50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.85), 0 0 50px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255,255,255,0.4); }
 }
 .cp-tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
 .cp-tag {
@@ -1436,43 +1487,7 @@ function closeDetail() {
   background: color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
-.type-listed { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
 .type-info { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
-.type-project {
-  background: linear-gradient(135deg, #ff6b35, #f5af19);
-  color: #fff;
-  font-weight: 700;
-  font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 4px;
-  box-shadow: 0 0 14px rgba(245, 175, 25, 0.55), inset 0 1px 0 rgba(255,255,255,0.25);
-  border: 1px solid rgba(255, 200, 50, 0.6);
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-  position: relative;
-  overflow: hidden;
-}
-.type-project::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    45deg,
-    transparent 40%,
-    rgba(255,255,255,0.15) 45%,
-    rgba(255,255,255,0.25) 50%,
-    rgba(255,255,255,0.15) 55%,
-    transparent 60%
-  );
-  animation: project-shine 2.5s ease-in-out infinite;
-}
-@keyframes project-shine {
-  0% { transform: translateX(-100%) translateY(-100%); }
-  100% { transform: translateX(100%) translateY(100%); }
-}
 .type-product { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
 .type-product-type { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
 
@@ -1493,16 +1508,28 @@ function closeDetail() {
   display: inline-flex;
   align-items: center;
   font-size: 10px;
-  font-weight: 700;
-  padding: 0 6px;
-  height: 18px;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  font-weight: 800;
+  padding: 0 7px;
+  height: 19px;
+  background: linear-gradient(135deg, #ea580c, #f59e0b);
   color: #fff;
-  border-radius: 3px;
+  border-radius: 4px;
   margin-left: 4px;
   vertical-align: middle;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
-  line-height: 18px;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.55), 0 0 20px rgba(234, 88, 12, 0.2);
+  line-height: 19px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.15);
+  position: relative;
+}
+.cp-project-tag::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  background: rgba(255,255,255,0.3);
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
 }
 .cp-type-tag {
   font-size: 10px;
