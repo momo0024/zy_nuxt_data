@@ -43,7 +43,7 @@ export const useSettingsStore = defineStore('settings', () => {
     enabled: false,
     apiBase: 'http://119.96.30.33:8087/v1',
     model: '/data/model/qwen3_6_27B_FP8/Qwen/Qwen3_6-27B-FP8',
-    apiKey: 'EMPTY'
+    apiKey: '03ec81ae6ffc1bdb'
   })
 
   function loadFromStorage() {

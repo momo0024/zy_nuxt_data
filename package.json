@@ -22,7 +22,8 @@
     "radix-vue": "^1.9.17",
     "resize-detector": "^0.3.0",
     "tailwind-merge": "^3.6.0",
-    "vue-echarts": "^6.7.3"
+    "vue-echarts": "^6.7.3",
+    "watermark-js-plus": "^1.6.3"
   },
   "devDependencies": {
     "@iconify-json/heroicons": "^1.2.3",

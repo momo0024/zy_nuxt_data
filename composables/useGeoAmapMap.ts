@@ -581,7 +581,7 @@ export function useGeoAmapMap() {
       if (!adcode || !name) return
       if (name === HIGHLIGHT_CITY) {
         quickView.value = 'wuhan'
-        setBlurFocus('wuhan')
+        setBlurFocus('wuhan', adcode)
       }
       else {
         quickView.value = null
@@ -606,9 +606,9 @@ export function useGeoAmapMap() {
 
   function flyToWuhan() {
     quickView.value = 'wuhan'
-    setBlurFocus('wuhan')
     const wuhanFeature = cityFeatures.find(f => f.properties?.name === HIGHLIGHT_CITY)
     const adcode = wuhanFeature?.properties?.adcode as number | undefined
+    setBlurFocus('wuhan', adcode ?? null)
     const overlays = adcode ? cityPolygonsByAdcode.get(adcode) ?? [] : []
     if (overlays.length) fitOverlays(overlays, WUHAN_FIT_MAX_ZOOM)
     else map?.setZoomAndCenter?.(WUHAN_ZOOM, [WUHAN_CENTER[1], WUHAN_CENTER[0]])
@@ -915,7 +915,7 @@ map.on('zoomend', () => {
           if (!name) return
           if (name === HIGHLIGHT_CITY) {
             quickView.value = 'wuhan'
-            setBlurFocus('wuhan')
+            setBlurFocus('wuhan', adcode)
           }
           else {
             quickView.value = null

@@ -4,6 +4,9 @@ import {defineNuxtConfig} from "nuxt/config";
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-11',
   devtools: { enabled: false },
+  devServer: {
+    port: 3000,
+  },
   modules: ['@nuxt/ui', '@pinia/nuxt'],
   css: ['~/assets/css/main.css'],
   icon: {
@@ -20,6 +23,9 @@ export default defineNuxtConfig({
   },
   sourcemap: { server: false, client: false },
   vite: {
+    optimizeDeps: {
+      include: ['watermark-js-plus'],
+    },
     logLevel: import.meta.dev ? 'info' : 'error',
     plugins: [
       {
