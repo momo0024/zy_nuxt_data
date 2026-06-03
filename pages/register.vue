@@ -114,7 +114,7 @@ async function handleRegister() {
   const result = authStore.register(form.name.trim(), form.username.trim(), form.password)
   loading.value = false
   if (result.success) {
-    await router.push('/geo-screen')
+    await router.push('/')
   } else {
     error.value = result.error || '注册失败'
   }

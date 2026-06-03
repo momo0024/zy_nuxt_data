@@ -4,14 +4,6 @@ export type RegionSelectPayload =
   | { type: 'zone', name: string }
   | { type: 'city', name: string, adcode: number }
 
-export type MapTheme = 'standard' | 'dark' | 'satellite'
-
-const MAP_STYLE_MAP: Record<MapTheme, string> = {
-  standard: 'amap://styles/normal',
-  dark: 'amap://styles/dark',
-  satellite: 'amap://styles/satellite',
-}
-
 const INDUSTRY_COLORS: Record<string, string> = {
   '信息技术': '#6366f1', '人工智能': '#8b5cf6', '云计算': '#3b82f6',
   '半导体': '#0ea5e9', '网络安全': '#06b6d4', '金融科技': '#10b981',
@@ -71,7 +63,7 @@ const HOVER_CITY_OUTLINE = {
   strokeColor: '#ff3b30',
   strokeWeight: 5,
   strokeOpacity: 1,
-  fillOpacity: 0.12,
+  fillOpacity: 0.25,
   fillColor: '#ff3b30',
 }
 
@@ -79,7 +71,7 @@ const FOCUSED_CITY_STYLE = {
   strokeColor: '#ff3b30',
   strokeWeight: 5,
   strokeOpacity: 1,
-  fillOpacity: 0.12,
+  fillOpacity: 0.25,
   fillColor: '#ff3b30',
 }
 
@@ -323,7 +315,16 @@ export function useGeoAmapMap() {
   const mapReady = ref(false)
   const quickView = ref<'zone' | 'wuhan' | null>(null)
   const showCompanyLabels = ref(true)
-  const currentTheme = ref<MapTheme>('standard')
+
+  function getMaskFillColor(): string {
+    if (typeof document === 'undefined') return 'rgba(0,0,0,0.42)'
+    const sysTheme = document.documentElement.getAttribute('data-theme') || 'warm'
+    const darkThemes = ['dark', 'purple']
+    if (darkThemes.includes(sysTheme)) {
+      return 'rgba(0,0,0,0.42)'
+    }
+    return 'rgba(230,232,240,0.55)'
+  }
 
   let AMap: AMapLike | null = null
   let map: any = null
@@ -879,7 +880,7 @@ map.on('zoomend', () => {
       try {
         const maskPolygon = new AMap.Polygon({
           path: [worldRing, ...hubeiOuterRings],
-          fillColor: 'rgba(0,0,0,0.42)',
+          fillColor: getMaskFillColor(),
           fillOpacity: 1,
           strokeColor: 'transparent',
           strokeWeight: 0,
@@ -1034,23 +1035,10 @@ map.on('zoomend', () => {
     refreshMarkers(latestCompanies)
   }
 
-  function setMapTheme(theme: MapTheme) {
-    currentTheme.value = theme
-    if (!map || !AMap) return
-    if (theme === 'satellite') {
-      try {
-        map.setLayers([
-          new AMap.TileLayer.Satellite(),
-          new AMap.TileLayer.RoadNet(),
-        ])
-      }
-      catch {
-        map.setMapStyle(MAP_STYLE_MAP[theme])
-      }
-    }
-    else {
-      map.setMapStyle(MAP_STYLE_MAP[theme])
-    }
+  function updateMaskColor() {
+    if (!maskPolygons.length) return
+    const color = getMaskFillColor()
+    maskPolygons.forEach(p => p.setOptions({ fillColor: color }))
   }
 
   return {
@@ -1058,7 +1046,6 @@ map.on('zoomend', () => {
     mapReady,
     quickView,
     showCompanyLabels,
-    currentTheme,
     cityList,
     initMap,
     destroyMap,
@@ -1070,7 +1057,7 @@ map.on('zoomend', () => {
     flyToZone,
     flyToWuhan,
     setCompanyLabelVisible,
-    setMapTheme,
+    updateMaskColor,
     invalidateSize,
     isInZone,
   }

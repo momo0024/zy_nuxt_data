@@ -50,28 +50,9 @@
             </button>
           </div>
 
-          <!-- 主题切换 -->
-          <div class="gs-theme-wrap" @click.stop>
-            <button class="gs-tool-btn" title="地图主题" @click="toggleThemeMenu">
-              <UIcon :name="themeOptions.find(t => t.value === currentTheme)?.icon || 'i-lucide-map'" class="size-3.5" />
-            </button>
-            <Transition name="gs-dropdown">
-              <div v-if="showThemeMenu" class="gs-dropdown gs-dropdown-right">
-                <div class="gs-dropdown-header">地图主题</div>
-                <button
-                  v-for="opt in themeOptions"
-                  :key="opt.value"
-                  class="gs-dropdown-item"
-                  :class="{ 'gs-dropdown-active': currentTheme === opt.value }"
-                  @click="selectTheme(opt.value)"
-                >
-                  <UIcon :name="opt.icon" class="size-3.5" />
-                  <span>{{ opt.label }}</span>
-                  <UIcon v-if="currentTheme === opt.value" name="i-lucide-check" class="size-3 gs-dropdown-check" />
-                </button>
-              </div>
-            </Transition>
-          </div>
+          <NuxtLink to="/" class="gs-tool-btn gs-chain-btn" title="产业链路">
+            <UIcon name="i-lucide-network" class="size-3.5" />
+          </NuxtLink>
 
           <button class="gs-tool-btn gs-fullscreen-btn" :title="isFullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
             <UIcon :name="isFullscreen ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'" class="size-3.5" />
@@ -363,7 +344,6 @@ import {
   getIndustryColor,
   useGeoAmapMap,
   type RegionSelectPayload,
-  type MapTheme,
 } from '~/composables/useGeoAmapMap'
 
 definePageMeta({ middleware: 'auth' })
@@ -373,7 +353,6 @@ const {
   mapReady,
   quickView,
   showCompanyLabels,
-  currentTheme,
   cityList,
   initMap,
   destroyMap,
@@ -385,10 +364,12 @@ const {
   flyToZone,
   flyToWuhan,
   setCompanyLabelVisible,
-  setMapTheme,
+  updateMaskColor,
   invalidateSize,
   isInZone,
 } = useGeoAmapMap()
+
+const settingsStore = useSettingsStore()
 
 const screenRef = ref<HTMLDivElement>()
 const allCompanies = ref<CompanyRecord[]>([])
@@ -404,14 +385,7 @@ const pageSize = 500
 const companyTotal = ref(0)
 const scopeExpanded = ref(false)
 const selectedAreaView = ref<string>('zone')
-const showThemeMenu = ref(false)
 const showAreaDropdown = ref(false)
-
-const themeOptions: { value: MapTheme, label: string, icon: string }[] = [
-  { value: 'standard', label: '标准', icon: 'i-lucide-map' },
-  { value: 'dark', label: '暗色', icon: 'i-lucide-moon' },
-  { value: 'satellite', label: '卫星', icon: 'i-lucide-satellite' },
-]
 
 const areaOptions = computed(() => {
   const base = [
@@ -454,18 +428,7 @@ function handleAreaChange(val: string) {
   }
 }
 
-function toggleThemeMenu() {
-  showThemeMenu.value = !showThemeMenu.value
-  showAreaDropdown.value = false
-}
-
-function selectTheme(theme: MapTheme) {
-  setMapTheme(theme)
-  showThemeMenu.value = false
-}
-
 function closeMenus() {
-  showThemeMenu.value = false
   showAreaDropdown.value = false
 }
 
@@ -554,6 +517,10 @@ watch(isFullscreen, () => {
   nextTick(() => invalidateSize())
 })
 
+watch(() => settingsStore.theme, () => {
+  nextTick(() => updateMaskColor())
+})
+
 watch(panelOpen, () => {
   nextTick(() => invalidateSize())
 })
@@ -626,7 +593,8 @@ function closeDetail() {
   height: calc(100vh - 90px);
   min-height: 480px;
   overflow: hidden;
-  background: #eef2f7;
+  background: var(--bg);
+  transition: background 0.3s ease;
 }
 .geo-fullscreen {
   margin: 0;
@@ -641,11 +609,12 @@ function closeDetail() {
   height: 46px;
   min-height: 46px;
   padding: 0 16px;
-  background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid #e2e8f0;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border-bottom: 1px solid var(--border);
   backdrop-filter: blur(12px);
   z-index: 10;
   flex-shrink: 0;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 .gs-toolbar-left {
   display: flex;
@@ -666,14 +635,14 @@ function closeDetail() {
 .gs-title {
   font-size: 14px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-strong);
   letter-spacing: 0.5px;
 }
 .gs-breadcrumb {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 13px;
 }
 .gs-crumb-badge {
@@ -682,9 +651,9 @@ function closeDetail() {
   padding: 1px 9px;
   font-size: 11px;
   font-weight: 600;
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
   border-radius: 999px;
 }
 .gs-toolbar-right {
@@ -698,7 +667,7 @@ function closeDetail() {
 .gs-btn-group {
   display: flex;
   align-items: center;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -708,23 +677,34 @@ function closeDetail() {
   justify-content: center;
   width: 32px;
   height: 28px;
-  background: #fff;
+  background: var(--surface);
   border: none;
-  color: #64748b;
+  color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 .gs-tool-btn:hover {
-  background: #f1f5f9;
-  color: #2563eb;
+  background: var(--surface-alt);
+  color: var(--primary);
 }
 .gs-btn-group .gs-tool-btn + .gs-tool-btn {
-  border-left: 1px solid #e2e8f0;
+  border-left: 1px solid var(--border);
 }
 .gs-fullscreen-btn {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
+}
+.gs-chain-btn {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  text-decoration: none;
+}
+.gs-chain-btn:hover {
+  background: var(--surface-alt);
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
 }
 
 /* ── 区域选择下拉 ────────────────────────────────────── */
@@ -738,16 +718,16 @@ function closeDetail() {
   padding: 5px 12px;
   font-size: 11px;
   font-weight: 600;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  color: #1d4ed8;
+  color: var(--primary);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 .gs-area-btn:hover {
-  background: #eff6ff;
-  border-color: #3b82f6;
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  border-color: var(--primary);
 }
 
 /* ── 下拉菜单通用 ────────────────────────────────────── */
@@ -758,10 +738,10 @@ function closeDetail() {
   min-width: 160px;
   max-height: 400px;
   overflow-y: auto;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
   padding: 4px;
   z-index: 999;
 }
@@ -772,7 +752,7 @@ function closeDetail() {
 .gs-dropdown-header {
   font-size: 10px;
   font-weight: 700;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 6px 10px 4px;
@@ -785,7 +765,7 @@ function closeDetail() {
   padding: 7px 10px;
   font-size: 12px;
   font-weight: 500;
-  color: #334155;
+  color: var(--text);
   background: none;
   border: none;
   border-radius: 6px;
@@ -793,20 +773,15 @@ function closeDetail() {
   transition: background 0.12s;
 }
 .gs-dropdown-item:hover {
-  background: #f1f5f9;
+  background: var(--surface-alt);
 }
 .gs-dropdown-active {
-  color: #1d4ed8;
-  background: #eff6ff;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
 }
 .gs-dropdown-check {
   margin-left: auto;
-  color: #3b82f6;
-}
-
-/* ── 主题切换 ────────────────────────────────────── */
-.gs-theme-wrap {
-  position: relative;
+  color: var(--primary);
 }
 
 /* ── 下拉动画 ────────────────────────────────────── */
@@ -832,7 +807,8 @@ function closeDetail() {
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: #eef2f7;
+  background: var(--bg, #eef2f7);
+  transition: background 0.3s ease;
 }
 
 /* ── 主区域 ────────────────────────────────────────────── */
@@ -848,6 +824,8 @@ function closeDetail() {
   flex: 1;
   position: relative;
   overflow: hidden;
+  background: var(--bg, #f8f9fc);
+  transition: background 0.3s ease;
 }
 /* ── 统计浮层 ──────────────────────────────────────────── */
 .gs-stats-overlay {
@@ -856,13 +834,13 @@ function closeDetail() {
   left: 10px;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(8px);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 5px 2px;
   z-index: 410;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 .gs-map-toggle {
   position: absolute;
@@ -872,17 +850,17 @@ function closeDetail() {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(8px);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 10px;
   z-index: 410;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 .gs-toggle-label {
   font-size: 12px;
   font-weight: 600;
-  color: #334155;
+  color: var(--text);
   white-space: nowrap;
 }
 .gs-stat {
@@ -895,25 +873,25 @@ function closeDetail() {
   font-size: 14px;
   font-weight: 700;
   font-family: var(--font-display);
-  color: #1d4ed8;
+  color: var(--primary);
   line-height: 1.15;
 }
 .gs-stat-lbl {
   font-size: 9px;
-  color: #64748b;
+  color: var(--text-muted);
   margin-top: 2px;
   white-space: nowrap;
 }
 .gs-stat-sep {
   width: 1px;
   height: 22px;
-  background: #e2e8f0;
+  background: var(--border);
 }
 .gs-stat-project .gs-stat-num {
-  color: #d97706;
+  color: var(--warning);
 }
 .gs-stat-project .gs-stat-lbl {
-  color: #f59e0b;
+  color: var(--warning);
   font-weight: 600;
 }
 
@@ -922,18 +900,18 @@ function closeDetail() {
   position: absolute;
   bottom: 10px;
   left: 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(8px);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 5px 8px;
   z-index: 410;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 .gs-legend-title {
   display: block;
   font-size: 9px;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-bottom: 3px;
 }
 .gs-legend-items {
@@ -947,7 +925,7 @@ function closeDetail() {
   align-items: center;
   gap: 5px;
   font-size: 10px;
-  color: #475569;
+  color: var(--text);
 }
 .gs-legend-swatch {
   width: 11px;
@@ -997,7 +975,7 @@ function closeDetail() {
 @keyframes gs-spin { to { transform: rotate(360deg); } }
 .gs-loading-text {
   font-size: 13px;
-  color: rgba(126, 200, 255, 0.4);
+  color: var(--text-muted);
 }
 
 /* ── 右侧企业面板 ──────────────────────────────────────── */
@@ -1012,10 +990,10 @@ function closeDetail() {
   padding: 8px 4px;
   font-size: 10px;
   font-weight: 600;
-  color: #475569;
-  background: rgba(255, 255, 255, 0.96);
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
   border: none;
-  border-left: 1px solid #e2e8f0;
+  border-left: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   writing-mode: vertical-rl;
@@ -1023,8 +1001,8 @@ function closeDetail() {
   letter-spacing: 1px;
 }
 .gs-panel-reopen:hover {
-  color: #2563eb;
-  background: #f8fafc;
+  color: var(--primary);
+  background: var(--surface-alt);
 }
 .gs-company-panel {
   width: 310px;

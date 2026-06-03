@@ -1,20 +1,10 @@
 <template>
   <div class="app-shell">
-    <!-- 侧边栏 -->
-    <LayoutSidebar :collapsed="sidebarCollapsed" :mobile-open="mobileMenuOpen" @toggle="sidebarCollapsed = !sidebarCollapsed" @close-mobile="mobileMenuOpen = false" />
-
-    <!-- 移动端遮罩 -->
-    <div
-      v-if="mobileMenuOpen"
-      class="fixed inset-0 bg-black/50 z-30"
-      @click="mobileMenuOpen = false"
-    />
+    <!-- 顶部栏（含导航 + 用户） -->
+    <LayoutTopbar />
 
     <!-- 主内容区 -->
     <div class="main-content">
-      <!-- 顶栏 -->
-      <LayoutTopbar @toggle-mobile="mobileMenuOpen = !mobileMenuOpen" />
-
       <!-- 标签页栏 -->
       <div class="tabbar">
         <div
@@ -69,17 +59,15 @@ type TabItem = {
 const route = useRoute()
 const router = useRouter()
 const settingsStore = useSettingsStore()
-const sidebarCollapsed = ref(false)
-const mobileMenuOpen = ref(false)
 
 const NAV_ITEMS: NavItem[] = [
-  // { path: '/', name: '首页概览', icon: 'i-lucide-layout-dashboard' },
+  { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
   { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
-  // { path: '/public-opinion', name: '舆情监测', icon: 'i-lucide-radar' },
-  // { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
-  // { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
-  // { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },
-  // { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' }
+  { path: '/public-opinion', name: '舆情监测', icon: 'i-lucide-radar' },
+  { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
+  { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
+  { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },
+  { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' },
 ]
 
 const tabs = ref<TabItem[]>([])
@@ -120,3 +108,87 @@ function closeTab(path: string) {
   }
 }
 </script>
+
+<style scoped>
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 标签页栏 */
+.tabbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  position: relative;
+  top: 1px;
+}
+.tab-item:hover {
+  color: var(--text);
+  background: var(--surface-alt);
+}
+.tab-item.active {
+  color: var(--primary);
+  background: var(--surface);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+}
+
+.tab-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.tab-item.active .tab-icon {
+  opacity: 1;
+}
+
+.tab-close {
+  opacity: 0;
+  margin-left: 2px;
+  padding: 2px;
+  height: 18px;
+  width: 18px;
+}
+.tab-item:hover .tab-close {
+  opacity: 1;
+}
+
+/* 页面内容 */
+.page-content {
+  flex: 1;
+  overflow: auto;
+  background: var(--bg);
+}
+</style>
