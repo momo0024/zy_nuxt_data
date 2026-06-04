@@ -1,100 +1,147 @@
 <template>
   <div class="chain-page">
-    <!-- 顶部标题区 -->
-    <div class="chain-header">
+    <!-- 顶部概览条 -->
+    <header class="chain-header">
       <div class="chain-header-left">
-        <div class="chain-title-wrap">
-          <div class="chain-title-icon">
-            <UIcon name="i-lucide-network" class="size-6" />
-          </div>
-          <div>
-            <h1 class="chain-title">集成电路产业链图谱</h1>
-            <p class="chain-subtitle">IC Industry Chain · 上下游全链路生态视图</p>
-          </div>
+        <div class="chain-logo">
+          <UIcon name="i-lucide-cpu" class="chain-logo-icon" />
+        </div>
+        <div class="chain-header-text">
+          <h1 class="chain-title">集成电路产业链图谱</h1>
+          <p class="chain-subtitle">IC Industry Chain Map</p>
         </div>
       </div>
       <div class="chain-header-right">
         <div class="chain-stat">
-          <UIcon name="i-lucide-building-2" class="size-4" />
+          <UIcon name="i-lucide-building-2" class="chain-stat-icon" />
           <span class="chain-stat-num">{{ totalCompanies }}</span>
           <span class="chain-stat-label">家企业</span>
         </div>
       </div>
-    </div>
+    </header>
 
-    <!-- 快捷入口 -->
-    <div class="chain-entries">
-      <NuxtLink
-        v-for="entry in quickEntries"
-        :key="entry.path"
-        :to="entry.path"
-        class="chain-entry"
-        :style="{ '--entry-color': entry.color }"
-      >
-        <div class="chain-entry-icon-wrap">
-          <UIcon :name="entry.icon" class="size-5" />
+    <!-- 主体 -->
+    <main class="chain-main">
+      <!-- 上中下游流程轴 -->
+      <div class="flow-axis">
+        <div class="flow-track">
+          <template v-for="(phase, idx) in normalPhases" :key="phase.id">
+            <div
+              class="flow-node"
+              :class="{ active: selectedNode?.id === phase.id }"
+              :style="{ '--c': phase.color }"
+              @click="selectNode(phase)"
+            >
+              <div class="flow-node-icon">
+                <UIcon :name="phaseIcons[phase.key] || 'i-lucide-box'" class="flow-node-icon-inner" />
+              </div>
+              <div class="flow-node-info">
+                <span class="flow-node-name">{{ phase.name }}</span>
+                <span class="flow-node-count">{{ phase.count }} 家企业</span>
+              </div>
+            </div>
+            <div v-if="idx < normalPhases.length - 1" class="flow-connector">
+              <div class="flow-connector-line" />
+              <div class="flow-connector-arrow">
+                <UIcon name="i-lucide-chevron-right" class="flow-connector-icon" />
+              </div>
+              <div class="flow-connector-line" />
+            </div>
+          </template>
         </div>
-        <div class="chain-entry-info">
-          <span class="chain-entry-name">{{ entry.name }}</span>
-          <span class="chain-entry-desc">{{ entry.desc }}</span>
-        </div>
-        <UIcon name="i-lucide-arrow-right" class="chain-entry-arrow size-4" />
-      </NuxtLink>
-    </div>
+      </div>
 
-    <!-- 图谱区域 -->
-    <div class="chain-graph-wrap">
-      <ClientOnly>
-        <div ref="graphContainer" class="chain-graph-container" />
-        <template #fallback>
-          <div class="chain-graph-loading">
-            <UIcon name="i-lucide-loader-2" class="size-8 animate-spin text-[var(--primary)]" />
-            <span>正在加载产业链图谱...</span>
+      <!-- 阶段详情区 -->
+      <div class="chain-sections">
+        <template v-for="(phase, idx) in treePhases" :key="phase.id">
+          <!-- 阶段间连接 -->
+          <div v-if="idx > 0" class="section-connector">
+            <div class="section-connector-line" />
+            <div class="section-connector-dot" :style="{ borderColor: phase.color }" />
+            <div class="section-connector-line" />
           </div>
+
+          <!-- 阶段区块 -->
+          <section class="section" :style="{ '--c': phase.color }">
+            <div class="section-header">
+              <div class="section-header-left">
+                <span class="section-header-bar" :style="{ background: phase.color }" />
+                <span class="section-header-title">{{ phase.name }}</span>
+                <span class="section-header-badge" :style="{ color: phase.color, background: colorSoft(phase.color) }">
+                  {{ phase.count }} 家
+                </span>
+              </div>
+            </div>
+
+            <div class="section-content">
+              <div
+                v-for="cat1 in phase.children"
+                :key="cat1.id"
+                class="category"
+              >
+                <!-- 大类分组标题 -->
+                <div v-if="phase.children.length > 1" class="category-header">
+                  <span class="category-dot" :style="{ background: phase.color }" />
+                  <span class="category-name">{{ cat1.name }}</span>
+                  <span class="category-count">{{ cat1.count }} 家</span>
+                </div>
+
+                <!-- 小类标签云 -->
+                <div class="tag-cloud">
+                  <div
+                    v-for="cat2 in cat1.children"
+                    :key="cat2.id"
+                    class="tag-item"
+                    :class="{ active: selectedNode?.id === cat2.id }"
+                    @click="selectNode(cat2)"
+                  >
+                    <span class="tag-name">{{ cat2.name }}</span>
+                    <span class="tag-count" :style="{ color: phase.color }">{{ cat2.count }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </template>
-      </ClientOnly>
-
-      <!-- 图例 -->
-      <div class="chain-legend">
-        <div class="legend-item"><span class="legend-dot" style="background:#3b82f6" />上游</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6" />中游</div>
-        <div class="legend-item"><span class="legend-dot" style="background:#ef4444" />下游</div>
       </div>
-
-      <!-- 缩放控制 -->
-      <div class="chain-zoom-controls">
-        <button class="zoom-btn" title="放大" @click="zoomIn">
-          <UIcon name="i-lucide-plus" class="size-4" />
-        </button>
-        <button class="zoom-btn" title="缩小" @click="zoomOut">
-          <UIcon name="i-lucide-minus" class="size-4" />
-        </button>
-        <button class="zoom-btn" title="适应画布" @click="fitView">
-          <UIcon name="i-lucide-maximize-2" class="size-4" />
-        </button>
-      </div>
-    </div>
+    </main>
 
     <!-- 右侧企业列表面板 -->
     <Transition name="slide-panel">
       <div v-if="selectedNode" class="company-panel">
         <div class="company-panel-header">
-          <div class="company-panel-header-info">
-            <div class="company-panel-title">{{ selectedNode.label }}</div>
-            <div class="company-panel-sub">共 {{ selectedNode.companies?.length || 0 }} 家企业</div>
+          <div class="company-panel-title-row">
+            <span class="company-panel-indicator" :style="{ background: selectedNode.color }" />
+            <span class="company-panel-title">{{ selectedNode.label }}</span>
           </div>
-          <UButton variant="ghost" size="xs" icon="i-lucide-x" color="neutral" @click="selectedNode = null" />
+          <div class="company-panel-meta">
+            <span class="company-panel-total">{{ selectedNode.companies?.length || 0 }}</span>
+            <span class="company-panel-unit">家企业</span>
+            <UButton
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-x"
+              color="neutral"
+              class="ml-auto"
+              @click="selectedNode = null"
+            />
+          </div>
         </div>
-        <div class="company-panel-body">
+        <div class="company-panel-list">
           <div
             v-for="company in selectedNode.companies"
-            :key="company"
-            class="company-panel-item"
-            @click="goToCompany(company)"
+            :key="company.code"
+            class="company-item"
+            @click="goToCompany(company.code)"
           >
-            <span class="company-panel-dot" :style="{ background: selectedNode.color }" />
-            <span class="company-panel-name">{{ company }}</span>
-            <UIcon name="i-lucide-chevron-right" class="size-3 text-[var(--text-muted)]" />
+            <div class="company-item-avatar" :style="{ background: selectedNode.color }">
+              {{ company.name.charAt(0) }}
+            </div>
+            <div class="company-item-info">
+              <span class="company-item-name">{{ company.name }}</span>
+              <span class="company-item-code">{{ company.code }}</span>
+            </div>
+            <UIcon name="i-lucide-chevron-right" class="company-item-arrow" />
           </div>
         </div>
       </div>
@@ -103,334 +150,189 @@
 </template>
 
 <script setup lang="ts">
-import { Graph } from '@antv/g6'
 import { request } from '~/utils/request'
 
 definePageMeta({ middleware: 'auth' })
 
 const router = useRouter()
-const graphContainer = ref<HTMLDivElement | null>(null)
 const chainData = ref<any>(null)
-const loading = ref(false)
 const selectedNode = ref<any>(null)
-let graphInstance: Graph | null = null
+
+interface CompanyItem {
+  code: string
+  name: string
+}
+
+interface TreeNode {
+  id: string
+  name: string
+  count: number
+  companies: CompanyItem[]
+  color: string
+  phase: string
+  key?: string
+  expanded?: boolean
+  children?: TreeNode[]
+}
+
+const phaseIcons: Record<string, string> = {
+  up: 'i-lucide-arrow-up-circle',
+  mid: 'i-lucide-arrow-right-circle',
+  down: 'i-lucide-arrow-down-circle',
+  other: 'i-lucide-more-horizontal',
+}
 
 const totalCompanies = computed(() => {
   if (!chainData.value) return 0
-  let count = 0
-  ;['up', 'mid', 'down'].forEach((key) => {
-    count += countPhaseCompanies(chainData.value[key])
-  })
-  return count
+  return Object.values(chainData.value).reduce(
+    (sum: number, phase: any) => sum + countCompanies(phase),
+    0
+  )
 })
 
-const quickEntries = [
-  { path: '/geo-screen', name: '企业地图', desc: '查看企业地理分布', icon: 'i-lucide-map', color: '#3b82f6' },
-  { path: '/retrieve', name: '文档检索', desc: '检索知识库文档', icon: 'i-lucide-search', color: '#8b5cf6' },
-  { path: '/data-search', name: '数据搜索', desc: '搜索企业数据', icon: 'i-lucide-table-properties', color: '#14b8a6' },
-  { path: '/import', name: '文档导入', desc: '批量导入文档', icon: 'i-lucide-file-up', color: '#f59e0b' },
-  { path: '/public-opinion', name: '舆情监测', desc: '实时舆情分析', icon: 'i-lucide-radar', color: '#ef4444' },
-]
+const treePhases = ref<TreeNode[]>([])
 
-function countPhaseCompanies(phase: any): number {
-  if (!phase) return 0
-  if (phase.company_count !== undefined) return phase.company_count
-  if (phase.child_info) {
-    return Object.values(phase.child_info).reduce((sum: number, child: any) => sum + countPhaseCompanies(child), 0)
+const normalPhases = computed(() =>
+  treePhases.value.filter((p) => !isOtherPhase(p))
+)
+
+function isOtherPhase(phase: TreeNode): boolean {
+  return (
+    phase.name === '其他' ||
+    phase.name.includes('其他') ||
+    phase.key === 'other'
+  )
+}
+
+function colorSoft(color: string): string {
+  return `color-mix(in srgb, ${color} 12%, var(--surface-alt))`
+}
+
+function countCompanies(node: any): number {
+  if (!node) return 0
+  if (node.company_count !== undefined) return node.company_count
+  const countList = (list: any): number => {
+    if (Array.isArray(list)) return list.length
+    if (typeof list === 'object' && list !== null) return Object.keys(list).length
+    return 0
+  }
+  if (node.company_list) return countList(node.company_list)
+  if (node.child_info?.company_list) return countList(node.child_info.company_list)
+  if (node.child_info) {
+    return Object.values(node.child_info).reduce(
+      (sum: number, child: any) => sum + countCompanies(child),
+      0
+    )
   }
   return 0
 }
 
-function getCompanies(node: any): string[] {
+function getCompanies(node: any): CompanyItem[] {
   if (!node) return []
-  // 直接包含企业列表
-  if (node.company_list && Array.isArray(node.company_list)) return node.company_list
-  // child_info 中包含企业列表（叶子节点）
-  if (node.child_info?.company_list && Array.isArray(node.child_info.company_list)) return node.child_info.company_list
-  // 递归处理子节点
+  const extract = (list: any): CompanyItem[] => {
+    if (Array.isArray(list)) {
+      return list.map((name, idx) => ({ code: String(idx), name: String(name) }))
+    }
+    if (typeof list === 'object' && list !== null) {
+      return Object.entries(list).map(([code, name]) => ({ code, name: String(name) }))
+    }
+    return []
+  }
+  if (node.company_list) return extract(node.company_list)
+  if (node.child_info?.company_list) return extract(node.child_info.company_list)
   if (node.child_info) {
     return Object.values(node.child_info).flatMap((child: any) => getCompanies(child))
   }
   return []
 }
 
-function countCompanies(node: any): number {
-  if (!node) return 0
-  // 直接包含企业数量
-  if (node.company_count !== undefined) return node.company_count
-  // child_info 中包含企业数量（叶子节点）
-  if (node.child_info?.company_count !== undefined) return node.child_info.company_count
-  // 递归处理子节点
-  if (node.child_info) {
-    return Object.values(node.child_info).reduce((sum: number, child: any) => sum + countCompanies(child), 0)
+function buildTree(raw: any): TreeNode[] {
+  const phaseColors: Record<string, string> = {
+    up: '#3b82f6',
+    mid: '#8b5cf6',
+    down: '#ef4444',
   }
-  return 0
-}
-
-function transformChainData(raw: any) {
-  const nodes: any[] = []
-  const edges: any[] = []
-  let idCounter = 0
-
-  const rootId = `n-${idCounter++}`
-  nodes.push({
-    id: rootId,
-    data: { label: '集成电路产业链', type: 'root', phase: 'root' },
-  })
-
-  const phases = [
-    { key: 'up', label: '上游', color: '#3b82f6' },
-    { key: 'mid', label: '中游', color: '#8b5cf6' },
-    { key: 'down', label: '下游', color: '#ef4444' },
-  ]
-
-  phases.forEach((phase) => {
-    const phaseData = raw[phase.key]
-    if (!phaseData) return
-
-    const phaseId = `n-${idCounter++}`
-    nodes.push({
-      id: phaseId,
-      data: {
-        label: phaseData.name || phase.label,
-        type: 'phase',
-        phase: phase.key,
-        color: phase.color,
-      },
-    })
-    edges.push({ source: rootId, target: phaseId })
-
-    Object.values(phaseData.child_info || {}).forEach((cat1: any) => {
-      const cat1Id = `n-${idCounter++}`
-      const cat1Count = countCompanies(cat1)
-      nodes.push({
-        id: cat1Id,
-        data: {
-          label: cat1.name,
-          type: 'category1',
-          phase: phase.key,
-          color: phase.color,
-          count: cat1Count,
-        },
-      })
-      edges.push({ source: phaseId, target: cat1Id })
-
-      Object.values(cat1.child_info || {}).forEach((cat2: any) => {
-        if (!cat2 || typeof cat2 !== 'object' || !cat2.name) return
-        const cat2Id = `n-${idCounter++}`
-        const cat2Count = countCompanies(cat2)
-        const companies = getCompanies(cat2)
-        nodes.push({
-          id: cat2Id,
-          data: {
-            label: cat2.name,
-            type: 'category2',
-            phase: phase.key,
-            color: phase.color,
-            count: cat2Count,
-            companies,
-          },
+  return Object.keys(raw)
+    .filter((key) => raw[key] && typeof raw[key] === 'object')
+    .map((key) => {
+      const phaseData = raw[key]
+      const color = phaseColors[key] || '#6366f1'
+      const children = Object.values(phaseData.child_info || {})
+        .map((cat1: any, idx1: number) => {
+          const cat1Companies = getCompanies(cat1)
+          const cat2Children = Object.values(cat1.child_info || {})
+            .map((cat2: any, idx2: number) => {
+              if (!cat2 || typeof cat2 !== 'object' || !cat2.name) return null
+              return {
+                id: `${key}-${idx1}-${idx2}`,
+                name: cat2.name,
+                count: countCompanies(cat2),
+                companies: getCompanies(cat2),
+                color,
+                phase: key,
+              }
+            })
+            .filter(Boolean) as TreeNode[]
+          return {
+            id: `${key}-${idx1}`,
+            name: cat1.name,
+            count: cat1Companies.length,
+            companies: cat1Companies,
+            color,
+            phase: key,
+            expanded: true,
+            children: cat2Children,
+          }
         })
-        edges.push({ source: cat1Id, target: cat2Id })
-      })
-    })
-  })
-
-  return { nodes, edges }
-}
-
-function getNodeSize(type: string): [number, number] {
-  switch (type) {
-    case 'root': return [180, 48]
-    case 'phase': return [120, 40]
-    case 'category1': return [140, 36]
-    case 'category2': return [160, 36]
-    default: return [120, 36]
-  }
-}
-
-function getNodeFill(type: string, phase: string, isDark: boolean): string {
-  if (type === 'root') return isDark ? '#1a1a2a' : '#ffffff'
-  if (type === 'phase') {
-    if (phase === 'up') return '#3b82f6'
-    if (phase === 'mid') return '#8b5cf6'
-    if (phase === 'down') return '#ef4444'
-  }
-  return isDark ? '#13131f' : '#ffffff'
-}
-
-function getNodeStroke(type: string, phase: string, isDark: boolean): string {
-  if (type === 'phase') return 'transparent'
-  if (type === 'root') return isDark ? '#6366f1' : '#6366f1'
-  if (phase === 'up') return '#3b82f6'
-  if (phase === 'mid') return '#8b5cf6'
-  if (phase === 'down') return '#ef4444'
-  return isDark ? '#252538' : '#e2e5ed'
-}
-
-function getLabelColor(type: string, isDark: boolean): string {
-  if (type === 'phase') return '#ffffff'
-  return isDark ? '#c0c0dc' : '#2d3240'
-}
-
-async function initGraph() {
-  if (!graphContainer.value || !chainData.value) return
-
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
-    || document.documentElement.getAttribute('data-theme') === 'purple'
-
-  const { nodes, edges } = transformChainData(chainData.value)
-
-  graphInstance = new Graph({
-    container: graphContainer.value,
-    width: graphContainer.value.clientWidth,
-    height: graphContainer.value.clientHeight,
-    data: { nodes, edges },
-    layout: {
-      type: 'dagre',
-      rankdir: 'LR',
-      nodesep: 24,
-      ranksep: 70,
-      controlPoints: true,
-    },
-    node: {
-      style: (d: any) => {
-        const type = d.data?.type || 'category2'
-        const phase = d.data?.phase || ''
-        const size = getNodeSize(type)
-        return {
-          size,
-          radius: type === 'root' ? 12 : type === 'phase' ? 20 : 8,
-          fill: getNodeFill(type, phase, isDark),
-          stroke: getNodeStroke(type, phase, isDark),
-          lineWidth: type === 'root' ? 2 : 1,
-          labelText: d.data?.label || '',
-          labelFill: getLabelColor(type, isDark),
-          labelFontSize: type === 'root' ? 14 : type === 'phase' ? 13 : 12,
-          labelFontWeight: type === 'root' || type === 'phase' ? 700 : 500,
-          labelMaxWidth: size[0] - 16,
-          labelWordWrap: true,
-          shadowColor: type === 'phase' ? d.data?.color + '33' : 'rgba(0,0,0,0.08)',
-          shadowBlur: type === 'phase' ? 12 : 4,
-          shadowOffsetY: type === 'phase' ? 4 : 2,
-          cursor: 'pointer',
-        }
-      },
-      state: {
-        hover: {
-          lineWidth: 2,
-          shadowBlur: 12,
-          shadowColor: 'rgba(99,102,241,0.3)',
-        },
-        selected: {
-          lineWidth: 2,
-          stroke: '#6366f1',
-        },
-      },
-    },
-    edge: {
-      type: 'cubic-horizontal',
-      style: {
-        stroke: isDark ? '#3a3a55' : '#d1d5db',
-        lineWidth: 1.5,
-        endArrow: true,
-        endArrowSize: 8,
-        endArrowFill: isDark ? '#3a3a55' : '#d1d5db',
-        radius: 8,
-      },
-    },
-    behaviors: ['drag-canvas', 'zoom-canvas', 'hover-activate'],
-    animation: {
-      duration: 400,
-      easing: 'ease-in-out',
-    },
-  })
-
-  graphInstance.on('node:click', (evt: any) => {
-    const item = evt.item
-    if (!item) return
-    const data = item.getModel?.() || item.getData?.() || {}
-    const nodeData = data.data || data
-    if (nodeData.type === 'category2' && nodeData.companies?.length) {
-      selectedNode.value = {
-        label: nodeData.label,
-        companies: nodeData.companies,
-        color: nodeData.color,
+        .filter(Boolean) as TreeNode[]
+      return {
+        id: key,
+        key,
+        name: phaseData.name || key,
+        count: countCompanies(phaseData),
+        companies: getCompanies(phaseData),
+        color,
+        phase: key,
+        expanded: true,
+        children,
       }
+    })
+}
+
+function selectNode(node: TreeNode) {
+  if (node.companies?.length) {
+    selectedNode.value = {
+      id: node.id,
+      label: node.name,
+      companies: node.companies,
+      color: node.color,
     }
-  })
-
-  graphInstance.on('canvas:click', () => {
-    selectedNode.value = null
-  })
-
-  await graphInstance.render()
-  graphInstance.fitView({ padding: [40, 80, 40, 80] })
-}
-
-function zoomIn() {
-  if (graphInstance) {
-    const zoom = graphInstance.getZoom()
-    graphInstance.zoomTo(zoom * 1.2)
-  }
-}
-
-function zoomOut() {
-  if (graphInstance) {
-    const zoom = graphInstance.getZoom()
-    graphInstance.zoomTo(zoom * 0.8)
-  }
-}
-
-function fitView() {
-  if (graphInstance) {
-    graphInstance.fitView({ padding: [40, 80, 40, 80] })
   }
 }
 
 async function fetchChainData() {
-  loading.value = true
   try {
     const res = await request.get('/company/chain/')
     if (res.data?.code === 0 && res.data?.data) {
       chainData.value = res.data.data
+      treePhases.value = buildTree(res.data.data)
     }
   } catch (err) {
     console.error('获取产业链数据失败:', err)
-  } finally {
-    loading.value = false
   }
 }
 
-function goToCompany(name: string) {
-  router.push(`/company-detail?name=${encodeURIComponent(name)}`)
-}
-
-function handleResize() {
-  if (graphInstance && graphContainer.value) {
-    graphInstance.setSize([graphContainer.value.clientWidth, graphContainer.value.clientHeight])
-    graphInstance.fitView({ padding: [40, 80, 40, 80] })
-  }
+function goToCompany(code: string) {
+  router.push(`/company-detail?code=${encodeURIComponent(code)}`)
 }
 
 onMounted(async () => {
   await fetchChainData()
-  nextTick(() => {
-    initGraph()
-  })
-  window.addEventListener('resize', handleResize)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize)
-  if (graphInstance) {
-    graphInstance.destroy()
-    graphInstance = null
-  }
 })
 </script>
 
 <style scoped>
+/* ── 页面 ── */
 .chain-page {
   display: flex;
   flex-direction: column;
@@ -452,221 +354,341 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 
-.chain-title-wrap {
+.chain-header-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.chain-title-icon {
-  width: 40px;
-  height: 40px;
+.chain-logo {
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+.chain-logo-icon {
+  width: 20px;
+  height: 20px;
+  color: #fff;
 }
 
 .chain-title {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-strong);
   line-height: 1.2;
 }
 
 .chain-subtitle {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-top: 1px;
-}
-
-.chain-header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .chain-stat {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.chain-stat-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+}
+
+.chain-stat-num {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.chain-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Main ── */
+.chain-main {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 32px;
+}
+
+/* ── Flow Axis ── */
+.flow-axis {
+  padding: 24px 20px 20px;
+}
+
+.flow-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.flow-node {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  min-width: 160px;
+  position: relative;
+}
+
+.flow-node:hover {
+  border-color: var(--c);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--c) 15%, transparent);
+}
+
+.flow-node.active {
+  border-color: var(--c);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 12%, transparent), 0 8px 24px color-mix(in srgb, var(--c) 15%, transparent);
+}
+
+.flow-node-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c) 12%, var(--surface-alt));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.flow-node-icon-inner {
+  width: 20px;
+  height: 20px;
+  color: var(--c);
+}
+
+.flow-node-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flow-node-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.flow-node-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.flow-connector {
+  display: flex;
+  align-items: center;
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.flow-connector-line {
+  flex: 1;
+  height: 1.5px;
+  background: var(--border);
+}
+
+.flow-connector-arrow {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-connector-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+/* ── Sections ── */
+.chain-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 20px;
+}
+
+.section-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+  gap: 8px;
+}
+
+.section-connector-line {
+  flex: 1;
+  max-width: 120px;
+  height: 0;
+  border-top: 1.5px dashed var(--border);
+}
+
+.section-connector-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+/* ── Section ── */
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: box-shadow 0.25s ease;
+}
+
+.section:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.section-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-header-bar {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+}
+
+.section-header-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.section-header-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.section-content {
+  padding: 16px 18px;
+}
+
+/* ── Category ── */
+.category {
+  margin-bottom: 16px;
+}
+.category:last-child {
+  margin-bottom: 0;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.category-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.category-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.category-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-left: auto;
+  padding: 1px 8px;
+  background: var(--surface-alt);
+  border-radius: 8px;
+}
+
+/* ── Tag Cloud ── */
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-item {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: 20px;
-  font-size: 13px;
-  color: var(--text);
-  font-weight: 600;
-}
-
-.chain-stat-num {
-  color: var(--primary);
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.chain-stat-label {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-/* ── Quick Entries ── */
-.chain-entries {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  overflow-x: auto;
-}
-
-.chain-entry {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  text-decoration: none;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.chain-entry:hover {
-  border-color: color-mix(in srgb, var(--entry-color) 50%, var(--border));
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--entry-color) 15%, transparent);
-  transform: translateY(-1px);
-}
-
-.chain-entry-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--entry-color) 12%, transparent);
-  color: var(--entry-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.chain-entry-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.chain-entry-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-strong);
-}
-
-.chain-entry-desc {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.chain-entry-arrow {
-  color: var(--text-muted);
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.chain-entry:hover .chain-entry-arrow {
-  opacity: 1;
-  color: var(--entry-color);
-}
-
-/* ── Graph ── */
-.chain-graph-wrap {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: var(--bg);
-}
-
-.chain-graph-container {
-  width: 100%;
-  height: 100%;
-}
-
-.chain-graph-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  height: 100%;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-/* 图例 */
-.chain-legend {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow-sm);
-  font-size: 12px;
-  color: var(--text);
-  z-index: 10;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-/* 缩放控制 */
-.chain-zoom-controls {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  z-index: 10;
-}
-
-.zoom-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
+  font-size: 12px;
 }
-.zoom-btn:hover {
-  background: var(--surface-alt);
-  color: var(--text-strong);
-  border-color: var(--primary);
+
+.tag-item:hover {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 8%, var(--surface-alt));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--c) 12%, transparent);
+}
+
+.tag-item.active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, var(--surface-alt));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 15%, transparent);
+}
+
+.tag-name {
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tag-count {
+  font-size: 11px;
+  font-weight: 700;
 }
 
 /* ── Company Panel ── */
@@ -678,86 +700,149 @@ onBeforeUnmount(() => {
   width: 340px;
   background: var(--surface);
   border-left: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
   z-index: 20;
 }
 
 .company-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 16px 12px;
+  padding: 16px 18px 14px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
-.company-panel-header-info {
-  min-width: 0;
+.company-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.company-panel-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .company-panel-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
+  color: var(--text-strong);
+}
+
+.company-panel-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 18px;
+}
+
+.company-panel-total {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.company-panel-unit {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.company-panel-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.company-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.company-item:hover {
+  background: var(--surface-alt);
+}
+
+.company-item-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.company-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.company-item-name {
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-strong);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.company-panel-sub {
-  font-size: 12px;
+.company-item-code {
+  font-size: 10px;
   color: var(--text-muted);
-  margin-top: 2px;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
 }
 
-.company-panel-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.company-panel-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.company-panel-item:hover {
-  background: var(--surface-alt);
-}
-
-.company-panel-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.company-item-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.company-panel-name {
-  flex: 1;
-  font-size: 13px;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.company-item:hover .company-item-arrow {
+  color: var(--primary);
+  transform: translateX(2px);
 }
 
 /* ── Transitions ── */
 .slide-panel-enter-active,
 .slide-panel-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
 }
 .slide-panel-enter-from,
 .slide-panel-leave-to {
   transform: translateX(100%);
+  opacity: 0;
 }
 
 /* ── Responsive ── */
+@media (max-width: 1024px) {
+  .chain-header {
+    padding: 10px 16px;
+  }
+  .chain-sections {
+    padding: 0 16px;
+  }
+  .flow-axis {
+    padding: 20px 16px 16px;
+  }
+}
+
 @media (max-width: 768px) {
   .chain-header {
     padding: 10px 14px;
@@ -765,11 +850,21 @@ onBeforeUnmount(() => {
   .chain-subtitle {
     display: none;
   }
-  .chain-entries {
-    padding: 8px 14px;
+  .flow-axis {
+    padding: 16px 14px;
   }
-  .chain-entry-desc {
+  .flow-track {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .flow-connector {
     display: none;
+  }
+  .chain-sections {
+    padding: 0 14px;
+  }
+  .section-content {
+    padding: 12px 14px;
   }
   .company-panel {
     width: 100%;

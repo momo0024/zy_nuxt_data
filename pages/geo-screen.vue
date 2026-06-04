@@ -50,10 +50,6 @@
             </button>
           </div>
 
-          <NuxtLink to="/" class="gs-tool-btn gs-chain-btn" title="产业链路">
-            <UIcon name="i-lucide-network" class="size-3.5" />
-          </NuxtLink>
-
           <button class="gs-tool-btn gs-fullscreen-btn" :title="isFullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
             <UIcon :name="isFullscreen ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'" class="size-3.5" />
           </button>
@@ -245,13 +241,32 @@
                 <div class="cd-sub">
                   <span v-if="detailCompany.company_traded === 1" class="cd-type-badge type-listed">上市公司</span>
                   <span v-if="detailCompany.import_project === 1" class="cd-type-badge type-project">⚡重大项目</span>
-                  <span v-if="detailCompany.chain_name && detailCompany.chain_name !== '-'" class="cd-type-badge type-info">{{ detailCompany.chain_name }}</span>
-                  <span v-if="detailCompany.product && detailCompany.product !== '-'" class="cd-type-badge type-product">{{ detailCompany.product }}</span>
-                  <span v-if="detailCompany.product_type && detailCompany.product_type !== '-'" class="cd-type-badge type-product-type">{{ detailCompany.product_type }}</span>
                 </div>
               </div>
             </div>
             <div class="cd-body">
+              <!-- 产业与产品信息 -->
+              <div v-if="(detailCompany.chain_name && detailCompany.chain_name !== '-') || (detailCompany.product_type && detailCompany.product_type !== '-') || (detailCompany.product && detailCompany.product !== '-')" class="cd-tags-section">
+                <div class="cd-tags-title">
+                  <UIcon name="i-lucide-tags" class="size-4" />
+                  产业与产品
+                </div>
+                <div class="cd-tags-body">
+                  <div v-if="detailCompany.chain_name && detailCompany.chain_name !== '-'" class="cd-tag-module">
+                    <span class="cd-tag-module-label">产业链类型</span>
+                    <span class="cd-type-badge type-info">{{ detailCompany.chain_name }}</span>
+                  </div>
+                  <div v-if="detailCompany.product_type && detailCompany.product_type !== '-'" class="cd-tag-module">
+                    <span class="cd-tag-module-label">产品类型</span>
+                    <span class="cd-type-badge type-product-type">{{ detailCompany.product_type }}</span>
+                  </div>
+                  <div v-if="detailCompany.product && detailCompany.product !== '-'" class="cd-tag-module">
+                    <span class="cd-tag-module-label">产品</span>
+                    <span class="cd-type-badge type-product">{{ detailCompany.product }}</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="cd-metrics">
                 <div class="cd-metric">
                   <UIcon name="i-lucide-landmark" class="size-[18px] text-primary flex-shrink-0" />
@@ -297,11 +312,6 @@
                 </div>
               </div>
               <div class="cd-info-list">
-                <div class="cd-info-row">
-                  <UIcon name="i-lucide-user" class="size-3.5 opacity-40 flex-shrink-0" />
-                  <span class="cd-info-key">法人</span>
-                  <span class="cd-info-val">{{ detailCompany.company_legal_person }}</span>
-                </div>
                 <div v-if="detailCompany.company_found_date && detailCompany.company_found_date !== '-'" class="cd-info-row">
                   <UIcon name="i-lucide-calendar" class="size-3.5 opacity-40 flex-shrink-0" />
                   <span class="cd-info-key">成立日期</span>
@@ -311,16 +321,6 @@
                   <UIcon name="i-lucide-map-pin" class="size-3.5 opacity-40 flex-shrink-0" />
                   <span class="cd-info-key">地址</span>
                   <span class="cd-info-val">{{ detailCompany.company_work_add || detailCompany.conpany_district || '-' }}</span>
-                </div>
-                <div v-if="detailCompany.contact_info && detailCompany.contact_info !== '-'" class="cd-info-row">
-                  <UIcon name="i-lucide-phone" class="size-3.5 opacity-40 flex-shrink-0" />
-                  <span class="cd-info-key">联系方式</span>
-                  <span class="cd-info-val">{{ detailCompany.contact_info }}</span>
-                </div>
-                <div v-if="detailCompany.company_website && detailCompany.company_website !== '-'" class="cd-info-row">
-                  <UIcon name="i-lucide-globe" class="size-3.5 opacity-40 flex-shrink-0" />
-                  <span class="cd-info-key">网站</span>
-                  <span class="cd-info-val text-primary">{{ detailCompany.company_website }}</span>
                 </div>
                 <div v-if="detailCompany.honors && detailCompany.honors !== '-'" class="cd-info-row cd-honors-row">
                   <UIcon name="i-lucide-award" class="size-3.5 opacity-40 flex-shrink-0" />
@@ -1468,6 +1468,39 @@ function closeDetail() {
 .type-info { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
 .type-product { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
 .type-product-type { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+
+.cd-tags-section {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.cd-tags-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 10px;
+}
+.cd-tags-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cd-tag-module {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cd-tag-module-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 64px;
+  flex-shrink: 0;
+}
 
 .cp-listed-tag {
   display: inline-flex;
