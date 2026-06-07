@@ -1,12 +1,8 @@
 <template>
   <div class="cd-page">
     <div class="cd-topbar">
-      <NuxtLink to="/geo-screen" class="cd-back-link">
-        <UIcon name="i-lucide-arrow-left" class="size-4" />
-        <span>返回地图</span>
-      </NuxtLink>
       <div class="cd-breadcrumb">
-        <span class="cd-bc-text">企业地图</span>
+        <span class="cd-bc-text">企业图谱</span>
         <UIcon name="i-lucide-chevron-right" class="size-3.5 cd-bc-sep" />
         <span class="cd-bc-current">{{ company?.company_name || '企业详情' }}</span>
       </div>
@@ -20,7 +16,6 @@
     <div v-else-if="!company" class="cd-not-found">
       <UIcon name="i-lucide-building-x" class="size-12 opacity-20" />
       <p>未找到该企业信息</p>
-      <NuxtLink to="/geo-screen" class="cd-back-btn">返回地图</NuxtLink>
     </div>
 
     <template v-else>
@@ -95,6 +90,67 @@
               经营状况
             </h2>
             <template v-if="hasSectionData('business')">
+            <!-- 企业实力 -->
+            <div v-if="hasStrengthData" class="cd-strength-section">
+              <h3 class="cd-desc-card-title">
+                <UIcon name="i-lucide-zap" class="size-4" />
+                企业实力
+              </h3>
+              <div class="cd-strength-grid-detail">
+                <div v-if="company.company_score" class="cd-strength-card-detail cd-strength-score">
+                  <div class="cd-strength-card-num-detail">{{ company.company_score }}</div>
+                  <div class="cd-strength-card-lbl-detail">评分</div>
+                </div>
+                <div v-if="company.hornor_num" class="cd-strength-card-detail cd-strength-honor">
+                  <div class="cd-strength-card-num-detail">{{ company.hornor_num }}</div>
+                  <div class="cd-strength-card-lbl-detail">荣誉数量</div>
+                </div>
+                <div v-if="company.authorized_patents_count" class="cd-strength-card-detail cd-strength-patent">
+                  <div class="cd-strength-card-num-detail">{{ company.authorized_patents_count }}</div>
+                  <div class="cd-strength-card-lbl-detail">授权专利</div>
+                </div>
+                <div v-if="company.authorized_invention_patents_count" class="cd-strength-card-detail cd-strength-invention">
+                  <div class="cd-strength-card-num-detail">{{ company.authorized_invention_patents_count }}</div>
+                  <div class="cd-strength-card-lbl-detail">授权发明专利</div>
+                </div>
+                <div v-if="company.national_standards_count" class="cd-strength-card-detail cd-strength-standard">
+                  <div class="cd-strength-card-num-detail">{{ company.national_standards_count }}</div>
+                  <div class="cd-strength-card-lbl-detail">国家标准(项)</div>
+                </div>
+                <div v-if="company.participated_standards_count" class="cd-strength-card-detail cd-strength-participate">
+                  <div class="cd-strength-card-num-detail">{{ company.participated_standards_count }}</div>
+                  <div class="cd-strength-card-lbl-detail">参研标准(项)</div>
+                </div>
+              </div>
+              <div class="cd-strength-meta-detail">
+                <div v-if="company.company_financing_round && company.company_financing_round !== '-'" class="cd-strength-meta-row">
+                  <UIcon name="i-lucide-trending-up" class="size-3.5" />
+                  <span class="cd-strength-meta-label-detail">融资轮次</span>
+                  <span class="cd-strength-meta-value-detail">{{ company.company_financing_round }}</span>
+                </div>
+                <div v-if="company.latest_financing_date && company.latest_financing_date !== '-'" class="cd-strength-meta-row">
+                  <UIcon name="i-lucide-clock" class="size-3.5" />
+                  <span class="cd-strength-meta-label-detail">起始融资时间</span>
+                  <span class="cd-strength-meta-value-detail">{{ company.latest_financing_date }}</span>
+                </div>
+                <div v-if="company.company_scale && company.company_scale !== '-'" class="cd-strength-meta-row">
+                  <UIcon name="i-lucide-building" class="size-3.5" />
+                  <span class="cd-strength-meta-label-detail">企业规模</span>
+                  <span class="cd-strength-meta-value-detail">{{ company.company_scale }}</span>
+                </div>
+                <div v-if="company.company_nature && company.company_nature !== '-'" class="cd-strength-meta-row">
+                  <UIcon name="i-lucide-shield" class="size-3.5" />
+                  <span class="cd-strength-meta-label-detail">企业性质</span>
+                  <span class="cd-strength-meta-value-detail">{{ company.company_nature }}</span>
+                </div>
+                <div v-if="company.honrs && company.honrs !== '-'" class="cd-strength-meta-row cd-strength-meta-full">
+                  <UIcon name="i-lucide-award" class="size-3.5" />
+                  <span class="cd-strength-meta-label-detail">荣誉</span>
+                  <span class="cd-strength-meta-value-detail">{{ company.honrs }}</span>
+                </div>
+              </div>
+            </div>
+
             <div class="cd-business-cards">
               <div class="cd-biz-card">
                 <div class="cd-biz-card-header">
@@ -706,6 +762,325 @@
             </div>
           </section>
 
+          <!-- 对外投资 & 融资历程 -->
+          <section id="section-finance" class="cd-section" v-if="isSectionVisible('finance')">
+            <h2 class="cd-section-title cd-title-finance">
+              <span class="cd-title-icon"><UIcon name="i-lucide-banknote" class="size-5" /></span>
+              对外投资 & 融资历程
+              <span v-if="sectionLoading.finance" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <!-- 对外投资 -->
+            <template v-if="financeData?.investment?.data?.length">
+              <div class="cd-sub-section">
+                <h3 class="cd-sub-title">对外投资</h3>
+                <div class="cd-invest-grid">
+                  <div v-for="(row, ri) in financeInvestmentPage.items" :key="`inv-${ri}`" class="cd-invest-card">
+                    <div class="cd-invest-header">
+                      <div class="cd-invest-name">{{ row[0] || '-' }}</div>
+                      <div class="cd-invest-ratio" v-if="row[8] && row[8] !== '-'">{{ row[8] }}</div>
+                    </div>
+                    <div class="cd-invest-body">
+                      <div class="cd-invest-info-row" v-if="row[1] && row[1] !== '-'">
+                        <span class="cd-invest-label">法定代表人</span>
+                        <span class="cd-invest-value">{{ row[1] }}</span>
+                      </div>
+                      <div class="cd-invest-info-row" v-if="row[2] && row[2] !== '-'">
+                        <span class="cd-invest-label">注册资本</span>
+                        <span class="cd-invest-value">{{ row[2] }}</span>
+                      </div>
+                      <div class="cd-invest-info-row" v-if="row[3] && row[3] !== '-'">
+                        <span class="cd-invest-label">成立时间</span>
+                        <span class="cd-invest-value">{{ row[3] }}</span>
+                      </div>
+                      <div class="cd-invest-info-row">
+                        <span class="cd-invest-label">经营状态</span>
+                        <span class="cd-invest-value" :class="{ 'cd-status-active': row[4]?.includes('存续') || row[4]?.includes('在业') }">{{ row[4] || '-' }}</span>
+                      </div>
+                      <div class="cd-invest-info-row" v-if="row[7] && row[7] !== '-'">
+                        <span class="cd-invest-label">认缴金额</span>
+                        <span class="cd-invest-value">{{ row[7] }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="financeInvestmentPage.totalPages > 1" class="cd-pagination">
+                  <button class="cd-page-btn" :disabled="financePage <= 1" @click="financePage--">&lt;</button>
+                  <span class="cd-page-info">{{ financePage }} / {{ financeInvestmentPage.totalPages }}</span>
+                  <button class="cd-page-btn" :disabled="financePage >= financeInvestmentPage.totalPages" @click="financePage++">&gt;</button>
+                </div>
+              </div>
+            </template>
+            <!-- 融资历程 -->
+            <template v-if="financeData?.financing?.data?.length">
+              <div class="cd-sub-section">
+                <h3 class="cd-sub-title">融资历程</h3>
+                <div class="cd-finance-timeline">
+                  <div v-for="(row, ri) in financeData.financing.data" :key="`fin-${ri}`" class="cd-finance-item">
+                    <div class="cd-finance-dot" :class="ri === 0 ? 'cd-finance-dot-latest' : ''" />
+                    <div class="cd-finance-card">
+                      <div class="cd-finance-card-header">
+                        <span class="cd-finance-round">{{ row[1] || '-' }}</span>
+                        <span class="cd-finance-date">{{ row[0] || '-' }}</span>
+                      </div>
+                      <div class="cd-finance-card-body">
+                        <div v-if="row[2] && row[2] !== '-'" class="cd-finance-amount">{{ row[2] }}</div>
+                        <div v-if="row[3] && row[3] !== '-'" class="cd-finance-investors">
+                          <span class="cd-finance-investors-label">投资方：</span>
+                          <span>{{ row[3] }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <div v-if="!sectionLoading.finance && !financeData?.investment?.data?.length && !financeData?.financing?.data?.length" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 实际控制企业 -->
+          <section id="section-control" class="cd-section" v-if="isSectionVisible('control')">
+            <h2 class="cd-section-title cd-title-control">
+              <span class="cd-title-icon"><UIcon name="i-lucide-git-branch" class="size-5" /></span>
+              实际控制企业
+              <span v-if="sectionLoading.control" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="controlData?.data?.length">
+              <!-- 关系图 -->
+              <div v-if="controlGraphOption" class="cd-sub-section">
+                <h3 class="cd-sub-title">控制关系图谱</h3>
+                <ClientOnly>
+                  <VChart
+                    :option="controlGraphOption"
+                    class="cd-tree-chart"
+                    autoresize
+                  />
+                </ClientOnly>
+              </div>
+              <!-- 列表 -->
+              <div class="cd-sub-section">
+                <h3 class="cd-sub-title">控制企业列表</h3>
+                <div class="cd-control-grid">
+                  <div v-for="(row, ri) in controlPageData.items" :key="`ctrl-${ri}`" class="cd-control-card">
+                    <div class="cd-control-card-header">
+                      <div class="cd-control-name">{{ row[0] || '-' }}</div>
+                      <div class="cd-control-share" v-if="row[3] && row[3] !== '-'">{{ row[3] }}</div>
+                    </div>
+                    <div class="cd-control-card-body">
+                      <div class="cd-control-row" v-if="row[1] && row[1] !== '-'">
+                        <span class="cd-control-label">控制类型</span>
+                        <span class="cd-control-value">{{ row[1] }}</span>
+                      </div>
+                      <div class="cd-control-row" v-if="row[2] && row[2] !== '-'">
+                        <span class="cd-control-label">注册资本</span>
+                        <span class="cd-control-value">{{ row[2] }}</span>
+                      </div>
+                      <div class="cd-control-path" v-if="row[5] && row[5] !== '-'">{{ row[5] }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="controlPageData.totalPages > 1" class="cd-pagination">
+                  <button class="cd-page-btn" :disabled="controlPage <= 1" @click="controlPage--">&lt;</button>
+                  <span class="cd-page-info">{{ controlPage }} / {{ controlPageData.totalPages }}</span>
+                  <button class="cd-page-btn" :disabled="controlPage >= controlPageData.totalPages" @click="controlPage++">&gt;</button>
+                </div>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.control" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 主营产品 & 旗下品牌 -->
+          <section id="section-product" class="cd-section" v-if="isSectionVisible('product')">
+            <h2 class="cd-section-title cd-title-product">
+              <span class="cd-title-icon"><UIcon name="i-lucide-shopping-bag" class="size-5" /></span>
+              主营产品 & 旗下品牌
+              <span v-if="sectionLoading.product" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <!-- 主营产品 -->
+            <template v-if="productData?.mainProducts?.data?.length">
+              <div class="cd-sub-section">
+                <h3 class="cd-sub-title">主营产品</h3>
+                <div class="cd-product-hero-grid">
+                  <div v-for="(row, ri) in productData.mainProducts.data" :key="`mp-${ri}`" class="cd-product-hero-card">
+                    <div class="cd-product-hero-icon">
+                      <UIcon name="i-lucide-box" class="size-6" />
+                    </div>
+                    <div class="cd-product-hero-body">
+                      <h4 class="cd-product-hero-name">{{ row[0] || '-' }}</h4>
+                      <p
+                        class="cd-product-hero-desc"
+                        :class="{ 'cd-product-hero-desc-expanded': productExpandedMap[ri] }"
+                      >{{ row[1] || '-' }}</p>
+                      <button
+                        v-if="(row[1] || '').length > 120"
+                        class="cd-scope-expand-btn"
+                        @click="productExpandedMap[ri] = !productExpandedMap[ri]"
+                      >
+                        {{ productExpandedMap[ri] ? '收起' : '展示更多' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <!-- 旗下品牌 -->
+            <template v-if="productData?.brands?.data?.length">
+              <div class="cd-sub-section">
+                <h3 class="cd-sub-title">旗下品牌</h3>
+                <div class="cd-brand-grid">
+                  <div v-for="(row, ri) in productData.brands.data" :key="`br-${ri}`" class="cd-brand-card">
+                    <div class="cd-brand-badge">
+                      <UIcon name="i-lucide-tag" class="size-4" />
+                      <span>{{ row[0] || '-' }}</span>
+                    </div>
+                    <p
+                      class="cd-brand-desc"
+                      :class="{ 'cd-brand-desc-expanded': brandExpandedMap[ri] }"
+                    >{{ row[1] || '-' }}</p>
+                    <button
+                      v-if="(row[1] || '').length > 120"
+                      class="cd-scope-expand-btn"
+                      @click="brandExpandedMap[ri] = !brandExpandedMap[ri]"
+                    >
+                      {{ brandExpandedMap[ri] ? '收起' : '展示更多' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <div v-if="!sectionLoading.product && !productData?.mainProducts?.data?.length && !productData?.brands?.data?.length" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 人员相关: 间接股东 / 社保人数 / 关联企业人员 -->
+          <section id="section-indirectShareholder" class="cd-section" v-if="isSectionVisible('indirectShareholder')">
+            <h2 class="cd-section-title cd-title-indirect">
+              <span class="cd-title-icon"><UIcon name="i-lucide-user-check" class="size-5" /></span>
+              间接股东
+              <span v-if="sectionLoading.people" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="peopleData?.indirectShareholders?.data?.length">
+              <div class="cd-table-wrap cd-table-elegant">
+                <table class="cd-data-table">
+                  <thead>
+                    <tr>
+                      <th v-for="(col, ci) in peopleData.indirectShareholders.column" :key="`isc-${ci}`">{{ col }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, ri) in indirectShareholderPageData.items" :key="`isr-${ri}`">
+                      <td v-for="(cell, ci) in row" :key="`isc-${ri}-${ci}`">{{ cell }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-if="indirectShareholderPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="shareholderIndirectPage <= 1" @click="shareholderIndirectPage--">&lt;</button>
+                <span class="cd-page-info">{{ shareholderIndirectPage }} / {{ indirectShareholderPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="shareholderIndirectPage >= indirectShareholderPageData.totalPages" @click="shareholderIndirectPage++">&gt;</button>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.people" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 社保人数 -->
+          <section id="section-socialSecurity" class="cd-section" v-if="isSectionVisible('socialSecurity')">
+            <h2 class="cd-section-title cd-title-social">
+              <span class="cd-title-icon"><UIcon name="i-lucide-users" class="size-5" /></span>
+              社保人数
+              <span v-if="sectionLoading.people" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="peopleData?.socialSecurity?.data?.length">
+              <div v-if="socialSecurityChartOption" class="cd-sub-section">
+                <h3 class="cd-sub-title">社保人数趋势</h3>
+                <ClientOnly>
+                  <VChart
+                    :option="socialSecurityChartOption"
+                    class="cd-chart-sm"
+                    autoresize
+                  />
+                </ClientOnly>
+              </div>
+              <div class="cd-table-wrap cd-table-elegant">
+                <table class="cd-data-table">
+                  <thead>
+                    <tr>
+                      <th v-for="(col, ci) in peopleData.socialSecurity.column" :key="`ssc-${ci}`">{{ col }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, ri) in peopleData.socialSecurity.data" :key="`ssr-${ri}`">
+                      <td v-for="(cell, ci) in row" :key="`ssc-${ri}-${ci}`">{{ cell }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.people" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 关联企业/人员 -->
+          <section id="section-relatedEntity" class="cd-section" v-if="isSectionVisible('relatedEntity')">
+            <h2 class="cd-section-title cd-title-related">
+              <span class="cd-title-icon"><UIcon name="i-lucide-network" class="size-5" /></span>
+              关联企业/人员
+              <span v-if="sectionLoading.people" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="peopleData?.relatedEntities?.data?.length">
+              <div class="cd-related-cards">
+                <div v-for="(row, ri) in relatedEntityPageData.items" :key="`re-${ri}`" class="cd-related-card" :class="row[3]?.includes('间接') ? 'cd-related-indirect' : 'cd-related-direct'">
+                  <div class="cd-related-card-header">
+                    <div class="cd-related-number">#{{ row[0] || '-' }}</div>
+                    <div class="cd-related-type-badge">{{ row[3] || '-' }}</div>
+                  </div>
+                  <div class="cd-related-name">{{ row[1] || '-' }}</div>
+                  <div class="cd-related-type">{{ row[2] || '-' }}</div>
+                  <div class="cd-related-basis" v-if="row[4] && row[4] !== '-' && row[4] !== 'null'">{{ row[4] }}</div>
+                </div>
+              </div>
+              <div v-if="relatedEntityPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="relatedEntityPage <= 1" @click="relatedEntityPage--">&lt;</button>
+                <span class="cd-page-info">{{ relatedEntityPage }} / {{ relatedEntityPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="relatedEntityPage >= relatedEntityPageData.totalPages" @click="relatedEntityPage++">&gt;</button>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.people" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
           <!-- 联系方式 -->
           <section id="section-contact" class="cd-section" v-if="isSectionVisible('contact')">
             <h2 class="cd-section-title cd-title-contact">
@@ -758,7 +1133,7 @@
 
 <script setup lang="ts">
 import type { CompanyRecord } from '~/types/company'
-import { fetchCompanies } from '~/types/company'
+import { fetchCompanyByLegacyId, fetchCompanyByCode, isCreditCode } from '~/types/company'
 import type {
   ShareholderParsed,
   ShareholderTable,
@@ -766,8 +1141,13 @@ import type {
   ChangeRecordTable,
   PatentTable,
   RegisterItem,
+  BasicInfoItem,
   HonorsParsed,
   LayoutTable,
+  FinanceParsed,
+  ControlTable,
+  ProductParsed,
+  PeopleParsed,
 } from '~/types/company-detail'
 import {
   fetchShareholders,
@@ -778,7 +1158,10 @@ import {
   fetchBasicInfo,
   fetchHonors,
   fetchLayout,
-  type BasicInfoItem,
+  fetchFinance,
+  fetchControl,
+  fetchProduct,
+  fetchPeople,
 } from '~/types/company-detail'
 import {
   getIndustryColor,
@@ -798,6 +1181,8 @@ const TRADEMARK_PAGE_SIZE = 9
 const PATENT_PAGE_SIZE = 9
 const SHAREHOLDER_PAGE_SIZE = 10
 const bizScopeExpanded = ref(false)
+const productExpandedMap = reactive<Record<number, boolean>>({})
+const brandExpandedMap = reactive<Record<number, boolean>>({})
 const bizScopeRef = ref<HTMLElement | null>(null)
 const bizScopeNeedExpand = ref(false)
 const changeRecordExpanded = ref(false)
@@ -826,14 +1211,26 @@ const registerInfo = ref<RegisterItem[] | null>(null)
 const basicInfo = ref<BasicInfoItem[] | null>(null)
 const honorsData = ref<HonorsParsed | null>(null)
 const layoutData = ref<LayoutTable | null>(null)
+const financeData = ref<FinanceParsed | null>(null)
+const controlData = ref<ControlTable | null>(null)
+const productData = ref<ProductParsed | null>(null)
+const peopleData = ref<PeopleParsed | null>(null)
 const honorPage = ref(1)
 const rankingPage = ref(1)
 const govAwardPage = ref(1)
 const layoutPage = ref(1)
+const financePage = ref(1)
+const controlPage = ref(1)
+const shareholderIndirectPage = ref(1)
+const relatedEntityPage = ref(1)
 const HONOR_PAGE_SIZE = 6
 const RANKING_PAGE_SIZE = 8
 const GOV_AWARD_PAGE_SIZE = 6
 const LAYOUT_PAGE_SIZE = 6
+const FINANCE_PAGE_SIZE = 6
+const CONTROL_PAGE_SIZE = 6
+const INDIRECT_SHAREHOLDER_PAGE_SIZE = 8
+const RELATED_ENTITY_PAGE_SIZE = 8
 
 // 各接口独立加载状态
 const sectionLoading = ref({
@@ -847,7 +1244,126 @@ const sectionLoading = ref({
   ranking: false,
   govAward: false,
   layout: false,
+  finance: false,
+  control: false,
+  product: false,
+  people: false,
 })
+
+function buildCompanyFromItems(
+  code: string,
+  register: RegisterItem[] | null,
+  basic: BasicInfoItem[] | null,
+  enriched?: CompanyRecord | null,
+): CompanyRecord | null {
+  const map: Record<string, string> = {}
+  for (const item of register ?? []) map[item.key] = item.value
+  for (const item of basic ?? []) map[item.key] = item.value
+  const name = map['企业名称'] || map['公司名称'] || enriched?.company_name || ''
+  if (!name) return null
+  return {
+    id: code,
+    company_name: name,
+    company_credit_code: code,
+    company_longitude: 0,
+    company_latitude: 0,
+    company_city: map['所属城市'] || map['城市'] || '-',
+    conpany_district: map['所属区域'] || map['区县'] || null,
+    company_work_add: map['注册地址'] || map['地址'] || null,
+    info_type: 0,
+    info_type_name: '',
+    company_legal_person: map['法定代表人'] || '-',
+    company_registered_capital: map['注册资本'] || '-',
+    company_found_date: map['成立日期'] || '-',
+    company_business_status: map['经营状态'] || '-',
+    company_type: map['企业类型'] || '-',
+    company_industry: map['所属行业'] || '-',
+    company_business_scope: map['经营范围'] || '-',
+    company_phone: map['电话'] || '-',
+    company_website: map['官网'] || '-',
+    company_email: map['邮箱'] || '-',
+    company_traded: 0,
+    product_type: map['产品类型'] || '-',
+    chain_name: map['产品链名称'] || '-',
+    import_project: 0,
+    product: map['产品'] || '-',
+    honors: map['荣誉'] || '-',
+    contact_info: map['联系方式'] || '-',
+    honrs: enriched?.honrs || '',
+    hornor_num: enriched?.hornor_num || 0,
+    company_score: enriched?.company_score || 0,
+    latest_financing_date: enriched?.latest_financing_date || '',
+    authorized_patents_count: enriched?.authorized_patents_count || 0,
+    authorized_invention_patents_count: enriched?.authorized_invention_patents_count || 0,
+    national_standards_count: enriched?.national_standards_count || 0,
+    participated_standards_count: enriched?.participated_standards_count || 0,
+    company_financing_round: enriched?.company_financing_round || '',
+    company_scale: enriched?.company_scale || '',
+    company_nature: enriched?.company_nature || '',
+  }
+}
+
+/** 将 register/basic 接口返回的数据合并到已有 company 对象 */
+function mergeCompanyFromItems(
+  code: string,
+  register: RegisterItem[] | null,
+  basic: BasicInfoItem[] | null,
+) {
+  if (!company.value) return
+  const map: Record<string, string> = {}
+  for (const item of register ?? []) map[item.key] = item.value
+  for (const item of basic ?? []) map[item.key] = item.value
+  if (map['企业名称'] || map['公司名称']) company.value.company_name = map['企业名称'] || map['公司名称'] || company.value.company_name
+  if (map['所属城市'] || map['城市']) company.value.company_city = map['所属城市'] || map['城市'] || company.value.company_city
+  if (map['所属区域'] || map['区县']) company.value.conpany_district = map['所属区域'] || map['区县'] || null
+  if (map['注册地址'] || map['地址']) company.value.company_work_add = map['注册地址'] || map['地址'] || null
+  if (map['法定代表人']) company.value.company_legal_person = map['法定代表人']
+  if (map['注册资本']) company.value.company_registered_capital = map['注册资本']
+  if (map['成立日期']) company.value.company_found_date = map['成立日期']
+  if (map['经营状态']) company.value.company_business_status = map['经营状态']
+  if (map['企业类型']) company.value.company_type = map['企业类型']
+  if (map['所属行业']) company.value.company_industry = map['所属行业']
+  if (map['经营范围']) company.value.company_business_scope = map['经营范围']
+  if (map['电话']) company.value.company_phone = map['电话']
+  if (map['官网']) company.value.company_website = map['官网']
+  if (map['邮箱']) company.value.company_email = map['邮箱']
+  if (map['产品类型']) company.value.product_type = map['产品类型']
+  if (map['产品链名称']) company.value.chain_name = map['产品链名称']
+  if (map['产品']) company.value.product = map['产品']
+  if (map['荣誉']) company.value.honors = map['荣誉']
+  if (map['联系方式']) company.value.contact_info = map['联系方式']
+}
+
+function loadDetailSections(code: string, skipRegisterBasic = false) {
+  if (!skipRegisterBasic) {
+    sectionLoading.value.register = true
+    fetchRegisterInfo(code).then(r => { registerInfo.value = r }).catch(() => {}).finally(() => { sectionLoading.value.register = false })
+    sectionLoading.value.basic = true
+    fetchBasicInfo(code).then(r => { basicInfo.value = r }).catch(() => {}).finally(() => { sectionLoading.value.basic = false })
+  }
+  sectionLoading.value.shareholder = true
+  fetchShareholders(code).then(r => { shareholderData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.shareholder = false })
+  sectionLoading.value.trademark = true
+  fetchTrademarks(code).then(r => { trademarkData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.trademark = false })
+  sectionLoading.value.changeRecord = true
+  fetchChangeRecords(code).then(r => { changeRecordData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.changeRecord = false })
+  sectionLoading.value.patent = true
+  fetchPatents(code).then(r => { patentData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.patent = false })
+  sectionLoading.value.honor = true
+  sectionLoading.value.ranking = true
+  sectionLoading.value.govAward = true
+  fetchHonors(code).then(r => { honorsData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.honor = false; sectionLoading.value.ranking = false; sectionLoading.value.govAward = false })
+  sectionLoading.value.layout = true
+  fetchLayout(code).then(r => { layoutData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.layout = false })
+  sectionLoading.value.finance = true
+  fetchFinance(code).then(r => { financeData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.finance = false })
+  sectionLoading.value.control = true
+  fetchControl(code).then(r => { controlData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.control = false })
+  sectionLoading.value.product = true
+  fetchProduct(code).then(r => { productData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.product = false })
+  sectionLoading.value.people = true
+  fetchPeople(code).then(r => { peopleData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.people = false })
+}
 
 async function loadCompanyDetail() {
   if (!companyId.value) {
@@ -855,53 +1371,96 @@ async function loadCompanyDetail() {
     return
   }
   loading.value = true
+  company.value = null
+
+  const id = companyId.value
+  let code: string | null = null
+  let skipRegisterBasic = false
+
   try {
-    let page = 1
-    let found = false
-    while (!found) {
-      const res = await fetchCompanies(page, 20)
-      if (res.code !== 0 || !res.data?.list?.length) break
-      const item = res.data.list.find(
-        c => c.company_credit_code === companyId.value
-          || `${c.company_name}-${c.company_longitude}` === companyId.value,
-      )
-      if (item) {
-        company.value = { ...item, id: item.company_credit_code || `${item.company_name}-${item.company_longitude}` }
-        found = true
-      } else if (res.data.list.length < 20) {
-        break
-      } else {
-        page++
-      }
-    }
-
-    // 找到企业后立即渲染页面，各接口独立并发调用，返回后直接更新
-    loading.value = false
-
-    // 检查经营范围是否需要展开按钮
-    checkBizScopeOverflow()
-
-    if (company.value?.company_credit_code) {
-      const code = company.value.company_credit_code
-      // 各接口独立调用，返回后立即更新对应数据
-      sectionLoading.value.shareholder = true
-      fetchShareholders(code).then(r => { shareholderData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.shareholder = false })
-      sectionLoading.value.trademark = true
-      fetchTrademarks(code).then(r => { trademarkData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.trademark = false })
-      sectionLoading.value.changeRecord = true
-      fetchChangeRecords(code).then(r => { changeRecordData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.changeRecord = false })
-      sectionLoading.value.patent = true
-      fetchPatents(code).then(r => { patentData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.patent = false })
+    if (isCreditCode(id)) {
+      // URL id 即信用代码，直接请求详情子接口
+      code = id
+      // 并行发起所有请求，但各自独立更新，不阻塞渲染
       sectionLoading.value.register = true
-      fetchRegisterInfo(code).then(r => { registerInfo.value = r }).catch(() => {}).finally(() => { sectionLoading.value.register = false })
       sectionLoading.value.basic = true
-      fetchBasicInfo(code).then(r => { basicInfo.value = r }).catch(() => {}).finally(() => { sectionLoading.value.basic = false })
-      sectionLoading.value.honor = true
-      sectionLoading.value.ranking = true
-      sectionLoading.value.govAward = true
-      fetchHonors(code).then(r => { honorsData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.honor = false; sectionLoading.value.ranking = false; sectionLoading.value.govAward = false })
-      sectionLoading.value.layout = true
-      fetchLayout(code).then(r => { layoutData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.layout = false })
+
+      // 先请求 enriched 数据，这个最快返回
+      fetchCompanyByCode(code).then(enriched => {
+        if (enriched) {
+          // 用 enriched 数据立即展示公司基本信息
+          company.value = {
+            ...enriched,
+            id: enriched.company_credit_code || `${enriched.company_name}-${enriched.company_longitude}`,
+          }
+          loading.value = false
+          checkBizScopeOverflow()
+          // 触发详情模块加载
+          loadDetailSections(code, skipRegisterBasic)
+          skipRegisterBasic = true
+        }
+      }).catch(() => {})
+
+      // 注册信息
+      fetchRegisterInfo(code).then(r => {
+        registerInfo.value = r
+        sectionLoading.value.register = false
+        // 合并注册信息到已有 company 数据
+        if (r && company.value) {
+          mergeCompanyFromItems(code, r, null)
+        }
+        // 如果 enriched 还没返回，尝试用注册信息构建
+        if (!company.value && r) {
+          const c = buildCompanyFromItems(code, r, null, null)
+          if (c) {
+            company.value = c
+            loading.value = false
+            checkBizScopeOverflow()
+            if (!skipRegisterBasic) {
+              loadDetailSections(code, skipRegisterBasic)
+              skipRegisterBasic = true
+            }
+          }
+        }
+      }).catch(() => { sectionLoading.value.register = false })
+
+      // 基本信息
+      fetchBasicInfo(code).then(b => {
+        basicInfo.value = b
+        sectionLoading.value.basic = false
+        if (b && company.value) {
+          mergeCompanyFromItems(code, null, b)
+        }
+        if (!company.value && b) {
+          const c = buildCompanyFromItems(code, null, b, null)
+          if (c) {
+            company.value = c
+            loading.value = false
+            checkBizScopeOverflow()
+            if (!skipRegisterBasic) {
+              loadDetailSections(code, skipRegisterBasic)
+              skipRegisterBasic = true
+            }
+          }
+        }
+      }).catch(() => { sectionLoading.value.basic = false })
+
+      // 兜底：如果所有请求都失败，2秒后显示未找到
+      setTimeout(() => {
+        if (!company.value) {
+          loading.value = false
+        }
+      }, 2000)
+    } else {
+      // 地图页旧格式 id（name-lng）
+      const item = await fetchCompanyByLegacyId(id)
+      if (item) {
+        company.value = item
+        code = item.company_credit_code || null
+      }
+      loading.value = false
+      checkBizScopeOverflow()
+      if (code) loadDetailSections(code, skipRegisterBasic)
     }
   } catch (e) {
     console.error('[company-detail] 加载企业详情失败', e)
@@ -910,6 +1469,10 @@ async function loadCompanyDetail() {
 }
 
 onMounted(() => {
+  loadCompanyDetail()
+})
+
+watch(companyId, () => {
   loadCompanyDetail()
 })
 
@@ -1249,6 +1812,114 @@ const layoutPageData = computed(() => {
   return { items: data.slice(start, start + LAYOUT_PAGE_SIZE), total, totalPages }
 })
 
+// 对外投资分页
+const financeInvestmentPage = computed(() => {
+  const data = financeData.value?.investment?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / FINANCE_PAGE_SIZE)
+  const start = (financePage.value - 1) * FINANCE_PAGE_SIZE
+  return { items: data.slice(start, start + FINANCE_PAGE_SIZE), total, totalPages }
+})
+
+// 实际控制企业分页
+const controlPageData = computed(() => {
+  const data = controlData.value?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / CONTROL_PAGE_SIZE)
+  const start = (controlPage.value - 1) * CONTROL_PAGE_SIZE
+  return { items: data.slice(start, start + CONTROL_PAGE_SIZE), total, totalPages }
+})
+
+// 间接股东分页
+const indirectShareholderPageData = computed(() => {
+  const data = peopleData.value?.indirectShareholders?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / INDIRECT_SHAREHOLDER_PAGE_SIZE)
+  const start = (shareholderIndirectPage.value - 1) * INDIRECT_SHAREHOLDER_PAGE_SIZE
+  return { items: data.slice(start, start + INDIRECT_SHAREHOLDER_PAGE_SIZE), total, totalPages }
+})
+
+// 关联企业/人员分页
+const relatedEntityPageData = computed(() => {
+  const data = peopleData.value?.relatedEntities?.data
+  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
+  const total = data.length
+  const totalPages = Math.ceil(total / RELATED_ENTITY_PAGE_SIZE)
+  const start = (relatedEntityPage.value - 1) * RELATED_ENTITY_PAGE_SIZE
+  return { items: data.slice(start, start + RELATED_ENTITY_PAGE_SIZE), total, totalPages }
+})
+
+// 实际控制企业关系图谱
+const controlGraphOption = computed(() => {
+  const data = controlData.value?.data
+  if (!data?.length) return null
+  const companyName = company.value?.company_name || '企业'
+  const nodes: any[] = [{ name: 'root', symbolSize: 48, x: 400, y: 300, itemStyle: { color: '#4f46e5', shadowBlur: 10, shadowColor: 'rgba(79,70,229,0.3)' }, label: { show: true, fontSize: 12, fontWeight: 'bold', color: '#fff', position: 'inside', formatter: companyName.length > 10 ? companyName.slice(0, 10) + '…' : companyName }, category: 0, fullName: companyName }]
+  const links: any[] = []
+  const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b']
+  data.forEach((row: string[], i: number) => {
+    const name = row[0] || '-'
+    const nodeName = name.length > 8 ? name.slice(0, 8) + '…' : name
+    const ratio = row[3] || ''
+    const angle = (Math.PI * 2 * i) / data.length - Math.PI / 2
+    const r = 150 + (i % 3) * 60
+    const x = 400 + Math.cos(angle) * r
+    const y = 300 + Math.sin(angle) * r
+    const color = colors[i % colors.length]
+    nodes.push({
+      name: nodeName,
+      symbolSize: 30,
+      x, y,
+      itemStyle: { color, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.1)', borderColor: '#fff', borderWidth: 2 },
+      label: { show: true, position: 'bottom', fontSize: 11, color: '#1e293b', fontWeight: '500', formatter: `{name|${name}}\n{ratio|${ratio}}`, rich: { name: { fontSize: 11, fontWeight: '600', color: '#1e293b', lineHeight: 16 }, ratio: { fontSize: 10, color: '#64748b', lineHeight: 14 } } },
+      category: 1,
+      fullName: name,
+    })
+    links.push({ source: 'root', target: nodeName, lineStyle: { color, width: 1.5, opacity: 0.5 } })
+  })
+  return {
+    tooltip: { trigger: 'item' as const, formatter: (params: any) => params.data?.fullName || params.name },
+    animationDuration: 500,
+    series: [{
+      type: 'graph' as const, layout: 'none' as const, roam: true, draggable: true,
+      data: nodes, links,
+      categories: [{ name: '企业', itemStyle: { color: '#4f46e5' } }, { name: '控制企业' }],
+      emphasis: { focus: 'adjacency' as const, itemStyle: { borderWidth: 2, borderColor: '#333' }, lineStyle: { width: 3 } },
+      edgeSymbol: ['none', 'none'],
+      lineStyle: { opacity: 0.5, curveness: 0.15 },
+      scaleLimit: { min: 0.3, max: 3 },
+      zoom: 0.8,
+      center: [400, 300],
+    }],
+  }
+})
+
+// 社保人数趋势图
+const socialSecurityChartOption = computed(() => {
+  const data = peopleData.value?.socialSecurity?.data
+  if (!data?.length || data.length <= 1) return null
+  const sorted = [...data].sort((a, b) => (a[0] || '').localeCompare(b[0] || ''))
+  return {
+    tooltip: { trigger: 'axis' as const },
+    grid: { left: 45, right: 20, top: 15, bottom: 30 },
+    xAxis: { type: 'category' as const, data: sorted.map((r) => r[0]), axisLabel: { fontSize: 11 } },
+    yAxis: { type: 'value' as const, axisLabel: { fontSize: 11 }, name: '人数' },
+    series: [{
+      type: 'bar' as const,
+      data: sorted.map((r) => parseInt(r[1]) || 0),
+      barWidth: '50%',
+      itemStyle: {
+        borderRadius: [6, 6, 0, 0],
+        color: { type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#06b6d4' }, { offset: 1, color: '#0891b2' }] },
+      },
+      label: { show: true, position: 'top', fontSize: 11, color: '#64748b' },
+    }],
+  }
+})
+
 // 上榜榜单年份分组
 const rankingYearGroups = computed(() => {
   const data = honorsData.value?.ranking
@@ -1445,6 +2116,33 @@ const menuGroups = [
     ],
   },
   {
+    key: 'invest-info',
+    label: '投资与控制',
+    icon: 'i-lucide-trending-up',
+    children: [
+      { key: 'finance', label: '对外投资/融资', icon: 'i-lucide-banknote' },
+      { key: 'control', label: '实际控制企业', icon: 'i-lucide-git-branch' },
+    ],
+  },
+  {
+    key: 'product-info',
+    label: '产品与品牌',
+    icon: 'i-lucide-package',
+    children: [
+      { key: 'product', label: '主营产品/品牌', icon: 'i-lucide-shopping-bag' },
+    ],
+  },
+  {
+    key: 'people-info',
+    label: '人员与关联',
+    icon: 'i-lucide-user-plus',
+    children: [
+      { key: 'indirectShareholder', label: '间接股东', icon: 'i-lucide-user-check' },
+      { key: 'socialSecurity', label: '社保人数', icon: 'i-lucide-users' },
+      { key: 'relatedEntity', label: '关联企业/人员', icon: 'i-lucide-network' },
+    ],
+  },
+  {
     key: 'honor-info',
     label: '荣誉资质',
     icon: 'i-lucide-award',
@@ -1495,6 +2193,12 @@ function ensureGroupExpanded(childKey: string) {
   }
 }
 
+const hasStrengthData = computed(() => {
+  const c = company.value
+  if (!c) return false
+  return !!(c.company_score || c.hornor_num || c.authorized_patents_count || c.authorized_invention_patents_count || c.national_standards_count || c.participated_standards_count || (c.company_financing_round && c.company_financing_round !== '-') || (c.latest_financing_date && c.latest_financing_date !== '-') || (c.company_scale && c.company_scale !== '-') || (c.company_nature && c.company_nature !== '-') || (c.honrs && c.honrs !== '-'))
+})
+
 function hasSectionData(key: string): boolean {
   if (!company.value) return false
   const c = company.value
@@ -1521,6 +2225,18 @@ function hasSectionData(key: string): boolean {
       return !!(honorsData.value?.govAward?.data?.length)
     case 'layout':
       return !!(layoutData.value?.data?.length)
+    case 'finance':
+      return !!(financeData.value?.investment?.data?.length || financeData.value?.financing?.data?.length)
+    case 'control':
+      return !!(controlData.value?.data?.length)
+    case 'product':
+      return !!(productData.value?.mainProducts?.data?.length || productData.value?.brands?.data?.length)
+    case 'indirectShareholder':
+      return !!(peopleData.value?.indirectShareholders?.data?.length)
+    case 'socialSecurity':
+      return !!(peopleData.value?.socialSecurity?.data?.length)
+    case 'relatedEntity':
+      return !!(peopleData.value?.relatedEntities?.data?.length)
     default:
       return true
   }
@@ -1542,6 +2258,12 @@ function isSectionVisible(key: string): boolean {
     ranking: 'ranking',
     govAward: 'govAward',
     layout: 'layout',
+    finance: 'finance',
+    control: 'control',
+    product: 'product',
+    indirectShareholder: 'people',
+    socialSecurity: 'people',
+    relatedEntity: 'people',
   }
   const loadKey = loadingMap[key]
   if (loadKey) {
@@ -2515,7 +3237,185 @@ function getIndustryBg(industry: string): string {
   white-space: nowrap;
 }
 
-/* ── Responsive ──────────────────────────────── */
+/* ── 企业实力卡片（详情页） ───────────────────── */
+.cd-strength-section {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+.cd-strength-section .cd-desc-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.cd-strength-section .cd-desc-card-title :deep(svg) {
+  color: var(--primary);
+}
+.cd-strength-grid-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cd-strength-card-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 10px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+.cd-strength-card-detail:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.cd-strength-card-num-detail {
+  font-size: 26px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  line-height: 1;
+}
+.cd-strength-card-lbl-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.cd-strength-score .cd-strength-card-num-detail { color: #fff; }
+.cd-strength-score {
+  border: none;
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, var(--accent)) 100%);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+.cd-strength-score::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.28) 0%, transparent 50%);
+  animation: cd-score-shine-detail 3.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes cd-score-shine-detail {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(10px, -10px) rotate(8deg); }
+}
+.cd-strength-score .cd-strength-card-num-detail {
+  font-size: 36px;
+  font-weight: 900;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  letter-spacing: -0.04em;
+}
+.cd-strength-score .cd-strength-card-lbl-detail {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.cd-strength-honor .cd-strength-card-num-detail { color: var(--warning); }
+.cd-strength-honor { border-color: color-mix(in srgb, var(--warning) 20%, transparent); background: color-mix(in srgb, var(--warning) 5%, var(--surface)); }
+.cd-strength-patent .cd-strength-card-num-detail { color: var(--success); }
+.cd-strength-patent { border-color: color-mix(in srgb, var(--success) 20%, transparent); background: color-mix(in srgb, var(--success) 5%, var(--surface)); }
+.cd-strength-invention .cd-strength-card-num-detail { color: var(--accent); }
+.cd-strength-invention { border-color: color-mix(in srgb, var(--accent) 20%, transparent); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.cd-strength-standard .cd-strength-card-num-detail { color: var(--primary); }
+.cd-strength-standard { border-color: color-mix(in srgb, var(--primary) 20%, transparent); background: color-mix(in srgb, var(--primary) 5%, var(--surface)); }
+.cd-strength-participate .cd-strength-card-num-detail { color: var(--danger); }
+.cd-strength-participate { border-color: color-mix(in srgb, var(--danger) 20%, transparent); background: color-mix(in srgb, var(--danger) 5%, var(--surface)); }
+
+.cd-strength-meta-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cd-strength-meta-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  transition: all 0.15s;
+}
+.cd-strength-meta-row:hover {
+  border-color: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+.cd-strength-meta-row :deep(svg) {
+  flex-shrink: 0;
+  opacity: 0.7;
+  color: var(--text-muted);
+}
+.cd-strength-meta-label-detail {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.cd-strength-meta-label-detail::after {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 10px;
+  background: var(--border);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.cd-strength-meta-value-detail {
+  font-weight: 700;
+  font-size: 11px;
+  font-family: var(--font-display);
+  color: color-mix(in srgb, var(--primary) 50%, var(--text));
+  letter-spacing: -0.01em;
+}
+.cd-strength-meta-full {
+  flex-basis: 100%;
+}
+
+/* ── 产品/品牌描述展开状态 ─────────────────────── */
+.cd-product-hero-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.cd-product-hero-desc-expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.cd-brand-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.cd-brand-desc-expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+
+/* ── 新模块响应式 ──────────────────────────────── */
 @media (max-width: 768px) {
   .cd-section-title {
     font-size: 15px;
@@ -3042,7 +3942,440 @@ function getIndustryBg(industry: string): string {
   white-space: nowrap;
 }
 
-/* ── 新模块响应式 ────────────────────────── */
+/* ── 新模块标题配色 ───────────────────────── */
+.cd-title-finance { --s-color: #84cc16; --s-bg: rgba(132,204,22,0.06); }
+.cd-title-finance .cd-title-icon { background: rgba(132,204,22,0.12); color: #84cc16; }
+
+.cd-title-control { --s-color: #a855f7; --s-bg: rgba(168,85,247,0.06); }
+.cd-title-control .cd-title-icon { background: rgba(168,85,247,0.12); color: #a855f7; }
+
+.cd-title-product { --s-color: #ef4444; --s-bg: rgba(239,68,68,0.06); }
+.cd-title-product .cd-title-icon { background: rgba(239,68,68,0.12); color: #ef4444; }
+
+.cd-title-indirect { --s-color: #6366f1; --s-bg: rgba(99,102,241,0.06); }
+.cd-title-indirect .cd-title-icon { background: rgba(99,102,241,0.12); color: #6366f1; }
+
+.cd-title-social { --s-color: #06b6d4; --s-bg: rgba(6,182,212,0.06); }
+.cd-title-social .cd-title-icon { background: rgba(6,182,212,0.12); color: #06b6d4; }
+
+.cd-title-related { --s-color: #f97316; --s-bg: rgba(249,115,22,0.06); }
+.cd-title-related .cd-title-icon { background: rgba(249,115,22,0.12); color: #f97316; }
+
+/* ── 对外投资卡片 ───────────────────────── */
+.cd-invest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.cd-invest-card {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+.cd-invest-card:hover {
+  box-shadow: 0 4px 16px rgba(132, 204, 22, 0.1);
+  border-color: #84cc16;
+  transform: translateY(-2px);
+}
+.cd-invest-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(132, 204, 22, 0.06);
+  border-bottom: 1px solid var(--border-light);
+}
+.cd-invest-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cd-invest-ratio {
+  font-size: 18px;
+  font-weight: 700;
+  color: #84cc16;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+.cd-invest-body {
+  padding: 12px 18px;
+}
+.cd-invest-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-light);
+}
+.cd-invest-info-row:last-child {
+  border-bottom: none;
+}
+.cd-invest-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.cd-invest-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ── 融资历程时间线 ───────────────────────── */
+.cd-finance-timeline {
+  position: relative;
+  padding-left: 30px;
+}
+.cd-finance-timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #84cc16, rgba(132, 204, 22, 0.15));
+  border-radius: 1px;
+}
+.cd-finance-item {
+  position: relative;
+  padding-bottom: 20px;
+}
+.cd-finance-item:last-child {
+  padding-bottom: 0;
+}
+.cd-finance-dot {
+  position: absolute;
+  left: -30px;
+  top: 14px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid #84cc16;
+  box-shadow: 0 0 0 3px rgba(132, 204, 22, 0.2);
+}
+.cd-finance-dot-latest {
+  background: #84cc16;
+  border-color: #84cc16;
+  box-shadow: 0 0 0 4px rgba(132, 204, 22, 0.3);
+  animation: cd-finance-pulse 2s ease-in-out infinite;
+}
+@keyframes cd-finance-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(132, 204, 22, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(132, 204, 22, 0.1); }
+}
+.cd-finance-card {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px 20px;
+  transition: all 0.2s;
+}
+.cd-finance-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border-color: rgba(132, 204, 22, 0.3);
+}
+.cd-finance-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.cd-finance-round {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #84cc16, #65a30d);
+  border-radius: 6px;
+}
+.cd-finance-date {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.cd-finance-card-body {
+  padding-left: 2px;
+}
+.cd-finance-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: #84cc16;
+  margin-bottom: 8px;
+}
+.cd-finance-investors {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.cd-finance-investors-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── 实际控制企业卡片 ───────────────────────── */
+.cd-control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+.cd-control-card {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+.cd-control-card:hover {
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.1);
+  border-color: #a855f7;
+  transform: translateY(-2px);
+}
+.cd-control-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(168, 85, 247, 0.06);
+  border-bottom: 1px solid var(--border-light);
+}
+.cd-control-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cd-control-share {
+  font-size: 20px;
+  font-weight: 700;
+  color: #a855f7;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+.cd-control-card-body {
+  padding: 12px 18px;
+}
+.cd-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-light);
+}
+.cd-control-row:last-child {
+  border-bottom: none;
+}
+.cd-control-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cd-control-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+}
+.cd-control-path {
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border-radius: 6px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+/* ── 主营产品卡片 ───────────────────────── */
+.cd-product-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 14px;
+}
+.cd-product-hero-card {
+  display: flex;
+  gap: 16px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  border-left: 4px solid #ef4444;
+  transition: all 0.2s;
+}
+.cd-product-hero-card:hover {
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.1);
+  transform: translateX(4px);
+}
+.cd-product-hero-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+  flex-shrink: 0;
+}
+.cd-product-hero-body {
+  flex: 1;
+  min-width: 0;
+}
+.cd-product-hero-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0 0 8px;
+}
+.cd-product-hero-desc {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── 旗下品牌卡片 ───────────────────────── */
+.cd-brand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+.cd-brand-card {
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+.cd-brand-card:hover {
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.cd-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+.cd-brand-desc {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── 关联企业/人员卡片 ───────────────────────── */
+.cd-related-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+.cd-related-card {
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  border-left: 3px solid var(--border-light);
+  transition: all 0.2s;
+}
+.cd-related-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+.cd-related-direct {
+  border-left-color: #10b981;
+}
+.cd-related-direct:hover {
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
+}
+.cd-related-indirect {
+  border-left-color: #f59e0b;
+}
+.cd-related-indirect:hover {
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.1);
+}
+.cd-related-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cd-related-number {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.cd-related-type-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 5px;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+}
+.cd-related-direct .cd-related-type-badge {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+.cd-related-indirect .cd-related-type-badge {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+.cd-related-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cd-related-type {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.cd-related-basis {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding: 6px 10px;
+  background: var(--surface-alt);
+  border-radius: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 鈹€鈹€ 鏂版ā鍧楀搷搴斿紡 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 @media (max-width: 768px) {
   .cd-honor-grid {
     grid-template-columns: 1fr;
@@ -3053,6 +4386,23 @@ function getIndustryBg(industry: string): string {
   .cd-layout-grid {
     grid-template-columns: 1fr;
   }
+  .cd-invest-grid {
+    grid-template-columns: 1fr;
+  }
+  .cd-control-grid {
+    grid-template-columns: 1fr;
+  }
+  .cd-product-hero-grid {
+    grid-template-columns: 1fr;
+  }
+  .cd-brand-grid {
+    grid-template-columns: 1fr;
+  }
+  .cd-related-cards {
+    grid-template-columns: 1fr;
+  }
+  .cd-strength-grid-detail {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
-
 </style>

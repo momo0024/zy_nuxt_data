@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html {{ HTML_ATTRS }}>
+
+  <head {{ HEAD_ATTRS }}>
+
+    {{ HEAD }}
+
+  </head>
+
+  <body {{ BODY_ATTRS }}>
+
+    {{ APP }}
+
+    <script>
+
+      (function () {
+
+        var WM_ID = 'app-watermark-overlay', W = 300, H = 200, Z = 2147483647
+
+        var currentDataUrl = '', guardPaused = false
+
+
+
+        function color() {
+
+          var t = document.documentElement.getAttribute('data-theme') || 'warm'
+
+          return (t === 'dark' || t === 'purple') ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.16)'
+
+        }
+
+        function content() {
+
+          try {
+
+            var s = localStorage.getItem('zhizhi_user')
+
+            if (s) { var u = JSON.parse(s); if (u && u.name) return u.name }
+
+          } catch (e) {}
+
+          return '智知云'
+
+        }
+
+        function styleText(dataUrl) {
+
+          return 'position:fixed;inset:0;pointer-events:none;z-index:' + Z + ';background-repeat:repeat;background-size:' + W + 'px ' + H + 'px;background-image:url("' + dataUrl + '")'
+
+        }
+
+        function apply(dataUrl) {
+
+          currentDataUrl = dataUrl
+
+          var el = document.getElementById(WM_ID)
+
+          if (!el) {
+
+            el = document.createElement('div')
+
+            el.id = WM_ID
+
+            el.setAttribute('aria-hidden', 'true')
+
+            el.setAttribute('data-wm', '1')
+
+            document.body.appendChild(el)
+
+          }
+
+          el.style.cssText = styleText(dataUrl)
+
+        }
+
+        function cacheKey(c, t) { return 'wm-cache:' + c + ':' + t }
+
+        function draw(c, t) {
+
+          var cv = document.createElement('canvas')
+
+          cv.width = W; cv.height = H
+
+          var x = cv.getContext('2d')
+
+          x.translate(W / 2, H / 2)
+
+          x.rotate(Math.PI / 4)
+
+          x.font = '600 18px PingFang SC, Microsoft YaHei, sans-serif'
+
+          x.fillStyle = t
+
+          x.textAlign = 'center'
+
+          x.textBaseline = 'middle'
+
+          x.fillText(c, 0, 0)
+
+          return cv.toDataURL('image/png')
+
+        }
+
+        function isIntact(el) {
+
+          if (!el || !el.isConnected) return false
+
+          var cs = getComputedStyle(el)
+
+          if (cs.display === 'none' || cs.visibility === 'hidden') return false
+
+          if (parseFloat(cs.opacity) === 0) return false
+
+          if (!cs.backgroundImage || cs.backgroundImage === 'none') return false
+
+          if (cs.zIndex !== 'auto' && parseInt(cs.zIndex, 10) < 999999) return false
+
+          return true
+
+        }
+
+        function repair() {
+
+          if (guardPaused || !currentDataUrl) return
+
+          var el = document.getElementById(WM_ID)
+
+          if (!isIntact(el)) {
+
+            guardPaused = true
+
+            apply(currentDataUrl)
+
+            guardPaused = false
+
+          }
+
+        }
+
+        function boot() {
+
+          var c = content(), t = color(), k = cacheKey(c, t), dataUrl
+
+          try { dataUrl = sessionStorage.getItem(k) } catch (e) {}
+
+          if (!dataUrl) {
+
+            dataUrl = draw(c, t)
+
+            try { sessionStorage.setItem(k, dataUrl) } catch (e) {}
+
+          }
+
+          apply(dataUrl)
+
+          if (typeof MutationObserver !== 'undefined') {
+
+            new MutationObserver(function () {
+
+              queueMicrotask(repair)
+
+            }).observe(document.documentElement, {
+
+              childList: true,
+
+              subtree: true,
+
+              attributes: true,
+
+              attributeFilter: ['style', 'class', 'hidden'],
+
+            })
+
+          }
+
+          setInterval(repair, 400)
+
+        }
+
+        boot()
+
+      })()
+
+    </script>
+
+  </body>
+
+</html>
+

@@ -23,9 +23,6 @@ export default defineNuxtConfig({
   },
   sourcemap: { server: false, client: false },
   vite: {
-    optimizeDeps: {
-      include: ['watermark-js-plus'],
-    },
     logLevel: import.meta.dev ? 'info' : 'error',
     plugins: [
       {

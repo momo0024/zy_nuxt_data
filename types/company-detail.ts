@@ -169,3 +169,105 @@ export async function fetchLayout(code: string): Promise<LayoutTable | null> {
     return null
   }
 }
+
+/* ─────────────── 对外投资 & 融资历程 ─────────────── */
+export interface FinanceTable {
+  column: string[]
+  data: string[][]
+}
+
+export interface FinanceParsed {
+  investment: FinanceTable | null // info_type 17 对外投资
+  financing: FinanceTable | null  // info_type 18 融资历程
+}
+
+export async function fetchFinance(code: string): Promise<FinanceParsed> {
+  const res = await request.get<RawResponse['data']>('/company/finace', {
+    params: { code },
+  })
+  const raw = res.data as unknown as RawResponse
+  const result: FinanceParsed = { investment: null, financing: null }
+  if (raw.code !== 0 || !raw.data?.length) return result
+
+  for (const item of raw.data) {
+    try {
+      const parsed = JSON.parse(item.info_txt) as FinanceTable
+      if (item.info_type === 17) result.investment = parsed
+      else if (item.info_type === 18) result.financing = parsed
+    } catch { /* ignore */ }
+  }
+  return result
+}
+
+/* ─────────────── 实际控制企业 ─────────────── */
+export interface ControlTable {
+  column: string[]
+  data: string[][]
+}
+
+export async function fetchControl(code: string): Promise<ControlTable | null> {
+  const res = await request.get<RawResponse['data']>('/company/control', {
+    params: { code },
+  })
+  return parseRaw<ControlTable>(res.data as unknown as RawResponse)
+}
+
+/* ─────────────── 主营产品 & 旗下品牌 ─────────────── */
+export interface ProductTable {
+  column: string[]
+  data: string[][]
+}
+
+export interface ProductParsed {
+  mainProducts: ProductTable | null // info_type 100 主营产品
+  brands: ProductTable | null       // info_type 101 旗下品牌
+}
+
+export async function fetchProduct(code: string): Promise<ProductParsed> {
+  const res = await request.get<RawResponse['data']>('/company/product', {
+    params: { code },
+  })
+  const raw = res.data as unknown as RawResponse
+  const result: ProductParsed = { mainProducts: null, brands: null }
+  if (raw.code !== 0 || !raw.data?.length) return result
+
+  for (const item of raw.data) {
+    try {
+      const parsed = JSON.parse(item.info_txt) as ProductTable
+      if (item.info_type === 100) result.mainProducts = parsed
+      else if (item.info_type === 101) result.brands = parsed
+    } catch { /* ignore */ }
+  }
+  return result
+}
+
+/* ─────────────── 人员相关: 间接股东 / 社保人数 / 关联企业人员 ─────────────── */
+export interface PeopleTable {
+  column: string[]
+  data: string[][]
+}
+
+export interface PeopleParsed {
+  indirectShareholders: PeopleTable | null // info_type 92 间接股东
+  socialSecurity: PeopleTable | null       // info_type 93 社保人数
+  relatedEntities: PeopleTable | null      // info_type 94 关联企业/人员
+}
+
+export async function fetchPeople(code: string): Promise<PeopleParsed> {
+  const res = await request.get<RawResponse['data']>('/company/people', {
+    params: { code },
+  })
+  const raw = res.data as unknown as RawResponse
+  const result: PeopleParsed = { indirectShareholders: null, socialSecurity: null, relatedEntities: null }
+  if (raw.code !== 0 || !raw.data?.length) return result
+
+  for (const item of raw.data) {
+    try {
+      const parsed = JSON.parse(item.info_txt) as PeopleTable
+      if (item.info_type === 92) result.indirectShareholders = parsed
+      else if (item.info_type === 93) result.socialSecurity = parsed
+      else if (item.info_type === 94) result.relatedEntities = parsed
+    } catch { /* ignore */ }
+  }
+  return result
+}
