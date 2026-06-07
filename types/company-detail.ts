@@ -241,6 +241,26 @@ export async function fetchProduct(code: string): Promise<ProductParsed> {
   return result
 }
 
+/* ─────────────── 知识产权出质 ─────────────── */
+export interface IntellectualTable {
+  column: string[]
+  data: string[][]
+}
+
+export async function fetchIntellectual(code: string): Promise<IntellectualTable | null> {
+  const res = await request.get<RawResponse['data']>('/company/intellectual', {
+    params: { code },
+  })
+  const raw = res.data as unknown as RawResponse
+  if (raw.code !== 0 || !raw.data?.length) return null
+  for (const item of raw.data) {
+    try {
+      if (item.info_type === 19) return JSON.parse(item.info_txt) as IntellectualTable
+    } catch { /* ignore */ }
+  }
+  return null
+}
+
 /* ─────────────── 人员相关: 间接股东 / 社保人数 / 关联企业人员 ─────────────── */
 export interface PeopleTable {
   column: string[]
@@ -264,9 +284,9 @@ export async function fetchPeople(code: string): Promise<PeopleParsed> {
   for (const item of raw.data) {
     try {
       const parsed = JSON.parse(item.info_txt) as PeopleTable
-      if (item.info_type === 92) result.indirectShareholders = parsed
-      else if (item.info_type === 93) result.socialSecurity = parsed
-      else if (item.info_type === 94) result.relatedEntities = parsed
+      if (item.info_type === 13 || item.info_type === 92) result.indirectShareholders = parsed
+      else if (item.info_type === 14 || item.info_type === 93) result.socialSecurity = parsed
+      else if (item.info_type === 15 || item.info_type === 94) result.relatedEntities = parsed
     } catch { /* ignore */ }
   }
   return result

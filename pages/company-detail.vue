@@ -90,11 +90,11 @@
               经营状况
             </h2>
             <template v-if="hasSectionData('business')">
-            <!-- 企业实力 -->
+            <!-- 核心指标 -->
             <div v-if="hasStrengthData" class="cd-strength-section">
               <h3 class="cd-desc-card-title">
                 <UIcon name="i-lucide-zap" class="size-4" />
-                企业实力
+                核心指标
               </h3>
               <div class="cd-strength-grid-detail">
                 <div v-if="company.company_score" class="cd-strength-card-detail cd-strength-score">
@@ -158,7 +158,6 @@
                   <span>注册资本</span>
                 </div>
                 <div class="cd-biz-card-value">{{ company.company_registered_capital }}</div>
-                <div class="cd-biz-card-desc">企业注册资金</div>
               </div>
               <div class="cd-biz-card">
                 <div class="cd-biz-card-header">
@@ -166,7 +165,6 @@
                   <span>成立日期</span>
                 </div>
                 <div class="cd-biz-card-value">{{ company.company_found_date }}</div>
-                <div class="cd-biz-card-desc">企业成立时间</div>
               </div>
               <div class="cd-biz-card">
                 <div class="cd-biz-card-header">
@@ -174,7 +172,6 @@
                   <span>经营状态</span>
                 </div>
                 <div class="cd-biz-card-value">{{ company.company_business_status }}</div>
-                <div class="cd-biz-card-desc">当前经营状态</div>
               </div>
               <div class="cd-biz-card">
                 <div class="cd-biz-card-header">
@@ -182,7 +179,6 @@
                   <span>产品类型</span>
                 </div>
                 <div class="cd-biz-card-value">{{ company.product_type }}</div>
-                <div class="cd-biz-card-desc">主要产品分类</div>
               </div>
             </div>
 
@@ -474,6 +470,68 @@
               </div>
             </template>
             <div v-else-if="!sectionLoading.patent" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 知识产权出质 -->
+          <section id="section-intellectual" class="cd-section" v-if="isSectionVisible('intellectual')">
+            <h2 class="cd-section-title cd-title-intellectual">
+              <span class="cd-title-icon"><UIcon name="i-lucide-shield-check" class="size-5" /></span>
+              知识产权出质
+              <span v-if="sectionLoading.intellectual" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="intellectualData?.data?.length">
+              <div class="cd-intellectual-list">
+                <div v-for="(row, ri) in intellectualData.data" :key="`int-${ri}`" class="cd-intellectual-item">
+                  <div class="cd-intellectual-accent" />
+                  <div class="cd-intellectual-main">
+                    <div class="cd-intellectual-top">
+                      <div class="cd-intellectual-name">
+                        <UIcon name="i-lucide-file-badge" class="size-4 cd-intellectual-icon" />
+                        <span>{{ row[0] || '-' }}</span>
+                      </div>
+                      <span v-if="row[2] && row[2] !== '-'" class="cd-intellectual-kind">{{ row[2] }}</span>
+                    </div>
+                    <div class="cd-intellectual-details">
+                      <div v-if="row[1] && row[1] !== '-'" class="cd-intellectual-detail">
+                        <span class="cd-intellectual-label">登记证号</span>
+                        <span class="cd-intellectual-value">{{ row[1] }}</span>
+                      </div>
+                      <div v-if="row[3] && row[3] !== '-'" class="cd-intellectual-detail">
+                        <span class="cd-intellectual-label">出质人</span>
+                        <span class="cd-intellectual-value">{{ row[3] }}</span>
+                      </div>
+                      <div v-if="row[4] && row[4] !== '-'" class="cd-intellectual-detail">
+                        <span class="cd-intellectual-label">质权人</span>
+                        <span class="cd-intellectual-value">{{ row[4] }}</span>
+                      </div>
+                      <div v-if="row[5] && row[5] !== '-'" class="cd-intellectual-detail">
+                        <span class="cd-intellectual-label">标的方</span>
+                        <span class="cd-intellectual-value">{{ row[5] }}</span>
+                      </div>
+                      <div v-if="row[6] && row[6] !== '-'" class="cd-intellectual-detail">
+                        <span class="cd-intellectual-label">质权登记日期</span>
+                        <span class="cd-intellectual-value">{{ row[6] }}</span>
+                      </div>
+                      <div v-if="row[7] && row[7] !== '-'" class="cd-intellectual-detail">
+                        <span class="cd-intellectual-label">状态</span>
+                        <span class="cd-intellectual-value" :class="row[7]?.includes('有效') ? 'cd-status-active' : ''">{{ row[7] }}</span>
+                      </div>
+                      <div v-if="row[8] && row[8] !== '-'" class="cd-intellectual-detail">
+                        <span class="cd-intellectual-label">公示日期</span>
+                        <span class="cd-intellectual-value">{{ row[8] }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.intellectual" class="cd-empty">
               <div class="cd-empty-divider"></div>
               <span class="cd-empty-text">暂无数据</span>
               <div class="cd-empty-divider"></div>
@@ -775,32 +833,25 @@
             <template v-if="financeData?.investment?.data?.length">
               <div class="cd-sub-section">
                 <h3 class="cd-sub-title">对外投资</h3>
-                <div class="cd-invest-grid">
-                  <div v-for="(row, ri) in financeInvestmentPage.items" :key="`inv-${ri}`" class="cd-invest-card">
-                    <div class="cd-invest-header">
-                      <div class="cd-invest-name">{{ row[0] || '-' }}</div>
-                      <div class="cd-invest-ratio" v-if="row[8] && row[8] !== '-'">{{ row[8] }}</div>
-                    </div>
-                    <div class="cd-invest-body">
-                      <div class="cd-invest-info-row" v-if="row[1] && row[1] !== '-'">
-                        <span class="cd-invest-label">法定代表人</span>
-                        <span class="cd-invest-value">{{ row[1] }}</span>
+                <div class="cd-invest-list">
+                  <div v-for="(row, ri) in financeInvestmentPage.items" :key="`inv-${ri}`" class="cd-invest-item">
+                    <div class="cd-invest-accent" />
+                    <div class="cd-invest-main">
+                      <div class="cd-invest-top">
+                        <div class="cd-invest-company">
+                          <UIcon name="i-lucide-building-2" class="size-4 cd-invest-icon" />
+                          <span class="cd-invest-company-name">{{ row[0] || '-' }}</span>
+                        </div>
+                        <div class="cd-invest-tags">
+                          <span v-if="row[8] && row[8] !== '-'" class="cd-invest-tag cd-invest-tag-ratio">{{ row[8] }}</span>
+                          <span class="cd-invest-tag" :class="(row[4]?.includes('存续') || row[4]?.includes('在业')) ? 'cd-invest-tag-active' : 'cd-invest-tag-inactive'">{{ row[4] || '-' }}</span>
+                        </div>
                       </div>
-                      <div class="cd-invest-info-row" v-if="row[2] && row[2] !== '-'">
-                        <span class="cd-invest-label">注册资本</span>
-                        <span class="cd-invest-value">{{ row[2] }}</span>
-                      </div>
-                      <div class="cd-invest-info-row" v-if="row[3] && row[3] !== '-'">
-                        <span class="cd-invest-label">成立时间</span>
-                        <span class="cd-invest-value">{{ row[3] }}</span>
-                      </div>
-                      <div class="cd-invest-info-row">
-                        <span class="cd-invest-label">经营状态</span>
-                        <span class="cd-invest-value" :class="{ 'cd-status-active': row[4]?.includes('存续') || row[4]?.includes('在业') }">{{ row[4] || '-' }}</span>
-                      </div>
-                      <div class="cd-invest-info-row" v-if="row[7] && row[7] !== '-'">
-                        <span class="cd-invest-label">认缴金额</span>
-                        <span class="cd-invest-value">{{ row[7] }}</span>
+                      <div class="cd-invest-details">
+                        <span v-if="row[1] && row[1] !== '-'" class="cd-invest-detail"><UIcon name="i-lucide-user" class="size-3" />{{ row[1] }}</span>
+                        <span v-if="row[2] && row[2] !== '-'" class="cd-invest-detail"><UIcon name="i-lucide-coins" class="size-3" />{{ row[2] }}</span>
+                        <span v-if="row[3] && row[3] !== '-'" class="cd-invest-detail"><UIcon name="i-lucide-calendar" class="size-3" />{{ row[3] }}</span>
+                        <span v-if="row[7] && row[7] !== '-'" class="cd-invest-detail"><UIcon name="i-lucide-hand-coins" class="size-3" />{{ row[7] }}</span>
                       </div>
                     </div>
                   </div>
@@ -859,7 +910,7 @@
                 <ClientOnly>
                   <VChart
                     :option="controlGraphOption"
-                    class="cd-tree-chart"
+                    class="cd-member-graph"
                     autoresize
                   />
                 </ClientOnly>
@@ -867,24 +918,19 @@
               <!-- 列表 -->
               <div class="cd-sub-section">
                 <h3 class="cd-sub-title">控制企业列表</h3>
-                <div class="cd-control-grid">
-                  <div v-for="(row, ri) in controlPageData.items" :key="`ctrl-${ri}`" class="cd-control-card">
-                    <div class="cd-control-card-header">
-                      <div class="cd-control-name">{{ row[0] || '-' }}</div>
-                      <div class="cd-control-share" v-if="row[3] && row[3] !== '-'">{{ row[3] }}</div>
-                    </div>
-                    <div class="cd-control-card-body">
-                      <div class="cd-control-row" v-if="row[1] && row[1] !== '-'">
-                        <span class="cd-control-label">控制类型</span>
-                        <span class="cd-control-value">{{ row[1] }}</span>
-                      </div>
-                      <div class="cd-control-row" v-if="row[2] && row[2] !== '-'">
-                        <span class="cd-control-label">注册资本</span>
-                        <span class="cd-control-value">{{ row[2] }}</span>
-                      </div>
-                      <div class="cd-control-path" v-if="row[5] && row[5] !== '-'">{{ row[5] }}</div>
-                    </div>
-                  </div>
+                <div class="cd-table-wrap cd-table-elegant">
+                  <table class="cd-data-table">
+                    <thead>
+                      <tr>
+                        <th v-for="(col, ci) in controlData?.column" :key="`cc-${ci}`">{{ col }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(row, ri) in controlPageData.items" :key="`cctrl-${ri}`">
+                        <td v-for="(cell, ci) in row" :key="`ccr-${ri}-${ci}`">{{ cell || '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div v-if="controlPageData.totalPages > 1" class="cd-pagination">
                   <button class="cd-page-btn" :disabled="controlPage <= 1" @click="controlPage--">&lt;</button>
@@ -922,14 +968,15 @@
                       <h4 class="cd-product-hero-name">{{ row[0] || '-' }}</h4>
                       <p
                         class="cd-product-hero-desc"
-                        :class="{ 'cd-product-hero-desc-expanded': productExpandedMap[ri] }"
+                        :class="{ 'cd-product-hero-desc-expanded': productExpandedMap[`mp-${ri}`] }"
+                        :data-key="`mp-${ri}`"
                       >{{ row[1] || '-' }}</p>
                       <button
-                        v-if="(row[1] || '').length > 120"
+                        v-if="productNeedExpandMap[`mp-${ri}`]"
                         class="cd-scope-expand-btn"
-                        @click="productExpandedMap[ri] = !productExpandedMap[ri]"
+                        @click="productExpandedMap[`mp-${ri}`] = !productExpandedMap[`mp-${ri}`]"
                       >
-                        {{ productExpandedMap[ri] ? '收起' : '展示更多' }}
+                        {{ productExpandedMap[`mp-${ri}`] ? '收起' : '展示更多' }}
                       </button>
                     </div>
                   </div>
@@ -948,14 +995,15 @@
                     </div>
                     <p
                       class="cd-brand-desc"
-                      :class="{ 'cd-brand-desc-expanded': brandExpandedMap[ri] }"
+                      :class="{ 'cd-brand-desc-expanded': brandExpandedMap[`br-${ri}`] }"
+                      :data-key="`br-${ri}`"
                     >{{ row[1] || '-' }}</p>
                     <button
-                      v-if="(row[1] || '').length > 120"
+                      v-if="brandNeedExpandMap[`br-${ri}`]"
                       class="cd-scope-expand-btn"
-                      @click="brandExpandedMap[ri] = !brandExpandedMap[ri]"
+                      @click="brandExpandedMap[`br-${ri}`] = !brandExpandedMap[`br-${ri}`]"
                     >
-                      {{ brandExpandedMap[ri] ? '收起' : '展示更多' }}
+                      {{ brandExpandedMap[`br-${ri}`] ? '收起' : '展示更多' }}
                     </button>
                   </div>
                 </div>
@@ -1057,15 +1105,25 @@
               </span>
             </h2>
             <template v-if="peopleData?.relatedEntities?.data?.length">
-              <div class="cd-related-cards">
-                <div v-for="(row, ri) in relatedEntityPageData.items" :key="`re-${ri}`" class="cd-related-card" :class="row[3]?.includes('间接') ? 'cd-related-indirect' : 'cd-related-direct'">
-                  <div class="cd-related-card-header">
-                    <div class="cd-related-number">#{{ row[0] || '-' }}</div>
-                    <div class="cd-related-type-badge">{{ row[3] || '-' }}</div>
+              <div class="cd-related-list">
+                <div v-for="(row, ri) in relatedEntityPageData.items" :key="`re-${ri}`" class="cd-related-item" :class="row[3]?.includes('间接') ? 'cd-related-indirect' : 'cd-related-direct'">
+                  <div class="cd-related-accent" />
+                  <div class="cd-related-main">
+                    <div class="cd-related-top">
+                      <div class="cd-related-entity">
+                        <UIcon name="i-lucide-network" class="size-4 cd-related-icon" />
+                        <span class="cd-related-entity-name">{{ row[1] || '-' }}</span>
+                      </div>
+                      <div class="cd-related-tags">
+                        <span class="cd-related-tag cd-related-tag-type">{{ row[3] || '-' }}</span>
+                        <span class="cd-related-tag">{{ row[2] || '-' }}</span>
+                      </div>
+                    </div>
+                    <div v-if="row[4] && row[4] !== '-' && row[4] !== 'null'" class="cd-related-basis">
+                      <UIcon name="i-lucide-link" class="size-3" />
+                      {{ row[4] }}
+                    </div>
                   </div>
-                  <div class="cd-related-name">{{ row[1] || '-' }}</div>
-                  <div class="cd-related-type">{{ row[2] || '-' }}</div>
-                  <div class="cd-related-basis" v-if="row[4] && row[4] !== '-' && row[4] !== 'null'">{{ row[4] }}</div>
                 </div>
               </div>
               <div v-if="relatedEntityPageData.totalPages > 1" class="cd-pagination">
@@ -1148,6 +1206,7 @@ import type {
   ControlTable,
   ProductParsed,
   PeopleParsed,
+  IntellectualTable,
 } from '~/types/company-detail'
 import {
   fetchShareholders,
@@ -1162,6 +1221,7 @@ import {
   fetchControl,
   fetchProduct,
   fetchPeople,
+  fetchIntellectual,
 } from '~/types/company-detail'
 import {
   getIndustryColor,
@@ -1181,8 +1241,10 @@ const TRADEMARK_PAGE_SIZE = 9
 const PATENT_PAGE_SIZE = 9
 const SHAREHOLDER_PAGE_SIZE = 10
 const bizScopeExpanded = ref(false)
-const productExpandedMap = reactive<Record<number, boolean>>({})
-const brandExpandedMap = reactive<Record<number, boolean>>({})
+const productExpandedMap = reactive<Record<string, boolean>>({})
+const brandExpandedMap = reactive<Record<string, boolean>>({})
+const productNeedExpandMap = reactive<Record<string, boolean>>({})
+const brandNeedExpandMap = reactive<Record<string, boolean>>({})
 const bizScopeRef = ref<HTMLElement | null>(null)
 const bizScopeNeedExpand = ref(false)
 const changeRecordExpanded = ref(false)
@@ -1202,11 +1264,33 @@ function checkBizScopeOverflow() {
   })
 }
 
+function checkDescOverflow() {
+  nextTick(() => {
+    // 主营产品
+    document.querySelectorAll<HTMLElement>('.cd-product-hero-desc').forEach((el) => {
+      const key = el.dataset.key || ''
+      if (!key) return
+      const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 21
+      const maxHeight = lineHeight * 4 + 2
+      productNeedExpandMap[key] = el.scrollHeight > maxHeight
+    })
+    // 旗下品牌
+    document.querySelectorAll<HTMLElement>('.cd-brand-desc').forEach((el) => {
+      const key = el.dataset.key || ''
+      if (!key) return
+      const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 21
+      const maxHeight = lineHeight * 3 + 2
+      brandNeedExpandMap[key] = el.scrollHeight > maxHeight
+    })
+  })
+}
+
 // 新增接口数据
 const shareholderData = ref<ShareholderParsed | null>(null)
 const trademarkData = ref<TrademarkTable | null>(null)
 const changeRecordData = ref<ChangeRecordTable | null>(null)
 const patentData = ref<PatentTable | null>(null)
+const intellectualData = ref<IntellectualTable | null>(null)
 const registerInfo = ref<RegisterItem[] | null>(null)
 const basicInfo = ref<BasicInfoItem[] | null>(null)
 const honorsData = ref<HonorsParsed | null>(null)
@@ -1238,6 +1322,7 @@ const sectionLoading = ref({
   trademark: false,
   changeRecord: false,
   patent: false,
+  intellectual: false,
   register: false,
   basic: false,
   honor: false,
@@ -1349,6 +1434,8 @@ function loadDetailSections(code: string, skipRegisterBasic = false) {
   fetchChangeRecords(code).then(r => { changeRecordData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.changeRecord = false })
   sectionLoading.value.patent = true
   fetchPatents(code).then(r => { patentData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.patent = false })
+  sectionLoading.value.intellectual = true
+  fetchIntellectual(code).then(r => { intellectualData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.intellectual = false })
   sectionLoading.value.honor = true
   sectionLoading.value.ranking = true
   sectionLoading.value.govAward = true
@@ -1360,7 +1447,7 @@ function loadDetailSections(code: string, skipRegisterBasic = false) {
   sectionLoading.value.control = true
   fetchControl(code).then(r => { controlData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.control = false })
   sectionLoading.value.product = true
-  fetchProduct(code).then(r => { productData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.product = false })
+  fetchProduct(code).then(r => { productData.value = r; checkDescOverflow() }).catch(() => {}).finally(() => { sectionLoading.value.product = false })
   sectionLoading.value.people = true
   fetchPeople(code).then(r => { peopleData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.people = false })
 }
@@ -1629,55 +1716,89 @@ const shareholderTreeOption = computed(() => {
   }
 })
 
-// 主要成员关系图 - 中心根节点 + 外环成员，风扇曲线
-const memberGraphOption = computed(() => {
-  const members = shareholderData.value?.members
-  if (!members?.data?.length) return null
-  const companyName = company.value?.company_name || '企业'
-  const memberCount = members.data.length
+// 径向关系图（主要成员 / 控制关系共用）
+type RadialGraphItem = { name: string; subtitle: string }
 
+function calcRadialGraphViewport(nodes: Array<{ x: number; y: number; symbolSize?: number }>) {
+  const labelPadX = 80
+  const labelPadY = 56
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const node of nodes) {
+    const half = (node.symbolSize ?? 36) / 2
+    minX = Math.min(minX, node.x - half - labelPadX)
+    maxX = Math.max(maxX, node.x + half + labelPadX)
+    minY = Math.min(minY, node.y - half - 16)
+    maxY = Math.max(maxY, node.y + half + labelPadY)
+  }
+  const boxW = Math.max(maxX - minX, 200)
+  const boxH = Math.max(maxY - minY, 200)
+  // 容器参考尺寸：宽可变、高 420px（cd-member-graph），用安全缩放
+  const minZoom = Math.min(900 / boxW, 420 / boxH, 1) * 0.92
+  return {
+    center: [(minX + maxX) / 2, (minY + maxY) / 2] as [number, number],
+    zoom: Math.max(Math.min(minZoom, 1), 0.35),
+  }
+}
+
+function buildRadialRelationGraphOption(
+  companyName: string,
+  items: RadialGraphItem[],
+  outerCategory: string,
+) {
+  const nodeCount = items.length
   const nodes: any[] = []
   const links: any[] = []
-  const memberColorPalette = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
+  const colorPalette = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
+  const cx = 0
+  const cy = 0
+  const shortRadius = nodeCount <= 1 ? 0 : Math.min(130, 60 + 560 / nodeCount)
+  const longRadius = shortRadius * 1.6
 
-  // 中心节点 - 不显示名称，hover时tooltip展示
   nodes.push({
     name: 'root',
     symbolSize: 56,
-    x: 400,
-    y: 280,
+    x: cx,
+    y: cy,
     itemStyle: { color: '#4f46e5', shadowBlur: 12, shadowColor: 'rgba(79,70,229,0.3)' },
     label: { show: true, fontSize: 12, fontWeight: 'bold', color: '#fff', position: 'inside', formatter: '企业' },
     category: 0,
     fullName: companyName,
   })
 
-  const shortRadius = 120
-  const longRadius = shortRadius * 1.8
-  members.data.forEach((row: string[], i: number) => {
-    const name = row[0] || '-'
-    const title = row[1] || ''
-    const nodeName = name.length > 8 ? name.slice(0, 8) + '…' : name
-    const color = memberColorPalette[i % memberColorPalette.length]
-    const angle = (Math.PI * 2 * i) / memberCount - Math.PI / 2
-    const isLong = i % 2 === 0
-    const r = isLong ? longRadius : shortRadius
-    const x = 400 + Math.cos(angle) * r
-    const y = 280 + Math.sin(angle) * r
+  items.forEach((item, i) => {
+    const name = item.name || '-'
+    const subtitle = item.subtitle || ''
+    const uniqueName = `node-${i}`
+    const color = colorPalette[i % colorPalette.length]
+
+    let x: number
+    let y: number
+    if (nodeCount === 1) {
+      x = cx + 140
+      y = cy
+    } else {
+      const angle = (Math.PI * 2 * i) / nodeCount - Math.PI / 2
+      const r = i % 2 === 0 ? longRadius : shortRadius
+      x = cx + Math.cos(angle) * r
+      y = cy + Math.sin(angle) * r
+    }
 
     nodes.push({
-      name: nodeName,
+      name: uniqueName,
       symbolSize: 36,
       x,
       y,
       itemStyle: { color, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.1)', borderColor: '#fff', borderWidth: 2 },
       label: {
         show: true,
-        position: 'bottom',
+        position: nodeCount === 1 ? 'right' : 'bottom',
         fontSize: 12,
         color: '#1e293b',
         fontWeight: '500',
-        formatter: `{fullName|${name}}\n{fullTitle|${title}}`,
+        formatter: `{fullName|${name}}\n{fullTitle|${subtitle}}`,
         rich: {
           fullName: { fontSize: 12, fontWeight: '600', color: '#1e293b', lineHeight: 18 },
           fullTitle: { fontSize: 11, color: '#64748b', lineHeight: 16 },
@@ -1685,20 +1806,23 @@ const memberGraphOption = computed(() => {
       },
       category: 1,
       fullName: name,
-      fullTitle: title,
+      fullTitle: subtitle,
     })
 
     links.push({
       source: 'root',
-      target: nodeName,
+      target: uniqueName,
       lineStyle: {
         color,
         width: 1.8,
-        curveness: 0.2,
-        opacity: 0.6,
+        opacity: 0.65,
+        // 正负交替曲率，形成风扇形曲线（径向直线 curveness 过小几乎不可见）
+        curveness: nodeCount === 1 ? 0 : (i % 2 === 0 ? 0.36 : -0.36),
       },
     })
   })
+
+  const viewport = calcRadialGraphViewport(nodes)
 
   return {
     tooltip: {
@@ -1725,7 +1849,7 @@ const memberGraphOption = computed(() => {
       links,
       categories: [
         { name: '企业', itemStyle: { color: '#4f46e5' } },
-        { name: '成员' },
+        { name: outerCategory },
       ],
       emphasis: {
         focus: 'adjacency' as const,
@@ -1734,12 +1858,24 @@ const memberGraphOption = computed(() => {
       },
       edgeSymbol: ['none', 'none'],
       edgeLabel: { show: false },
-      lineStyle: { opacity: 0.7, curveness: 0.25 },
+      lineStyle: { opacity: 0.7 },
       scaleLimit: { min: 0.3, max: 3 },
-      zoom: 0.7,
-      center: [400, 280],
+      center: viewport.center,
+      zoom: viewport.zoom,
     }],
   }
+}
+
+// 主要成员关系图
+const memberGraphOption = computed(() => {
+  const members = shareholderData.value?.members
+  if (!members?.data?.length) return null
+  const companyName = company.value?.company_name || '企业'
+  const items: RadialGraphItem[] = members.data.map((row: string[]) => ({
+    name: row[0] || '-',
+    subtitle: row[1] || '',
+  }))
+  return buildRadialRelationGraphOption(companyName, items, '成员')
 })
 
 // 商标分页
@@ -1857,44 +1993,11 @@ const controlGraphOption = computed(() => {
   const data = controlData.value?.data
   if (!data?.length) return null
   const companyName = company.value?.company_name || '企业'
-  const nodes: any[] = [{ name: 'root', symbolSize: 48, x: 400, y: 300, itemStyle: { color: '#4f46e5', shadowBlur: 10, shadowColor: 'rgba(79,70,229,0.3)' }, label: { show: true, fontSize: 12, fontWeight: 'bold', color: '#fff', position: 'inside', formatter: companyName.length > 10 ? companyName.slice(0, 10) + '…' : companyName }, category: 0, fullName: companyName }]
-  const links: any[] = []
-  const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b']
-  data.forEach((row: string[], i: number) => {
-    const name = row[0] || '-'
-    const nodeName = name.length > 8 ? name.slice(0, 8) + '…' : name
-    const ratio = row[3] || ''
-    const angle = (Math.PI * 2 * i) / data.length - Math.PI / 2
-    const r = 150 + (i % 3) * 60
-    const x = 400 + Math.cos(angle) * r
-    const y = 300 + Math.sin(angle) * r
-    const color = colors[i % colors.length]
-    nodes.push({
-      name: nodeName,
-      symbolSize: 30,
-      x, y,
-      itemStyle: { color, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.1)', borderColor: '#fff', borderWidth: 2 },
-      label: { show: true, position: 'bottom', fontSize: 11, color: '#1e293b', fontWeight: '500', formatter: `{name|${name}}\n{ratio|${ratio}}`, rich: { name: { fontSize: 11, fontWeight: '600', color: '#1e293b', lineHeight: 16 }, ratio: { fontSize: 10, color: '#64748b', lineHeight: 14 } } },
-      category: 1,
-      fullName: name,
-    })
-    links.push({ source: 'root', target: nodeName, lineStyle: { color, width: 1.5, opacity: 0.5 } })
-  })
-  return {
-    tooltip: { trigger: 'item' as const, formatter: (params: any) => params.data?.fullName || params.name },
-    animationDuration: 500,
-    series: [{
-      type: 'graph' as const, layout: 'none' as const, roam: true, draggable: true,
-      data: nodes, links,
-      categories: [{ name: '企业', itemStyle: { color: '#4f46e5' } }, { name: '控制企业' }],
-      emphasis: { focus: 'adjacency' as const, itemStyle: { borderWidth: 2, borderColor: '#333' }, lineStyle: { width: 3 } },
-      edgeSymbol: ['none', 'none'],
-      lineStyle: { opacity: 0.5, curveness: 0.15 },
-      scaleLimit: { min: 0.3, max: 3 },
-      zoom: 0.8,
-      center: [400, 300],
-    }],
-  }
+  const items: RadialGraphItem[] = data.map((row: string[]) => ({
+    name: row[0] || '-',
+    subtitle: row[1] || row[3] || '',
+  }))
+  return buildRadialRelationGraphOption(companyName, items, '控制企业')
 })
 
 // 社保人数趋势图
@@ -2090,7 +2193,7 @@ const changeTypeOption = computed(() => {
 })
 
 const activeMenu = ref('business')
-const expandedGroups = ref(new Set(['company-info', 'business-info', 'contact-info', 'detail-info', 'honor-info', 'layout-info']))
+const expandedGroups = ref(new Set(['company-info', 'detail-info', 'invest-info', 'product-info', 'people-info', 'honor-info', 'layout-info', 'contact-info']))
 const contentRef = ref<HTMLElement | null>(null)
 const isScrolling = ref(false)
 
@@ -2112,6 +2215,7 @@ const menuGroups = [
       { key: 'shareholder', label: '股东信息', icon: 'i-lucide-users' },
       { key: 'trademark', label: '商标信息', icon: 'i-lucide-stamp' },
       { key: 'patent', label: '专利信息', icon: 'i-lucide-lightbulb' },
+      { key: 'intellectual', label: '知识产权出质', icon: 'i-lucide-shield-check' },
       { key: 'change', label: '变更记录', icon: 'i-lucide-history' },
     ],
   },
@@ -2215,6 +2319,8 @@ function hasSectionData(key: string): boolean {
       return !!(trademarkData.value?.data?.length)
     case 'patent':
       return !!(patentData.value?.data?.length)
+    case 'intellectual':
+      return !!(intellectualData.value?.data?.length)
     case 'change':
       return !!(changeRecordData.value?.data?.length)
     case 'honor':
@@ -2253,6 +2359,7 @@ function isSectionVisible(key: string): boolean {
     shareholder: 'shareholder',
     trademark: 'trademark',
     patent: 'patent',
+    intellectual: 'intellectual',
     change: 'changeRecord',
     honor: 'honor',
     ranking: 'ranking',
@@ -2688,7 +2795,8 @@ function getIndustryBg(industry: string): string {
 
 .cd-title-patent { --s-color: #14b8a6; --s-bg: rgba(20,184,166,0.06); }
 .cd-title-patent .cd-title-icon { background: rgba(20,184,166,0.12); color: #14b8a6; }
-
+.cd-title-intellectual { --s-color: #f59e0b; --s-bg: rgba(245,158,11,0.06); }
+.cd-title-intellectual .cd-title-icon { background: rgba(245,158,11,0.12); color: #f59e0b; }
 .cd-title-change { --s-color: #f43f5e; --s-bg: rgba(244,63,94,0.06); }
 .cd-title-change .cd-title-icon { background: rgba(244,63,94,0.12); color: #f43f5e; }
 
@@ -2820,7 +2928,7 @@ function getIndustryBg(industry: string): string {
   gap: 8px;
   font-size: 13px;
   color: var(--text-muted);
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 .cd-biz-icon-capital { color: #6366f1; }
 .cd-biz-icon-date { color: #f59e0b; }
@@ -2831,11 +2939,6 @@ function getIndustryBg(industry: string): string {
   font-weight: 700;
   color: var(--text-strong);
   font-family: var(--font-display);
-  margin-bottom: 6px;
-}
-.cd-biz-card-desc {
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 .cd-mt {
@@ -3050,10 +3153,14 @@ function getIndustryBg(industry: string): string {
 .cd-tree-chart {
   width: 100%;
   height: 500px;
+  background-color: rgba(139, 92, 246, 0.05);
+  border-radius: 12px;
 }
 .cd-member-graph {
   width: 100%;
   height: 420px;
+  background-color: rgba(139, 92, 246, 0.05);
+  border-radius: 12px;
 }
 
 /* ── 专利卡片样式 ───────────────────────── */
@@ -3085,6 +3192,89 @@ function getIndustryBg(industry: string): string {
   white-space: normal;
   word-break: break-word;
   line-height: 1.4;
+}
+
+/* ── 知识产权出质列表 ───────────────────────── */
+.cd-intellectual-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cd-intellectual-item {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+.cd-intellectual-item:hover {
+  border-color: color-mix(in srgb, #f59e0b 40%, var(--border-light));
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.08);
+  transform: translateX(4px);
+}
+.cd-intellectual-accent {
+  width: 4px;
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+  flex-shrink: 0;
+}
+.cd-intellectual-main {
+  flex: 1;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.cd-intellectual-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.cd-intellectual-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.cd-intellectual-icon {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+.cd-intellectual-kind {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  flex-shrink: 0;
+}
+.cd-intellectual-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px 12px;
+}
+.cd-intellectual-detail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.cd-intellectual-label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.cd-intellectual-value {
+  color: var(--text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── 工商信息卡片网格 ────────────────────────── */
@@ -3237,7 +3427,7 @@ function getIndustryBg(industry: string): string {
   white-space: nowrap;
 }
 
-/* ── 企业实力卡片（详情页） ───────────────────── */
+/* ── 核心指标卡片（详情页） ───────────────────── */
 .cd-strength-section {
   background: var(--surface-alt);
   border: 1px solid var(--border);
@@ -3392,28 +3582,6 @@ function getIndustryBg(industry: string): string {
 }
 
 /* ── 产品/品牌描述展开状态 ─────────────────────── */
-.cd-product-hero-desc {
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-.cd-product-hero-desc-expanded {
-  -webkit-line-clamp: unset;
-  display: block;
-}
-.cd-brand-desc {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-.cd-brand-desc-expanded {
-  -webkit-line-clamp: unset;
-  display: block;
-}
 
 /* ── 新模块响应式 ──────────────────────────────── */
 @media (max-width: 768px) {
@@ -3522,18 +3690,18 @@ function getIndustryBg(industry: string): string {
 }
 .cd-honor-badge {
   position: absolute;
-  top: 0;
-  left: 4px;
+  top: -1px;
+  left: -1px;
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  border-radius: 0 0 8px 0;
+  padding: 5px 12px;
+  border-radius: 14px 0 14px 0;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
   line-height: 1.4;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 .cd-level-national {
   background: linear-gradient(135deg, #fef3c7, #fde68a);
@@ -3668,7 +3836,7 @@ function getIndustryBg(industry: string): string {
 }
 .cd-ranking-rank {
   flex-shrink: 0;
-  width: 52px;
+  width: 56px;
   height: 52px;
   display: flex;
   align-items: center;
@@ -3680,9 +3848,10 @@ function getIndustryBg(industry: string): string {
   box-shadow: 0 3px 10px rgba(249, 115, 22, 0.3);
 }
 .cd-ranking-rank-num {
-  font-size: 15px;
+  font-size: 14px;
   font-family: var(--font-display);
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 .cd-ranking-body {
   flex: 1;
@@ -3962,71 +4131,99 @@ function getIndustryBg(industry: string): string {
 .cd-title-related .cd-title-icon { background: rgba(249,115,22,0.12); color: #f97316; }
 
 /* ── 对外投资卡片 ───────────────────────── */
-.cd-invest-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 12px;
+.cd-invest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.cd-invest-card {
+.cd-invest-item {
+  display: flex;
+  align-items: stretch;
   background: var(--surface);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   transition: all 0.2s;
 }
-.cd-invest-card:hover {
-  box-shadow: 0 4px 16px rgba(132, 204, 22, 0.1);
-  border-color: #84cc16;
-  transform: translateY(-2px);
+.cd-invest-item:hover {
+  border-color: color-mix(in srgb, #84cc16 40%, var(--border-light));
+  box-shadow: 0 2px 10px rgba(132, 204, 22, 0.08);
+  transform: translateX(4px);
 }
-.cd-invest-header {
+.cd-invest-accent {
+  width: 4px;
+  background: linear-gradient(180deg, #84cc16, #65a30d);
+  flex-shrink: 0;
+}
+.cd-invest-main {
+  flex: 1;
+  padding: 12px 16px;
+  min-width: 0;
+}
+.cd-invest-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  background: rgba(132, 204, 22, 0.06);
-  border-bottom: 1px solid var(--border-light);
+  gap: 12px;
+  margin-bottom: 8px;
 }
-.cd-invest-name {
+.cd-invest-company {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cd-invest-icon {
+  color: #84cc16;
+  flex-shrink: 0;
+}
+.cd-invest-company-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-strong);
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cd-invest-ratio {
-  font-size: 18px;
-  font-weight: 700;
-  color: #84cc16;
-  flex-shrink: 0;
-  margin-left: 12px;
-}
-.cd-invest-body {
-  padding: 12px 18px;
-}
-.cd-invest-info-row {
+.cd-invest-tags {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px dashed var(--border-light);
-}
-.cd-invest-info-row:last-child {
-  border-bottom: none;
-}
-.cd-invest-label {
-  font-size: 12px;
-  color: var(--text-muted);
+  gap: 6px;
   flex-shrink: 0;
 }
-.cd-invest-value {
-  font-size: 13px;
-  color: var(--text);
-  font-weight: 500;
-  text-align: right;
+.cd-invest-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.cd-invest-tag-ratio {
+  background: rgba(132, 204, 22, 0.12);
+  color: #65a30d;
+}
+.cd-invest-tag-active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+.cd-invest-tag-inactive {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+}
+.cd-invest-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cd-invest-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cd-invest-detail :deep(svg) {
+  opacity: 0.5;
 }
 
 /* ── 融资历程时间线 ───────────────────────── */
@@ -4123,80 +4320,121 @@ function getIndustryBg(industry: string): string {
 }
 
 /* ── 实际控制企业卡片 ───────────────────────── */
-.cd-control-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 12px;
+.cd-control-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
 }
-.cd-control-card {
+.cd-control-list::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: linear-gradient(180deg, color-mix(in srgb, #a855f7 30%, var(--border)), color-mix(in srgb, #a855f7 10%, var(--border)));
+  border-radius: 1px;
+}
+.cd-control-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  position: relative;
+}
+.cd-control-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+.cd-control-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2.5px solid #a855f7;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #a855f7 15%, transparent);
+}
+.cd-control-content {
+  flex: 1;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
-  overflow: hidden;
+  border-radius: 10px;
+  padding: 12px 16px;
   transition: all 0.2s;
 }
-.cd-control-card:hover {
-  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.1);
-  border-color: #a855f7;
-  transform: translateY(-2px);
+.cd-control-item:hover .cd-control-content {
+  border-color: color-mix(in srgb, #a855f7 35%, var(--border-light));
+  box-shadow: 0 2px 10px rgba(168, 85, 247, 0.08);
 }
-.cd-control-card-header {
+.cd-control-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  background: rgba(168, 85, 247, 0.06);
-  border-bottom: 1px solid var(--border-light);
+  gap: 12px;
+  margin-bottom: 8px;
 }
-.cd-control-name {
+.cd-control-company {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cd-control-icon {
+  color: #a855f7;
+  flex-shrink: 0;
+}
+.cd-control-company-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-strong);
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cd-control-share {
-  font-size: 20px;
-  font-weight: 700;
-  color: #a855f7;
-  flex-shrink: 0;
-  margin-left: 12px;
-}
-.cd-control-card-body {
-  padding: 12px 18px;
-}
-.cd-control-row {
+.cd-control-tags {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px dashed var(--border-light);
+  gap: 6px;
+  flex-shrink: 0;
 }
-.cd-control-row:last-child {
-  border-bottom: none;
+.cd-control-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  background: var(--surface-alt);
+  color: var(--text-muted);
 }
-.cd-control-label {
+.cd-control-tag-share {
+  background: rgba(168, 85, 247, 0.12);
+  color: #9333ea;
+}
+.cd-control-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.cd-control-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: var(--text-muted);
 }
-.cd-control-value {
-  font-size: 13px;
-  color: var(--text);
-  font-weight: 500;
-  text-align: right;
+.cd-control-detail :deep(svg) {
+  opacity: 0.5;
 }
-.cd-control-path {
-  margin-top: 10px;
-  padding: 8px 12px;
-  font-size: 11px;
-  color: var(--text-muted);
-  background: var(--surface-alt);
-  border-radius: 6px;
-  line-height: 1.5;
-  word-break: break-all;
+.cd-control-detail-path {
+  flex-basis: 100%;
 }
 
 /* ── 主营产品卡片 ───────────────────────── */
@@ -4245,10 +4483,12 @@ function getIndustryBg(industry: string): string {
   color: var(--text);
   line-height: 1.6;
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  max-height: calc(1.6em * 4);
+  transition: max-height 0.35s ease;
+}
+.cd-product-hero-desc-expanded {
+  max-height: 2000px;
 }
 
 /* ── 旗下品牌卡片 ───────────────────────── */
@@ -4285,94 +4525,126 @@ function getIndustryBg(industry: string): string {
   color: var(--text);
   line-height: 1.6;
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  max-height: calc(1.6em * 3);
+  transition: max-height 0.35s ease;
+}
+.cd-brand-desc-expanded {
+  max-height: 2000px;
 }
 
 /* ── 关联企业/人员卡片 ───────────────────────── */
-.cd-related-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 10px;
+.cd-related-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.cd-related-card {
-  padding: 16px 18px;
+.cd-related-item {
+  display: flex;
+  align-items: stretch;
   background: var(--surface);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
-  border-left: 3px solid var(--border-light);
+  border-radius: 10px;
+  overflow: hidden;
   transition: all 0.2s;
 }
-.cd-related-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
-}
-.cd-related-direct {
-  border-left-color: #10b981;
+.cd-related-item:hover {
+  transform: translateX(4px);
 }
 .cd-related-direct:hover {
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
-}
-.cd-related-indirect {
-  border-left-color: #f59e0b;
+  border-color: color-mix(in srgb, #10b981 40%, var(--border-light));
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.08);
 }
 .cd-related-indirect:hover {
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.1);
+  border-color: color-mix(in srgb, #f59e0b 40%, var(--border-light));
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.08);
 }
-.cd-related-card-header {
+.cd-related-accent {
+  width: 4px;
+  flex-shrink: 0;
+}
+.cd-related-direct .cd-related-accent {
+  background: linear-gradient(180deg, #10b981, #059669);
+}
+.cd-related-indirect .cd-related-accent {
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+}
+.cd-related-main {
+  flex: 1;
+  padding: 12px 16px;
+  min-width: 0;
+}
+.cd-related-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 6px;
 }
-.cd-related-number {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 500;
+.cd-related-entity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
-.cd-related-type-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 10px;
-  border-radius: 5px;
-  background: var(--surface-alt);
-  color: var(--text-muted);
+.cd-related-icon {
+  flex-shrink: 0;
 }
-.cd-related-direct .cd-related-type-badge {
-  background: rgba(16, 185, 129, 0.1);
+.cd-related-direct .cd-related-icon {
   color: #10b981;
 }
-.cd-related-indirect .cd-related-type-badge {
-  background: rgba(245, 158, 11, 0.1);
+.cd-related-indirect .cd-related-icon {
   color: #f59e0b;
 }
-.cd-related-name {
+.cd-related-entity-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-strong);
-  margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cd-related-type {
-  font-size: 12px;
+.cd-related-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.cd-related-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  background: var(--surface-alt);
   color: var(--text-muted);
-  margin-bottom: 8px;
+}
+.cd-related-tag-type {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+.cd-related-indirect .cd-related-tag-type {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
 }
 .cd-related-basis {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.5;
   padding: 6px 10px;
   background: var(--surface-alt);
   border-radius: 6px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.cd-related-basis :deep(svg) {
+  opacity: 0.5;
+  flex-shrink: 0;
 }
 
 /* 鈹€鈹€ 鏂版ā鍧楀搷搴斿紡 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
@@ -4386,19 +4658,10 @@ function getIndustryBg(industry: string): string {
   .cd-layout-grid {
     grid-template-columns: 1fr;
   }
-  .cd-invest-grid {
-    grid-template-columns: 1fr;
-  }
-  .cd-control-grid {
-    grid-template-columns: 1fr;
-  }
   .cd-product-hero-grid {
     grid-template-columns: 1fr;
   }
   .cd-brand-grid {
-    grid-template-columns: 1fr;
-  }
-  .cd-related-cards {
     grid-template-columns: 1fr;
   }
   .cd-strength-grid-detail {

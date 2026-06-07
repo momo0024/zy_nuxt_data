@@ -167,6 +167,14 @@
                 class="cp-search-input"
                 placeholder="搜索名称 / 信用代码 / 产品 / 区域…"
               />
+              <button
+                v-if="companySearch"
+                class="cp-search-clear"
+                title="清除搜索"
+                @click="companySearch = ''"
+              >
+                <UIcon name="i-lucide-x" class="size-3.5" />
+              </button>
             </div>
 
             <div class="cp-list">
@@ -202,7 +210,17 @@
 
               <div v-if="filteredCompanies.length === 0" class="cp-empty">
                 <UIcon name="i-lucide-building-x" class="size-10 opacity-20" />
-                <span>暂无匹配企业</span>
+                <span v-if="isLoadingCompanies">企业数据加载中…</span>
+                <span v-else-if="companySearch.trim()">未找到匹配 "{{ companySearch.trim() }}" 的企业</span>
+                <span v-else-if="allCompanies.length === 0">企业数据加载失败，请刷新页面重试</span>
+                <span v-else>暂无匹配企业</span>
+                <button
+                  v-if="companySearch.trim() || selectedRegion || (bubbleCompanies && bubbleCompanies.length)"
+                  class="cp-reset-btn"
+                  @click="resetPanel"
+                >
+                  显示全部企业
+                </button>
               </div>
 
             </div>
@@ -242,14 +260,14 @@
               </div>
             </div>
             <div class="cd-body">
-              <!-- 企业实力 -->
+              <!-- 核心指标 -->
               <div
                 v-if="hasStrengthData(detailCompany)"
                 class="cd-strength-section"
               >
                 <div class="cd-strength-title">
                   <UIcon name="i-lucide-zap" class="size-4" />
-                  企业实力
+                  核心指标
                 </div>
                 <div class="cd-strength-grid">
                   <div v-if="detailCompany.company_score" class="cd-strength-card cd-strength-score">
@@ -439,6 +457,7 @@ const bubbleCompanies = ref<CompanyRecord[] | null>(null)
 const bubbleLabel = ref('')
 const pageSize = 500
 const companyTotal = ref(0)
+const isLoadingCompanies = ref(false)
 const scopeExpanded = ref(false)
 const selectedAreaView = ref<string>('zone')
 const showAreaDropdown = ref(false)
@@ -497,9 +516,9 @@ const panelTitle = computed(() => {
 })
 
 const filteredCompanies = computed(() => {
-  // 气泡模式：仅从气泡公司中检索
+  // 气泡模式：仅从气泡公司中检索（注意：空数组也是 truthy，需额外判断长度）
   const bubble = bubbleCompanies.value
-  if (bubble) {
+  if (bubble && bubble.length) {
     const q = companySearch.value.trim().toLowerCase()
     if (!q) return bubble
     return bubble.filter(c =>
@@ -514,13 +533,16 @@ const filteredCompanies = computed(() => {
   // 区域模式
   let list = allCompanies.value
   const region = selectedRegion.value
-  if (region?.type === 'zone') {
-    list = list.filter(c => isInZone({ lat: c.company_latitude, lng: c.company_longitude }))
-  }
-  if (region?.type === 'city') {
-    list = list.filter(c => c.company_city === region.name)
-  }
   const q = companySearch.value.trim().toLowerCase()
+  // 搜索时不过滤区域，显示全部企业；未搜索时按当前区域过滤
+  if (!q) {
+    if (region?.type === 'zone') {
+      list = list.filter(c => isInZone({ lat: c.company_latitude, lng: c.company_longitude }))
+    }
+    if (region?.type === 'city') {
+      list = list.filter(c => c.company_city === region.name)
+    }
+  }
   if (q) {
     list = list.filter(c =>
       c.company_name.toLowerCase().includes(q)
@@ -535,6 +557,7 @@ const filteredCompanies = computed(() => {
 })
 
 async function loadCompanyData() {
+  isLoadingCompanies.value = true
   try {
     const res = await fetchCompanies(1, pageSize)
     if (res.code === 0 && res.data) {
@@ -546,6 +569,8 @@ async function loadCompanyData() {
     }
   } catch (e) {
     console.error('[geo-screen] 加载企业数据失败', e)
+  } finally {
+    isLoadingCompanies.value = false
   }
 }
 
@@ -1166,9 +1191,30 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .cp-search-input {
   width: 100%;
   height: 30px;
-  padding: 0 10px 0 30px;
+  padding: 0 28px 0 30px;
   font-size: 12px;
   border-radius: 8px !important;
+}
+.cp-search-clear {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cp-search-clear:hover {
+  background: var(--surface-alt);
+  color: var(--text-strong);
 }
 .cp-list {
   flex: 1;
@@ -1466,7 +1512,7 @@ function hasStrengthData(c: CompanyRecord): boolean {
   line-height: 1.5;
 }
 
-/* ── 企业实力卡片 ─────────────────────────────── */
+/* ── 核心指标卡片 ─────────────────────────────── */
 .cd-strength-section {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -1614,7 +1660,7 @@ function hasStrengthData(c: CompanyRecord): boolean {
   vertical-align: middle;
 }
 
-/* ── 抽屉列表企业实力行 ─────────────────────────── */
+/* ── 抽屉列表核心指标行 ─────────────────────────── */
 .cp-strength-row {
   display: flex;
   flex-wrap: wrap;
