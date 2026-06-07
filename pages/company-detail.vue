@@ -1719,30 +1719,6 @@ const shareholderTreeOption = computed(() => {
 // 径向关系图（主要成员 / 控制关系共用）
 type RadialGraphItem = { name: string; subtitle: string }
 
-function calcRadialGraphViewport(nodes: Array<{ x: number; y: number; symbolSize?: number }>) {
-  const labelPadX = 80
-  const labelPadY = 56
-  let minX = Infinity
-  let maxX = -Infinity
-  let minY = Infinity
-  let maxY = -Infinity
-  for (const node of nodes) {
-    const half = (node.symbolSize ?? 36) / 2
-    minX = Math.min(minX, node.x - half - labelPadX)
-    maxX = Math.max(maxX, node.x + half + labelPadX)
-    minY = Math.min(minY, node.y - half - 16)
-    maxY = Math.max(maxY, node.y + half + labelPadY)
-  }
-  const boxW = Math.max(maxX - minX, 200)
-  const boxH = Math.max(maxY - minY, 200)
-  // 容器参考尺寸：宽可变、高 420px（cd-member-graph），用安全缩放
-  const minZoom = Math.min(900 / boxW, 420 / boxH, 1) * 0.92
-  return {
-    center: [(minX + maxX) / 2, (minY + maxY) / 2] as [number, number],
-    zoom: Math.max(Math.min(minZoom, 1), 0.35),
-  }
-}
-
 function buildRadialRelationGraphOption(
   companyName: string,
   items: RadialGraphItem[],
@@ -1754,8 +1730,9 @@ function buildRadialRelationGraphOption(
   const colorPalette = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
   const cx = 0
   const cy = 0
-  const shortRadius = nodeCount <= 1 ? 0 : Math.min(130, 60 + 560 / nodeCount)
-  const longRadius = shortRadius * 1.6
+  // 节点数量少时半径更小，防止跑出画布
+  const shortRadius = nodeCount <= 1 ? 0 : Math.min(90, 45 + 360 / nodeCount)
+  const longRadius = shortRadius * 1.4
 
   nodes.push({
     name: 'root',
@@ -1777,7 +1754,7 @@ function buildRadialRelationGraphOption(
     let x: number
     let y: number
     if (nodeCount === 1) {
-      x = cx + 140
+      x = cx + 100
       y = cy
     } else {
       const angle = (Math.PI * 2 * i) / nodeCount - Math.PI / 2
@@ -1814,15 +1791,12 @@ function buildRadialRelationGraphOption(
       target: uniqueName,
       lineStyle: {
         color,
-        width: 1.8,
-        opacity: 0.65,
-        // 正负交替曲率，形成风扇形曲线（径向直线 curveness 过小几乎不可见）
-        curveness: nodeCount === 1 ? 0 : (i % 2 === 0 ? 0.36 : -0.36),
+        width: 2,
+        opacity: 0.7,
+        curveness: nodeCount === 1 ? 0 : (i % 2 === 0 ? 0.5 : -0.5),
       },
     })
   })
-
-  const viewport = calcRadialGraphViewport(nodes)
 
   return {
     tooltip: {
@@ -1856,12 +1830,11 @@ function buildRadialRelationGraphOption(
         itemStyle: { borderWidth: 2, borderColor: '#333' },
         lineStyle: { width: 3 },
       },
+      edgeShape: 'curve',
       edgeSymbol: ['none', 'none'],
       edgeLabel: { show: false },
       lineStyle: { opacity: 0.7 },
       scaleLimit: { min: 0.3, max: 3 },
-      center: viewport.center,
-      zoom: viewport.zoom,
     }],
   }
 }
@@ -1995,7 +1968,7 @@ const controlGraphOption = computed(() => {
   const companyName = company.value?.company_name || '企业'
   const items: RadialGraphItem[] = data.map((row: string[]) => ({
     name: row[0] || '-',
-    subtitle: row[1] || row[3] || '',
+    subtitle: (row[3] && row[3] !== '-') ? row[3] : (row[1] && row[1] !== '-' ? row[1] : ''),
   }))
   return buildRadialRelationGraphOption(companyName, items, '控制企业')
 })
