@@ -307,6 +307,224 @@
             </div>
           </section>
 
+          <!-- 荣誉资质 -->
+          <section id="section-honor" class="cd-section" v-if="isSectionVisible('honor')">
+            <h2 class="cd-section-title cd-title-honor">
+              <span class="cd-title-icon"><UIcon name="i-lucide-award" class="size-5" /></span>
+              荣誉资质
+              <span v-if="sectionLoading.honor" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="honorsData?.honor?.data?.length">
+              <div class="cd-honor-grid">
+                <div v-for="(row, ri) in honorPageData.items" :key="`h-${ri}`" class="cd-honor-card">
+                  <div class="cd-honor-badge" :class="getHonorLevelStyle(row[2])">
+                    <UIcon name="i-lucide-award" class="size-3" />
+                    <span>{{ row[2] || '-' }}</span>
+                  </div>
+                  <div class="cd-honor-body">
+                    <div class="cd-honor-name">{{ row[0] || '-' }}</div>
+                    <div class="cd-honor-details">
+                      <span v-if="row[1] && row[1] !== '-'" class="cd-honor-detail-item">
+                        许可证号: {{ row[1] }}
+                      </span>
+                      <span v-if="row[3] && row[3] !== '-'" class="cd-honor-detail-item">
+                        公布状态: {{ row[3] }}
+                      </span>
+                      <span v-if="row[4] && row[4] !== '-'" class="cd-honor-detail-item">
+                        发布日期: {{ row[4] }}
+                      </span>
+                      <span v-if="row[5] && row[5] !== '-'" class="cd-honor-detail-item">
+                        有效期至: {{ row[5] }}
+                      </span>
+                    </div>
+                    <div class="cd-honor-footer">
+                      <span v-if="row[6] && row[6] !== '-'" class="cd-honor-status" :class="row[6] === '有效' ? 'cd-status-active' : 'cd-status-inactive'">{{ row[6] }}</span>
+                      <span v-if="row[7] && row[7] !== '-'" class="cd-honor-org">发布单位: {{ row[7] }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="honorPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="honorPage <= 1" @click="honorPage--">&lt;</button>
+                <span class="cd-page-info">{{ honorPage }} / {{ honorPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="honorPage >= honorPageData.totalPages" @click="honorPage++">&gt;</button>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.honor" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 上榜榜单 -->
+          <section id="section-ranking" class="cd-section" v-if="isSectionVisible('ranking')">
+            <h2 class="cd-section-title cd-title-ranking">
+              <span class="cd-title-icon"><UIcon name="i-lucide-trophy" class="size-5" /></span>
+              上榜榜单
+              <span v-if="sectionLoading.ranking" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="honorsData?.ranking?.data?.length">
+              <div class="cd-ranking-timeline">
+                <div v-for="group in rankingYearGroups" :key="group.year" class="cd-ranking-year-group">
+                  <div class="cd-ranking-year-label">{{ group.year }}年</div>
+                  <div class="cd-ranking-items">
+                    <div v-for="(row, ri) in group.items" :key="`r-${group.year}-${ri}`" class="cd-ranking-card">
+                      <div class="cd-ranking-rank">
+                        <span class="cd-ranking-rank-num">{{ formatRanking(row[1]) }}</span>
+                      </div>
+                      <div class="cd-ranking-body">
+                        <div class="cd-ranking-name"><span class="cd-ranking-label">榜单名称</span>{{ row[0] || '-' }}</div>
+                        <div class="cd-ranking-meta">
+                          <span class="cd-ranking-publisher">
+                            <UIcon name="i-lucide-building" class="size-3" />
+                            发布方: {{ row[3] || '-' }}
+                          </span>
+                          <span class="cd-ranking-date">
+                            <UIcon name="i-lucide-calendar" class="size-3" />
+                            发布日期: {{ row[2] || '-' }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                v-if="honorsData.ranking.data.length > 5"
+                class="cd-scope-expand-btn"
+                @click="rankingExpanded = !rankingExpanded"
+              >
+                {{ rankingExpanded ? '收起' : '展示更多' }}
+              </button>
+            </template>
+            <div v-else-if="!sectionLoading.ranking" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 政府奖励项目 -->
+          <section id="section-govAward" class="cd-section" v-if="isSectionVisible('govAward')">
+            <h2 class="cd-section-title cd-title-govAward">
+              <span class="cd-title-icon"><UIcon name="i-lucide-gift" class="size-5" /></span>
+              政府奖励项目
+              <span v-if="sectionLoading.govAward" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="honorsData?.govAward?.data?.length">
+              <div class="cd-gov-grid">
+                <div v-for="(row, ri) in govAwardPageData.items" :key="`g-${ri}`" class="cd-gov-card">
+                  <div class="cd-gov-ribbon" :class="getHonorLevelStyle(row[2])">
+                    <UIcon name="i-lucide-ribbon" class="size-3.5" />
+                    {{ row[2] || '-' }}
+                  </div>
+                  <div class="cd-gov-body">
+                    <div class="cd-gov-name">{{ row[0] || '-' }}</div>
+                    <div class="cd-gov-project">{{ row[1] || '-' }}</div>
+                    <div class="cd-gov-meta">
+                      <span class="cd-gov-year">
+                        <UIcon name="i-lucide-calendar" class="size-3" />
+                        奖励年份: {{ row[3] || '-' }}年
+                      </span>
+                      <span v-if="row[5] && row[5] !== '-'" class="cd-gov-person">
+                        <UIcon name="i-lucide-user" class="size-3" />
+                        相关人员: {{ row[5] }}
+                      </span>
+                    </div>
+                    <div class="cd-gov-date">发布时间: {{ row[4] || '-' }}</div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="govAwardPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="govAwardPage <= 1" @click="govAwardPage--">&lt;</button>
+                <span class="cd-page-info">{{ govAwardPage }} / {{ govAwardPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="govAwardPage >= govAwardPageData.totalPages" @click="govAwardPage++">&gt;</button>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.govAward" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 主营产品 & 旗下品牌 -->
+          <section id="section-product" class="cd-section" v-if="isSectionVisible('product')">
+            <h2 class="cd-section-title cd-title-product">
+              <span class="cd-title-icon"><UIcon name="i-lucide-shopping-bag" class="size-5" /></span>
+              主营产品 & 旗下品牌
+              <span v-if="sectionLoading.product" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <!-- 主营产品 -->
+            <template v-if="productData?.mainProducts?.data?.length">
+              <div class="cd-sub-section">
+                <h3 class="cd-sub-title">主营产品</h3>
+                <div class="cd-product-hero-grid">
+                  <div v-for="(row, ri) in productData.mainProducts.data" :key="`mp-${ri}`" class="cd-product-hero-card">
+                    <div class="cd-product-hero-icon">
+                      <UIcon name="i-lucide-box" class="size-6" />
+                    </div>
+                    <div class="cd-product-hero-body">
+                      <h4 class="cd-product-hero-name">{{ row[0] || '-' }}</h4>
+                      <p
+                        class="cd-product-hero-desc"
+                        :class="{ 'cd-product-hero-desc-expanded': productExpandedMap[`mp-${ri}`] }"
+                        :data-key="`mp-${ri}`"
+                      >{{ row[1] || '-' }}</p>
+                      <button
+                        v-if="productNeedExpandMap[`mp-${ri}`]"
+                        class="cd-scope-expand-btn"
+                        @click="productExpandedMap[`mp-${ri}`] = !productExpandedMap[`mp-${ri}`]"
+                      >
+                        {{ productExpandedMap[`mp-${ri}`] ? '收起' : '展示更多' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <!-- 旗下品牌 -->
+            <template v-if="productData?.brands?.data?.length">
+              <div class="cd-sub-section">
+                <h3 class="cd-sub-title">旗下品牌</h3>
+                <div class="cd-brand-grid">
+                  <div v-for="(row, ri) in productData.brands.data" :key="`br-${ri}`" class="cd-brand-card">
+                    <div class="cd-brand-badge">
+                      <UIcon name="i-lucide-tag" class="size-4" />
+                      <span>{{ row[0] || '-' }}</span>
+                    </div>
+                    <p
+                      class="cd-brand-desc"
+                      :class="{ 'cd-brand-desc-expanded': brandExpandedMap[`br-${ri}`] }"
+                      :data-key="`br-${ri}`"
+                    >{{ row[1] || '-' }}</p>
+                    <button
+                      v-if="brandNeedExpandMap[`br-${ri}`]"
+                      class="cd-scope-expand-btn"
+                      @click="brandExpandedMap[`br-${ri}`] = !brandExpandedMap[`br-${ri}`]"
+                    >
+                      {{ brandExpandedMap[`br-${ri}`] ? '收起' : '展示更多' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <div v-if="!sectionLoading.product && !productData?.mainProducts?.data?.length && !productData?.brands?.data?.length" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
           <!-- 股东信息 -->
           <section id="section-shareholder" class="cd-section" v-if="isSectionVisible('shareholder')">
             <h2 class="cd-section-title cd-title-shareholder">
@@ -624,235 +842,6 @@
             </div>
           </section>
 
-          <!-- 荣誉资质 -->
-          <section id="section-honor" class="cd-section" v-if="isSectionVisible('honor')">
-            <h2 class="cd-section-title cd-title-honor">
-              <span class="cd-title-icon"><UIcon name="i-lucide-award" class="size-5" /></span>
-              荣誉资质
-              <span v-if="sectionLoading.honor" class="cd-section-loading">
-                <span class="cd-mini-spinner" />
-              </span>
-            </h2>
-            <template v-if="honorsData?.honor?.data?.length">
-              <div class="cd-honor-grid">
-                <div v-for="(row, ri) in honorPageData.items" :key="`h-${ri}`" class="cd-honor-card">
-                  <div class="cd-honor-badge" :class="getHonorLevelStyle(row[2])">
-                    <UIcon name="i-lucide-award" class="size-3" />
-                    <span>{{ row[2] || '-' }}</span>
-                  </div>
-                  <div class="cd-honor-body">
-                    <div class="cd-honor-name">{{ row[0] || '-' }}</div>
-                    <div class="cd-honor-details">
-                      <span v-if="row[1] && row[1] !== '-'" class="cd-honor-detail-item">
-                        许可证号: {{ row[1] }}
-                      </span>
-                      <span v-if="row[3] && row[3] !== '-'" class="cd-honor-detail-item">
-                        公布状态: {{ row[3] }}
-                      </span>
-                      <span v-if="row[4] && row[4] !== '-'" class="cd-honor-detail-item">
-                        发布日期: {{ row[4] }}
-                      </span>
-                      <span v-if="row[5] && row[5] !== '-'" class="cd-honor-detail-item">
-                        有效期至: {{ row[5] }}
-                      </span>
-                    </div>
-                    <div class="cd-honor-footer">
-                      <span v-if="row[6] && row[6] !== '-'" class="cd-honor-status" :class="row[6] === '有效' ? 'cd-status-active' : 'cd-status-inactive'">{{ row[6] }}</span>
-                      <span v-if="row[7] && row[7] !== '-'" class="cd-honor-org">发布单位: {{ row[7] }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="honorPageData.totalPages > 1" class="cd-pagination">
-                <button class="cd-page-btn" :disabled="honorPage <= 1" @click="honorPage--">&lt;</button>
-                <span class="cd-page-info">{{ honorPage }} / {{ honorPageData.totalPages }}</span>
-                <button class="cd-page-btn" :disabled="honorPage >= honorPageData.totalPages" @click="honorPage++">&gt;</button>
-              </div>
-            </template>
-            <div v-else-if="!sectionLoading.honor" class="cd-empty">
-              <div class="cd-empty-divider"></div>
-              <span class="cd-empty-text">暂无数据</span>
-              <div class="cd-empty-divider"></div>
-            </div>
-          </section>
-
-          <!-- 上榜榜单 -->
-          <section id="section-ranking" class="cd-section" v-if="isSectionVisible('ranking')">
-            <h2 class="cd-section-title cd-title-ranking">
-              <span class="cd-title-icon"><UIcon name="i-lucide-trophy" class="size-5" /></span>
-              上榜榜单
-              <span v-if="sectionLoading.ranking" class="cd-section-loading">
-                <span class="cd-mini-spinner" />
-              </span>
-            </h2>
-            <template v-if="honorsData?.ranking?.data?.length">
-              <div class="cd-ranking-timeline">
-                <div v-for="group in rankingYearGroups" :key="group.year" class="cd-ranking-year-group">
-                  <div class="cd-ranking-year-label">{{ group.year }}年</div>
-                  <div class="cd-ranking-items">
-                    <div v-for="(row, ri) in group.items" :key="`r-${group.year}-${ri}`" class="cd-ranking-card">
-                      <div class="cd-ranking-rank">
-                        <span class="cd-ranking-rank-num">{{ formatRanking(row[1]) }}</span>
-                      </div>
-                      <div class="cd-ranking-body">
-                        <div class="cd-ranking-name"><span class="cd-ranking-label">榜单名称</span>{{ row[0] || '-' }}</div>
-                        <div class="cd-ranking-meta">
-                          <span class="cd-ranking-publisher">
-                            <UIcon name="i-lucide-building" class="size-3" />
-                            发布方: {{ row[3] || '-' }}
-                          </span>
-                          <span class="cd-ranking-date">
-                            <UIcon name="i-lucide-calendar" class="size-3" />
-                            发布日期: {{ row[2] || '-' }}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <button
-                v-if="honorsData.ranking.data.length > 5"
-                class="cd-scope-expand-btn"
-                @click="rankingExpanded = !rankingExpanded"
-              >
-                {{ rankingExpanded ? '收起' : '展示更多' }}
-              </button>
-            </template>
-            <div v-else-if="!sectionLoading.ranking" class="cd-empty">
-              <div class="cd-empty-divider"></div>
-              <span class="cd-empty-text">暂无数据</span>
-              <div class="cd-empty-divider"></div>
-            </div>
-          </section>
-
-          <!-- 政府奖励项目 -->
-          <section id="section-govAward" class="cd-section" v-if="isSectionVisible('govAward')">
-            <h2 class="cd-section-title cd-title-govAward">
-              <span class="cd-title-icon"><UIcon name="i-lucide-gift" class="size-5" /></span>
-              政府奖励项目
-              <span v-if="sectionLoading.govAward" class="cd-section-loading">
-                <span class="cd-mini-spinner" />
-              </span>
-            </h2>
-            <template v-if="honorsData?.govAward?.data?.length">
-              <div class="cd-gov-grid">
-                <div v-for="(row, ri) in govAwardPageData.items" :key="`g-${ri}`" class="cd-gov-card">
-                  <div class="cd-gov-ribbon" :class="getHonorLevelStyle(row[2])">
-                    <UIcon name="i-lucide-ribbon" class="size-3.5" />
-                    {{ row[2] || '-' }}
-                  </div>
-                  <div class="cd-gov-body">
-                    <div class="cd-gov-name">{{ row[0] || '-' }}</div>
-                    <div class="cd-gov-project">{{ row[1] || '-' }}</div>
-                    <div class="cd-gov-meta">
-                      <span class="cd-gov-year">
-                        <UIcon name="i-lucide-calendar" class="size-3" />
-                        奖励年份: {{ row[3] || '-' }}年
-                      </span>
-                      <span v-if="row[5] && row[5] !== '-'" class="cd-gov-person">
-                        <UIcon name="i-lucide-user" class="size-3" />
-                        相关人员: {{ row[5] }}
-                      </span>
-                    </div>
-                    <div class="cd-gov-date">发布时间: {{ row[4] || '-' }}</div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="govAwardPageData.totalPages > 1" class="cd-pagination">
-                <button class="cd-page-btn" :disabled="govAwardPage <= 1" @click="govAwardPage--">&lt;</button>
-                <span class="cd-page-info">{{ govAwardPage }} / {{ govAwardPageData.totalPages }}</span>
-                <button class="cd-page-btn" :disabled="govAwardPage >= govAwardPageData.totalPages" @click="govAwardPage++">&gt;</button>
-              </div>
-            </template>
-            <div v-else-if="!sectionLoading.govAward" class="cd-empty">
-              <div class="cd-empty-divider"></div>
-              <span class="cd-empty-text">暂无数据</span>
-              <div class="cd-empty-divider"></div>
-            </div>
-          </section>
-
-          <!-- 集成电路布图 -->
-          <section id="section-layout" class="cd-section" v-if="isSectionVisible('layout')">
-            <h2 class="cd-section-title cd-title-layout">
-              <span class="cd-title-icon"><UIcon name="i-lucide-circuit-board" class="size-5" /></span>
-              集成电路布图
-              <span v-if="sectionLoading.layout" class="cd-section-loading">
-                <span class="cd-mini-spinner" />
-              </span>
-            </h2>
-            <template v-if="layoutData?.data?.length">
-              <div class="cd-layout-grid">
-                <div v-for="(row, ri) in layoutPageData.items" :key="`l-${ri}`" class="cd-layout-card">
-                  <div class="cd-layout-header">
-                    <div class="cd-layout-chip-icon">
-                      <UIcon name="i-lucide-cpu" class="size-5" />
-                    </div>
-                    <div class="cd-layout-name" :title="row[0] || '-'">{{ row[0] || '-' }}</div>
-                    <div class="cd-layout-reg" :title="row[4] || '-'">{{ row[4] || '-' }}</div>
-                  </div>
-                  <div class="cd-layout-tags" v-if="row[1] !== '-' || row[2] !== '-' || row[3] !== '-'">
-                    <span v-if="row[1] && row[1] !== '-'" class="cd-layout-tag cd-layout-tag-struct">{{ row[1] }}</span>
-                    <span v-if="row[2] && row[2] !== '-'" class="cd-layout-tag cd-layout-tag-tech">{{ row[2] }}</span>
-                    <span v-if="row[3] && row[3] !== '-'" class="cd-layout-tag cd-layout-tag-func">{{ row[3] }}</span>
-                  </div>
-                  <div class="cd-layout-info">
-                    <div v-if="row[8] && row[8] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">创作人</span>
-                      <span class="cd-layout-info-value">{{ row[8] }}</span>
-                    </div>
-                    <div v-if="row[9] && row[9] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">权利人</span>
-                      <span class="cd-layout-info-value">{{ row[9] }}</span>
-                    </div>
-                    <div v-if="row[5] && row[5] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">申请日期</span>
-                      <span class="cd-layout-info-value">{{ row[5] }}</span>
-                    </div>
-                    <div v-if="row[6] && row[6] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">公告日期</span>
-                      <span class="cd-layout-info-value">{{ row[6] }}</span>
-                    </div>
-                    <div v-if="row[7] && row[7] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">公告号</span>
-                      <span class="cd-layout-info-value">{{ row[7] }}</span>
-                    </div>
-                    <div v-if="row[10] && row[10] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">代理机构</span>
-                      <span class="cd-layout-info-value">{{ row[10] }}</span>
-                    </div>
-                    <div v-if="row[11] && row[11] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">代理人</span>
-                      <span class="cd-layout-info-value">{{ row[11] }}</span>
-                    </div>
-                    <div v-if="row[12] && row[12] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">创作完成日期</span>
-                      <span class="cd-layout-info-value">{{ row[12] }}</span>
-                    </div>
-                    <div v-if="row[13] && row[13] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">首次商业利用日</span>
-                      <span class="cd-layout-info-value">{{ row[13] }}</span>
-                    </div>
-                    <div v-if="row[14] && row[14] !== '-'" class="cd-layout-info-row">
-                      <span class="cd-layout-info-label">保护期届满日</span>
-                      <span class="cd-layout-info-value">{{ row[14] }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="layoutPageData.totalPages > 1" class="cd-pagination">
-                <button class="cd-page-btn" :disabled="layoutPage <= 1" @click="layoutPage--">&lt;</button>
-                <span class="cd-page-info">{{ layoutPage }} / {{ layoutPageData.totalPages }}</span>
-                <button class="cd-page-btn" :disabled="layoutPage >= layoutPageData.totalPages" @click="layoutPage++">&gt;</button>
-              </div>
-            </template>
-            <div v-else-if="!sectionLoading.layout" class="cd-empty">
-              <div class="cd-empty-divider"></div>
-              <span class="cd-empty-text">暂无数据</span>
-              <div class="cd-empty-divider"></div>
-            </div>
-          </section>
-
           <!-- 对外投资 & 融资历程 -->
           <section id="section-finance" class="cd-section" v-if="isSectionVisible('finance')">
             <h2 class="cd-section-title cd-title-finance">
@@ -979,76 +968,6 @@
             </div>
           </section>
 
-          <!-- 主营产品 & 旗下品牌 -->
-          <section id="section-product" class="cd-section" v-if="isSectionVisible('product')">
-            <h2 class="cd-section-title cd-title-product">
-              <span class="cd-title-icon"><UIcon name="i-lucide-shopping-bag" class="size-5" /></span>
-              主营产品 & 旗下品牌
-              <span v-if="sectionLoading.product" class="cd-section-loading">
-                <span class="cd-mini-spinner" />
-              </span>
-            </h2>
-            <!-- 主营产品 -->
-            <template v-if="productData?.mainProducts?.data?.length">
-              <div class="cd-sub-section">
-                <h3 class="cd-sub-title">主营产品</h3>
-                <div class="cd-product-hero-grid">
-                  <div v-for="(row, ri) in productData.mainProducts.data" :key="`mp-${ri}`" class="cd-product-hero-card">
-                    <div class="cd-product-hero-icon">
-                      <UIcon name="i-lucide-box" class="size-6" />
-                    </div>
-                    <div class="cd-product-hero-body">
-                      <h4 class="cd-product-hero-name">{{ row[0] || '-' }}</h4>
-                      <p
-                        class="cd-product-hero-desc"
-                        :class="{ 'cd-product-hero-desc-expanded': productExpandedMap[`mp-${ri}`] }"
-                        :data-key="`mp-${ri}`"
-                      >{{ row[1] || '-' }}</p>
-                      <button
-                        v-if="productNeedExpandMap[`mp-${ri}`]"
-                        class="cd-scope-expand-btn"
-                        @click="productExpandedMap[`mp-${ri}`] = !productExpandedMap[`mp-${ri}`]"
-                      >
-                        {{ productExpandedMap[`mp-${ri}`] ? '收起' : '展示更多' }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </template>
-            <!-- 旗下品牌 -->
-            <template v-if="productData?.brands?.data?.length">
-              <div class="cd-sub-section">
-                <h3 class="cd-sub-title">旗下品牌</h3>
-                <div class="cd-brand-grid">
-                  <div v-for="(row, ri) in productData.brands.data" :key="`br-${ri}`" class="cd-brand-card">
-                    <div class="cd-brand-badge">
-                      <UIcon name="i-lucide-tag" class="size-4" />
-                      <span>{{ row[0] || '-' }}</span>
-                    </div>
-                    <p
-                      class="cd-brand-desc"
-                      :class="{ 'cd-brand-desc-expanded': brandExpandedMap[`br-${ri}`] }"
-                      :data-key="`br-${ri}`"
-                    >{{ row[1] || '-' }}</p>
-                    <button
-                      v-if="brandNeedExpandMap[`br-${ri}`]"
-                      class="cd-scope-expand-btn"
-                      @click="brandExpandedMap[`br-${ri}`] = !brandExpandedMap[`br-${ri}`]"
-                    >
-                      {{ brandExpandedMap[`br-${ri}`] ? '收起' : '展示更多' }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </template>
-            <div v-if="!sectionLoading.product && !productData?.mainProducts?.data?.length && !productData?.brands?.data?.length" class="cd-empty">
-              <div class="cd-empty-divider"></div>
-              <span class="cd-empty-text">暂无数据</span>
-              <div class="cd-empty-divider"></div>
-            </div>
-          </section>
-
           <!-- 人员相关: 间接股东 / 社保人数 / 关联企业人员 -->
           <section id="section-indirectShareholder" class="cd-section" v-if="isSectionVisible('indirectShareholder')">
             <h2 class="cd-section-title cd-title-indirect">
@@ -1166,6 +1085,87 @@
               </div>
             </template>
             <div v-else-if="!sectionLoading.people" class="cd-empty">
+              <div class="cd-empty-divider"></div>
+              <span class="cd-empty-text">暂无数据</span>
+              <div class="cd-empty-divider"></div>
+            </div>
+          </section>
+
+          <!-- 集成电路布图 -->
+          <section id="section-layout" class="cd-section" v-if="isSectionVisible('layout')">
+            <h2 class="cd-section-title cd-title-layout">
+              <span class="cd-title-icon"><UIcon name="i-lucide-circuit-board" class="size-5" /></span>
+              集成电路布图
+              <span v-if="sectionLoading.layout" class="cd-section-loading">
+                <span class="cd-mini-spinner" />
+              </span>
+            </h2>
+            <template v-if="layoutData?.data?.length">
+              <div class="cd-layout-grid">
+                <div v-for="(row, ri) in layoutPageData.items" :key="`l-${ri}`" class="cd-layout-card">
+                  <div class="cd-layout-header">
+                    <div class="cd-layout-chip-icon">
+                      <UIcon name="i-lucide-cpu" class="size-5" />
+                    </div>
+                    <div class="cd-layout-name" :title="row[0] || '-'">{{ row[0] || '-' }}</div>
+                    <div class="cd-layout-reg" :title="row[4] || '-'">{{ row[4] || '-' }}</div>
+                  </div>
+                  <div class="cd-layout-tags" v-if="row[1] !== '-' || row[2] !== '-' || row[3] !== '-'">
+                    <span v-if="row[1] && row[1] !== '-'" class="cd-layout-tag cd-layout-tag-struct">{{ row[1] }}</span>
+                    <span v-if="row[2] && row[2] !== '-'" class="cd-layout-tag cd-layout-tag-tech">{{ row[2] }}</span>
+                    <span v-if="row[3] && row[3] !== '-'" class="cd-layout-tag cd-layout-tag-func">{{ row[3] }}</span>
+                  </div>
+                  <div class="cd-layout-info">
+                    <div v-if="row[8] && row[8] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">创作人</span>
+                      <span class="cd-layout-info-value">{{ row[8] }}</span>
+                    </div>
+                    <div v-if="row[9] && row[9] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">权利人</span>
+                      <span class="cd-layout-info-value">{{ row[9] }}</span>
+                    </div>
+                    <div v-if="row[5] && row[5] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">申请日期</span>
+                      <span class="cd-layout-info-value">{{ row[5] }}</span>
+                    </div>
+                    <div v-if="row[6] && row[6] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">公告日期</span>
+                      <span class="cd-layout-info-value">{{ row[6] }}</span>
+                    </div>
+                    <div v-if="row[7] && row[7] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">公告号</span>
+                      <span class="cd-layout-info-value">{{ row[7] }}</span>
+                    </div>
+                    <div v-if="row[10] && row[10] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">代理机构</span>
+                      <span class="cd-layout-info-value">{{ row[10] }}</span>
+                    </div>
+                    <div v-if="row[11] && row[11] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">代理人</span>
+                      <span class="cd-layout-info-value">{{ row[11] }}</span>
+                    </div>
+                    <div v-if="row[12] && row[12] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">创作完成日期</span>
+                      <span class="cd-layout-info-value">{{ row[12] }}</span>
+                    </div>
+                    <div v-if="row[13] && row[13] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">首次商业利用日</span>
+                      <span class="cd-layout-info-value">{{ row[13] }}</span>
+                    </div>
+                    <div v-if="row[14] && row[14] !== '-'" class="cd-layout-info-row">
+                      <span class="cd-layout-info-label">保护期届满日</span>
+                      <span class="cd-layout-info-value">{{ row[14] }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="layoutPageData.totalPages > 1" class="cd-pagination">
+                <button class="cd-page-btn" :disabled="layoutPage <= 1" @click="layoutPage--">&lt;</button>
+                <span class="cd-page-info">{{ layoutPage }} / {{ layoutPageData.totalPages }}</span>
+                <button class="cd-page-btn" :disabled="layoutPage >= layoutPageData.totalPages" @click="layoutPage++">&gt;</button>
+              </div>
+            </template>
+            <div v-else-if="!sectionLoading.layout" class="cd-empty">
               <div class="cd-empty-divider"></div>
               <span class="cd-empty-text">暂无数据</span>
               <div class="cd-empty-divider"></div>

@@ -21,6 +21,7 @@
     "pinia": "^2.1.7",
     "radix-vue": "^1.9.17",
     "resize-detector": "^0.3.0",
+    "simple-mind-map": "^0.14.0-fix.2",
     "tailwind-merge": "^3.6.0",
     "vue-echarts": "^6.7.3"
   },
