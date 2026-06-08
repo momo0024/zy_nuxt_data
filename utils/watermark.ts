@@ -7,7 +7,6 @@ let currentDataUrl = ''
 let guardStarted = false
 let guardPaused = false
 let bodyObserver: MutationObserver | null = null
-let guardTimer: ReturnType<typeof setInterval> | null = null
 
 export function getThemeWatermarkColor(): string {
   if (typeof document === 'undefined') return 'rgba(0, 0, 0, 0.16)'
@@ -112,17 +111,11 @@ export function startWatermarkGuard() {
       attributeFilter: ['style', 'class', 'hidden'],
     })
   }
-
-  guardTimer = setInterval(repairWatermark, 400)
 }
 
 export function stopWatermarkGuard() {
   bodyObserver?.disconnect()
   bodyObserver = null
-  if (guardTimer) {
-    clearInterval(guardTimer)
-    guardTimer = null
-  }
   guardStarted = false
 }
 

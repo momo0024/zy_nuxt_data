@@ -1,11 +1,10 @@
-import { renderWatermark, startWatermarkGuard, stopWatermarkGuard } from '~/utils/watermark'
+import { renderWatermark, stopWatermarkGuard } from '~/utils/watermark'
 
 export default defineNuxtPlugin({
   name: 'watermark',
   setup() {
-    // 首屏水印由 app.html 内联脚本同步渲染；此处仅做路由/主题/登录态同步
+    // 首屏水印由 app.html 内联脚本同步渲染；守护与路由/主题/登录态同步由 renderWatermark 统一处理
     renderWatermark()
-    startWatermarkGuard()
 
     const authStore = useAuthStore()
     watch(
