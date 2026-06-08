@@ -578,11 +578,37 @@
                     <div class="cd-timeline-title">{{ row[0] }}</div>
                     <div class="cd-timeline-row">
                       <span class="cd-timeline-label">变更前</span>
-                      <span class="cd-timeline-text cd-timeline-before">{{ row[2] || '-' }}</span>
+                      <div class="cd-timeline-text-wrap">
+                        <span
+                          class="cd-timeline-text cd-timeline-before cd-change-before-text"
+                          :class="{ 'cd-change-text-expanded': changeBeforeExpandedMap[`cb-${i}`] }"
+                          :data-key="`cb-${i}`"
+                        >{{ row[2] || '-' }}</span>
+                        <button
+                          v-if="changeBeforeNeedExpandMap[`cb-${i}`]"
+                          class="cd-scope-expand-btn"
+                          @click="changeBeforeExpandedMap[`cb-${i}`] = !changeBeforeExpandedMap[`cb-${i}`]"
+                        >
+                          {{ changeBeforeExpandedMap[`cb-${i}`] ? '收起' : '查看更多' }}
+                        </button>
+                      </div>
                     </div>
                     <div class="cd-timeline-row">
                       <span class="cd-timeline-label">变更后</span>
-                      <span class="cd-timeline-text cd-timeline-after">{{ row[3] || '-' }}</span>
+                      <div class="cd-timeline-text-wrap">
+                        <span
+                          class="cd-timeline-text cd-timeline-after cd-change-after-text"
+                          :class="{ 'cd-change-text-expanded': changeAfterExpandedMap[`ca-${i}`] }"
+                          :data-key="`ca-${i}`"
+                        >{{ row[3] || '-' }}</span>
+                        <button
+                          v-if="changeAfterNeedExpandMap[`ca-${i}`]"
+                          class="cd-scope-expand-btn"
+                          @click="changeAfterExpandedMap[`ca-${i}`] = !changeAfterExpandedMap[`ca-${i}`]"
+                        >
+                          {{ changeAfterExpandedMap[`ca-${i}`] ? '收起' : '查看更多' }}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1245,6 +1271,10 @@ const productExpandedMap = reactive<Record<string, boolean>>({})
 const brandExpandedMap = reactive<Record<string, boolean>>({})
 const productNeedExpandMap = reactive<Record<string, boolean>>({})
 const brandNeedExpandMap = reactive<Record<string, boolean>>({})
+const changeBeforeExpandedMap = reactive<Record<string, boolean>>({})
+const changeAfterExpandedMap = reactive<Record<string, boolean>>({})
+const changeBeforeNeedExpandMap = reactive<Record<string, boolean>>({})
+const changeAfterNeedExpandMap = reactive<Record<string, boolean>>({})
 const bizScopeRef = ref<HTMLElement | null>(null)
 const bizScopeNeedExpand = ref(false)
 const changeRecordExpanded = ref(false)
@@ -1281,6 +1311,30 @@ function checkDescOverflow() {
       const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 21
       const maxHeight = lineHeight * 3 + 2
       brandNeedExpandMap[key] = el.scrollHeight > maxHeight
+    })
+    // 变更记录 - 变更前
+    document.querySelectorAll<HTMLElement>('.cd-change-before-text').forEach((el) => {
+      const key = el.dataset.key || ''
+      if (!key) return
+      const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20
+      const maxHeight = lineHeight * 3 + 2
+      const hadClamped = !el.classList.contains('cd-change-text-expanded')
+      if (hadClamped) el.classList.add('cd-change-text-expanded')
+      const fullHeight = el.scrollHeight
+      if (hadClamped) el.classList.remove('cd-change-text-expanded')
+      changeBeforeNeedExpandMap[key] = fullHeight > maxHeight
+    })
+    // 变更记录 - 变更后
+    document.querySelectorAll<HTMLElement>('.cd-change-after-text').forEach((el) => {
+      const key = el.dataset.key || ''
+      if (!key) return
+      const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20
+      const maxHeight = lineHeight * 3 + 2
+      const hadClamped = !el.classList.contains('cd-change-text-expanded')
+      if (hadClamped) el.classList.add('cd-change-text-expanded')
+      const fullHeight = el.scrollHeight
+      if (hadClamped) el.classList.remove('cd-change-text-expanded')
+      changeAfterNeedExpandMap[key] = fullHeight > maxHeight
     })
   })
 }
@@ -1431,7 +1485,7 @@ function loadDetailSections(code: string, skipRegisterBasic = false) {
   sectionLoading.value.trademark = true
   fetchTrademarks(code).then(r => { trademarkData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.trademark = false })
   sectionLoading.value.changeRecord = true
-  fetchChangeRecords(code).then(r => { changeRecordData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.changeRecord = false })
+  fetchChangeRecords(code).then(r => { changeRecordData.value = r; checkDescOverflow() }).catch(() => {}).finally(() => { sectionLoading.value.changeRecord = false })
   sectionLoading.value.patent = true
   fetchPatents(code).then(r => { patentData.value = r }).catch(() => {}).finally(() => { sectionLoading.value.patent = false })
   sectionLoading.value.intellectual = true
@@ -1728,22 +1782,21 @@ function buildRadialRelationGraphOption(
   const nodes: any[] = []
   const links: any[] = []
   const colorPalette = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
-  const cx = 0
-  const cy = 0
-  // 节点数量少时半径更小，防止跑出画布
-  const shortRadius = nodeCount <= 1 ? 0 : Math.min(90, 45 + 360 / nodeCount)
-  const longRadius = shortRadius * 1.4
 
   nodes.push({
     name: 'root',
-    symbolSize: 56,
-    x: cx,
-    y: cy,
+    symbolSize: 60,
+    x: 0,
+    y: 0,
     itemStyle: { color: '#4f46e5', shadowBlur: 12, shadowColor: 'rgba(79,70,229,0.3)' },
     label: { show: true, fontSize: 12, fontWeight: 'bold', color: '#fff', position: 'inside', formatter: '企业' },
     category: 0,
     fullName: companyName,
   })
+
+  const baseRadius = nodeCount <= 1 ? 120 : Math.max(120, Math.min(180, 80 + nodeCount * 12))
+  const longRadius = baseRadius * 1.3
+  const shortRadius = baseRadius * 0.85
 
   items.forEach((item, i) => {
     const name = item.name || '-'
@@ -1751,27 +1804,20 @@ function buildRadialRelationGraphOption(
     const uniqueName = `node-${i}`
     const color = colorPalette[i % colorPalette.length]
 
-    let x: number
-    let y: number
-    if (nodeCount === 1) {
-      x = cx + 100
-      y = cy
-    } else {
-      const angle = (Math.PI * 2 * i) / nodeCount - Math.PI / 2
-      const r = i % 2 === 0 ? longRadius : shortRadius
-      x = cx + Math.cos(angle) * r
-      y = cy + Math.sin(angle) * r
-    }
+    const angle = (Math.PI * 2 * i) / nodeCount - Math.PI / 2
+    const r = i % 2 === 0 ? longRadius : shortRadius
+    const x = Math.cos(angle) * r
+    const y = Math.sin(angle) * r
 
     nodes.push({
       name: uniqueName,
-      symbolSize: 36,
+      symbolSize: 32,
       x,
       y,
       itemStyle: { color, shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.1)', borderColor: '#fff', borderWidth: 2 },
       label: {
         show: true,
-        position: nodeCount === 1 ? 'right' : 'bottom',
+        position: 'bottom',
         fontSize: 12,
         color: '#1e293b',
         fontWeight: '500',
@@ -1793,7 +1839,7 @@ function buildRadialRelationGraphOption(
         color,
         width: 2,
         opacity: 0.7,
-        curveness: nodeCount === 1 ? 0 : (i % 2 === 0 ? 0.5 : -0.5),
+        curveness: 0.2,
       },
     })
   })
@@ -2072,6 +2118,10 @@ const changeRecordDisplayData = computed(() => {
   if (changeRecordExpanded.value) return data
   return data.slice(0, 10)
 })
+
+watch(changeRecordDisplayData, () => {
+  checkDescOverflow()
+}, { flush: 'post' })
 
 // 变更趋势图（按年份统计变更次数 - 折线图）
 const changeTrendOption = computed(() => {
@@ -3113,6 +3163,26 @@ function getIndustryBg(industry: string): string {
 .cd-timeline-after {
   color: var(--success);
   font-weight: 500;
+}
+.cd-timeline-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.cd-change-before-text,
+.cd-change-after-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.6;
+}
+.cd-change-text-expanded {
+  -webkit-line-clamp: unset;
+  overflow: visible;
 }
 
 .cd-chart {
