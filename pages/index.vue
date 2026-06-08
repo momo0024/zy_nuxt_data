@@ -538,7 +538,7 @@ watch(selectedNodeId, () => { coPage.value = 1 })
 async function fetchChainData() {
   loading.value = true
   try {
-    const res = await request.get('/company/chain/')
+    const res = await request.get('/company/chain')
     if (res.data?.code === 0 && res.data.data) {
       allPhases.value = buildTree(res.data.data)
       expandedIds.value = new Set(allPhases.value.map(p => p.id))

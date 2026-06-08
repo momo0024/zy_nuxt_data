@@ -83,19 +83,15 @@ export async function fetchCompanies(page = 1, pageSize = 20): Promise<CompanyLi
   return res.data as unknown as CompanyListResponse
 }
 
-/** 按信用代码从 /company 列表接口查询单个企业（含新字段） */
+/** 按信用代码从 /company 接口查询单个企业（含新字段） */
 export async function fetchCompanyByCode(code: string): Promise<CompanyRecord | null> {
-  const pageSize = 200
-  for (let page = 1; page <= 10; page++) {
-    const res = await fetchCompanies(page, pageSize)
-    if (res.code !== 0 || !res.data?.list?.length) break
-    const hit = res.data.list.find(c => c.company_credit_code === code)
-    if (hit) {
-      return { ...hit, id: hit.company_credit_code || `${hit.company_name}-${hit.company_longitude}` }
-    }
-    if (res.data.list.length < pageSize) break
-  }
-  return null
+  const res = await request.get<CompanyListResponse['data']>('/company', {
+    params: { code },
+  })
+  const data = res.data as unknown as CompanyListResponse
+  if (data.code !== 0 || !data.data?.list?.length) return null
+  const hit = data.data.list[0]
+  return { ...hit, id: hit.company_credit_code || `${hit.company_name}-${hit.company_longitude}` }
 }
 
 export function isListedCompany(company: CompanyRecord): boolean {

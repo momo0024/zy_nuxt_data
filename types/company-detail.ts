@@ -36,7 +36,7 @@ export interface ShareholderParsed {
 }
 
 export async function fetchShareholders(code: string): Promise<ShareholderParsed> {
-  const res = await request.get<RawResponse['data']>('/company/shareholder/', {
+  const res = await request.get<RawResponse['data']>('/company/shareholder', {
     params: { code },
   })
   const raw = res.data as unknown as RawResponse
@@ -61,7 +61,7 @@ export interface TrademarkTable {
 }
 
 export async function fetchTrademarks(code: string): Promise<TrademarkTable | null> {
-  const res = await request.get<RawResponse['data']>('/company/trademask/', {
+  const res = await request.get<RawResponse['data']>('/company/trademask', {
     params: { code },
   })
   return parseRaw<TrademarkTable>(res.data as unknown as RawResponse)
@@ -75,7 +75,7 @@ export interface ChangeRecordTable {
 }
 
 export async function fetchChangeRecords(code: string): Promise<ChangeRecordTable | null> {
-  const res = await request.get<RawResponse['data']>('/company/vesion/', {
+  const res = await request.get<RawResponse['data']>('/company/vesion', {
     params: { code },
   })
   return parseRaw<ChangeRecordTable>(res.data as unknown as RawResponse)
@@ -88,7 +88,7 @@ export interface PatentTable {
 }
 
 export async function fetchPatents(code: string): Promise<PatentTable | null> {
-  const res = await request.get<RawResponse['data']>('/company/patent/', {
+  const res = await request.get<RawResponse['data']>('/company/patent', {
     params: { code },
   })
   return parseRaw<PatentTable>(res.data as unknown as RawResponse)
@@ -101,7 +101,7 @@ export interface RegisterItem {
 }
 
 export async function fetchRegisterInfo(code: string): Promise<RegisterItem[] | null> {
-  const res = await request.get<RawResponse['data']>('/company/register/', {
+  const res = await request.get<RawResponse['data']>('/company/register', {
     params: { code },
   })
   return parseRaw<RegisterItem[]>(res.data as unknown as RawResponse)
@@ -114,7 +114,7 @@ export interface BasicInfoItem {
 }
 
 export async function fetchBasicInfo(code: string): Promise<BasicInfoItem[] | null> {
-  const res = await request.get<RawResponse['data']>('/company/basic/', {
+  const res = await request.get<RawResponse['data']>('/company/basic', {
     params: { code },
   })
   return parseRaw<BasicInfoItem[]>(res.data as unknown as RawResponse)
@@ -133,7 +133,7 @@ export interface HonorsParsed {
 }
 
 export async function fetchHonors(code: string): Promise<HonorsParsed> {
-  const res = await request.get<RawResponse['data']>('/company/honors/', {
+  const res = await request.get<RawResponse['data']>('/company/honors', {
     params: { code },
   })
   const raw = res.data as unknown as RawResponse

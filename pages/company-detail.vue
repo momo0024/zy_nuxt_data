@@ -711,6 +711,13 @@
                   </div>
                 </div>
               </div>
+              <button
+                v-if="honorsData.ranking.data.length > 5"
+                class="cd-scope-expand-btn"
+                @click="rankingExpanded = !rankingExpanded"
+              >
+                {{ rankingExpanded ? '收起' : '展示更多' }}
+              </button>
             </template>
             <div v-else-if="!sectionLoading.ranking" class="cd-empty">
               <div class="cd-empty-divider"></div>
@@ -1355,6 +1362,7 @@ const productData = ref<ProductParsed | null>(null)
 const peopleData = ref<PeopleParsed | null>(null)
 const honorPage = ref(1)
 const rankingPage = ref(1)
+const rankingExpanded = ref(false)
 const govAwardPage = ref(1)
 const layoutPage = ref(1)
 const financePage = ref(1)
@@ -2046,8 +2054,9 @@ const socialSecurityChartOption = computed(() => {
 const rankingYearGroups = computed(() => {
   const data = honorsData.value?.ranking
   if (!data?.data?.length) return []
+  const source = rankingExpanded.value ? data.data : data.data.slice(0, 5)
   const groups: Record<string, string[][]> = {}
-  data.data.forEach((row: string[]) => {
+  source.forEach((row: string[]) => {
     const dateStr = row[2] || ''
     const year = dateStr.slice(0, 4) || '未知'
     if (!groups[year]) groups[year] = []
@@ -2231,6 +2240,24 @@ const menuGroups = [
     ],
   },
   {
+    key: 'honor-info',
+    label: '荣誉资质',
+    icon: 'i-lucide-award',
+    children: [
+      { key: 'honor', label: '荣誉资质', icon: 'i-lucide-award' },
+      { key: 'ranking', label: '上榜榜单', icon: 'i-lucide-trophy' },
+      { key: 'govAward', label: '政府奖励', icon: 'i-lucide-gift' },
+    ],
+  },
+  {
+    key: 'product-info',
+    label: '产品与品牌',
+    icon: 'i-lucide-package',
+    children: [
+      { key: 'product', label: '主营产品/品牌', icon: 'i-lucide-shopping-bag' },
+    ],
+  },
+  {
     key: 'detail-info',
     label: '详细资料',
     icon: 'i-lucide-folder-open',
@@ -2252,14 +2279,6 @@ const menuGroups = [
     ],
   },
   {
-    key: 'product-info',
-    label: '产品与品牌',
-    icon: 'i-lucide-package',
-    children: [
-      { key: 'product', label: '主营产品/品牌', icon: 'i-lucide-shopping-bag' },
-    ],
-  },
-  {
     key: 'people-info',
     label: '人员与关联',
     icon: 'i-lucide-user-plus',
@@ -2267,16 +2286,6 @@ const menuGroups = [
       { key: 'indirectShareholder', label: '间接股东', icon: 'i-lucide-user-check' },
       { key: 'socialSecurity', label: '社保人数', icon: 'i-lucide-users' },
       { key: 'relatedEntity', label: '关联企业/人员', icon: 'i-lucide-network' },
-    ],
-  },
-  {
-    key: 'honor-info',
-    label: '荣誉资质',
-    icon: 'i-lucide-award',
-    children: [
-      { key: 'honor', label: '荣誉资质', icon: 'i-lucide-award' },
-      { key: 'ranking', label: '上榜榜单', icon: 'i-lucide-trophy' },
-      { key: 'govAward', label: '政府奖励', icon: 'i-lucide-gift' },
     ],
   },
   {
