@@ -3346,7 +3346,7 @@ function getIndustryBg(industry: string): string {
 }
 .cd-member-graph {
   width: 100%;
-  height: 420px;
+  height: 500px;
   background-color: rgba(139, 92, 246, 0.05);
   border-radius: 12px;
 }
@@ -3796,7 +3796,7 @@ function getIndustryBg(industry: string): string {
     grid-template-columns: 1fr;
   }
   .cd-member-graph {
-    height: 280px;
+    height: 340px;
   }
   .cd-tree-chart {
     height: 320px;
@@ -4749,7 +4749,7 @@ function getIndustryBg(industry: string): string {
 
 .cd-related-mindmap {
   width: 100%;
-  min-height: 720px;
+  min-height: 520px;
   background: var(--surface);
   border-radius: 10px;
   border: 1px solid var(--border-light);

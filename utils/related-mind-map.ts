@@ -209,9 +209,9 @@ export function getMindMapViewCenter(instance: { width?: number; height?: number
 export function estimateRelatedMindMapHeight(rowCount: number) {
   if (typeof window !== 'undefined') {
     const viewport = window.innerHeight
-    const byViewport = Math.floor(viewport * 0.72)
-    const byRows = 720 + Math.ceil(rowCount / 2) * 8
-    return Math.min(960, Math.max(720, byViewport, byRows))
+    const byViewport = Math.floor(viewport * 0.55)
+    const byRows = 520 + Math.ceil(rowCount / 2) * 6
+    return Math.min(680, Math.max(520, byViewport, byRows))
   }
-  return Math.min(960, Math.max(720, 720 + Math.ceil(rowCount / 2) * 8))
+  return Math.min(680, Math.max(520, 520 + Math.ceil(rowCount / 2) * 6))
 }
