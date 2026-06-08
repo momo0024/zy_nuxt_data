@@ -1,10 +1,12 @@
 <template>
   <div class="cd-page">
     <div class="cd-topbar">
-      <div class="cd-breadcrumb">
-        <span class="cd-bc-text">企业图谱</span>
-        <UIcon name="i-lucide-chevron-right" class="size-3.5 cd-bc-sep" />
-        <span class="cd-bc-current">{{ company?.company_name || '企业详情' }}</span>
+      <div class="cd-shell">
+        <div class="cd-breadcrumb">
+          <span class="cd-bc-text">企业图谱</span>
+          <UIcon name="i-lucide-chevron-right" class="size-3.5 cd-bc-sep" />
+          <span class="cd-bc-current">{{ company?.company_name || '企业详情' }}</span>
+        </div>
       </div>
     </div>
 
@@ -855,28 +857,19 @@
             <template v-if="financeData?.investment?.data?.length">
               <div class="cd-sub-section">
                 <h3 class="cd-sub-title">对外投资</h3>
-                <div class="cd-invest-list">
-                  <div v-for="(row, ri) in financeInvestmentPage.items" :key="`inv-${ri}`" class="cd-invest-item">
-                    <div class="cd-invest-accent" />
-                    <div class="cd-invest-main">
-                      <div class="cd-invest-top">
-                        <div class="cd-invest-company">
-                          <UIcon name="i-lucide-building-2" class="size-4 cd-invest-icon" />
-                          <span class="cd-invest-company-name">{{ row[0] || '-' }}</span>
-                        </div>
-                        <div class="cd-invest-tags">
-                          <span v-if="row[8] && row[8] !== '-'" class="cd-invest-tag cd-invest-tag-ratio">{{ row[8] }}</span>
-                          <span class="cd-invest-tag" :class="(row[4]?.includes('存续') || row[4]?.includes('在业')) ? 'cd-invest-tag-active' : 'cd-invest-tag-inactive'">{{ row[4] || '-' }}</span>
-                        </div>
-                      </div>
-                      <div class="cd-invest-details">
-                        <span v-if="row[1] && row[1] !== '-'" class="cd-invest-detail"><UIcon name="i-lucide-user" class="size-3" />{{ row[1] }}</span>
-                        <span v-if="row[2] && row[2] !== '-'" class="cd-invest-detail"><UIcon name="i-lucide-coins" class="size-3" />{{ row[2] }}</span>
-                        <span v-if="row[3] && row[3] !== '-'" class="cd-invest-detail"><UIcon name="i-lucide-calendar" class="size-3" />{{ row[3] }}</span>
-                        <span v-if="row[7] && row[7] !== '-'" class="cd-invest-detail"><UIcon name="i-lucide-hand-coins" class="size-3" />{{ row[7] }}</span>
-                      </div>
-                    </div>
-                  </div>
+                <div class="cd-table-wrap cd-table-elegant">
+                  <table class="cd-data-table">
+                    <thead>
+                      <tr>
+                        <th v-for="(col, ci) in financeData.investment.column" :key="`inv-col-${ci}`">{{ col }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(row, ri) in financeInvestmentPage.items" :key="`inv-row-${ri}`">
+                        <td v-for="(col, ci) in financeData.investment.column" :key="`inv-cell-${ri}-${ci}`">{{ row[ci] || '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div v-if="financeInvestmentPage.totalPages > 1" class="cd-pagination">
                   <button class="cd-page-btn" :disabled="financePage <= 1" @click="financePage--">&lt;</button>
@@ -889,23 +882,19 @@
             <template v-if="financeData?.financing?.data?.length">
               <div class="cd-sub-section">
                 <h3 class="cd-sub-title">融资历程</h3>
-                <div class="cd-finance-timeline">
-                  <div v-for="(row, ri) in financeData.financing.data" :key="`fin-${ri}`" class="cd-finance-item">
-                    <div class="cd-finance-dot" :class="ri === 0 ? 'cd-finance-dot-latest' : ''" />
-                    <div class="cd-finance-card">
-                      <div class="cd-finance-card-header">
-                        <span class="cd-finance-round">{{ row[1] || '-' }}</span>
-                        <span class="cd-finance-date">{{ row[0] || '-' }}</span>
-                      </div>
-                      <div class="cd-finance-card-body">
-                        <div v-if="row[2] && row[2] !== '-'" class="cd-finance-amount">{{ row[2] }}</div>
-                        <div v-if="row[3] && row[3] !== '-'" class="cd-finance-investors">
-                          <span class="cd-finance-investors-label">投资方：</span>
-                          <span>{{ row[3] }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div class="cd-table-wrap cd-table-elegant">
+                  <table class="cd-data-table">
+                    <thead>
+                      <tr>
+                        <th v-for="(col, ci) in financeData.financing.column" :key="`fin-col-${ci}`">{{ col }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(row, ri) in financeData.financing.data" :key="`fin-row-${ri}`">
+                        <td v-for="(col, ci) in financeData.financing.column" :key="`fin-cell-${ri}-${ci}`">{{ row[ci] || '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </template>
@@ -1057,32 +1046,14 @@
               </span>
             </h2>
             <template v-if="peopleData?.relatedEntities?.data?.length">
-              <div class="cd-related-list">
-                <div v-for="(row, ri) in relatedEntityPageData.items" :key="`re-${ri}`" class="cd-related-item" :class="row[3]?.includes('间接') ? 'cd-related-indirect' : 'cd-related-direct'">
-                  <div class="cd-related-accent" />
-                  <div class="cd-related-main">
-                    <div class="cd-related-top">
-                      <div class="cd-related-entity">
-                        <UIcon name="i-lucide-network" class="size-4 cd-related-icon" />
-                        <span class="cd-related-entity-name">{{ row[1] || '-' }}</span>
-                      </div>
-                      <div class="cd-related-tags">
-                        <span class="cd-related-tag cd-related-tag-type">{{ row[3] || '-' }}</span>
-                        <span class="cd-related-tag">{{ row[2] || '-' }}</span>
-                      </div>
-                    </div>
-                    <div v-if="row[4] && row[4] !== '-' && row[4] !== 'null'" class="cd-related-basis">
-                      <UIcon name="i-lucide-link" class="size-3" />
-                      {{ row[4] }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="relatedEntityPageData.totalPages > 1" class="cd-pagination">
-                <button class="cd-page-btn" :disabled="relatedEntityPage <= 1" @click="relatedEntityPage--">&lt;</button>
-                <span class="cd-page-info">{{ relatedEntityPage }} / {{ relatedEntityPageData.totalPages }}</span>
-                <button class="cd-page-btn" :disabled="relatedEntityPage >= relatedEntityPageData.totalPages" @click="relatedEntityPage++">&gt;</button>
-              </div>
+              <p class="cd-related-hint">彩色节点为关联类型，连线与节点副标题为关系详情；点击 +/- 收起展开，点击二级节点名称查看完整详情</p>
+              <ClientOnly>
+                <div
+                  ref="relatedMindMapRef"
+                  class="cd-related-mindmap"
+                  :style="{ height: `${relatedMindMapHeight}px` }"
+                />
+              </ClientOnly>
             </template>
             <div v-else-if="!sectionLoading.people" class="cd-empty">
               <div class="cd-empty-divider"></div>
@@ -1118,11 +1089,11 @@
                   <div class="cd-layout-info">
                     <div v-if="row[8] && row[8] !== '-'" class="cd-layout-info-row">
                       <span class="cd-layout-info-label">创作人</span>
-                      <span class="cd-layout-info-value">{{ row[8] }}</span>
+                      <span class="cd-layout-info-value" :title="row[8]">{{ row[8] }}</span>
                     </div>
                     <div v-if="row[9] && row[9] !== '-'" class="cd-layout-info-row">
                       <span class="cd-layout-info-label">权利人</span>
-                      <span class="cd-layout-info-value">{{ row[9] }}</span>
+                      <span class="cd-layout-info-value" :title="row[9]">{{ row[9] }}</span>
                     </div>
                     <div v-if="row[5] && row[5] !== '-'" class="cd-layout-info-row">
                       <span class="cd-layout-info-label">申请日期</span>
@@ -1220,6 +1191,30 @@
       </div>
     </template>
   </div>
+
+  <UModal
+    v-model:open="relatedEntityModalOpen"
+    :title="selectedRelatedEntity?.title || '关联详情'"
+    :ui="{ content: 'cd-related-modal-content' }"
+  >
+    <template #body>
+      <div v-if="selectedRelatedEntity" class="cd-table-wrap cd-table-elegant cd-related-modal-table">
+        <table class="cd-data-table cd-related-kv-table">
+          <tbody>
+            <tr v-for="(item, fi) in selectedRelatedEntity.fields" :key="`rel-modal-${fi}`">
+              <th>{{ item.label }}</th>
+              <td>{{ item.value }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+    <template #footer>
+      <div class="flex justify-end w-full">
+        <UButton variant="ghost" size="sm" @click="relatedEntityModalOpen = false">关闭</UButton>
+      </div>
+    </template>
+  </UModal>
 </template>
 
 <script setup lang="ts">
@@ -1260,6 +1255,15 @@ import {
   getIndustryColor,
 } from '~/composables/useGeoAmapMap'
 import VChart from 'vue-echarts'
+import {
+  applyRelatedMindMapDefaultView,
+  buildRelatedMindMapTree,
+  buildRelatedRowFields,
+  createRelatedLineLabelHandler,
+  estimateRelatedMindMapHeight,
+  registerRelatedMindMapNodeProps,
+  type RelatedFieldItem,
+} from '~/utils/related-mind-map'
 
 definePageMeta({ middleware: 'auth', layout: 'blank' })
 
@@ -1368,7 +1372,17 @@ const layoutPage = ref(1)
 const financePage = ref(1)
 const controlPage = ref(1)
 const shareholderIndirectPage = ref(1)
-const relatedEntityPage = ref(1)
+const relatedMindMapRef = ref<HTMLElement | null>(null)
+let relatedMindMapInstance: any = null
+let relatedMindMapInitialViewApplied = false
+const relatedEntityModalOpen = ref(false)
+const selectedRelatedEntity = ref<{
+  title: string
+  fields: RelatedFieldItem[]
+} | null>(null)
+const relatedMindMapHeight = computed(() =>
+  estimateRelatedMindMapHeight(peopleData.value?.relatedEntities?.data?.length ?? 0),
+)
 const HONOR_PAGE_SIZE = 6
 const RANKING_PAGE_SIZE = 8
 const GOV_AWARD_PAGE_SIZE = 6
@@ -1376,7 +1390,6 @@ const LAYOUT_PAGE_SIZE = 6
 const FINANCE_PAGE_SIZE = 6
 const CONTROL_PAGE_SIZE = 6
 const INDIRECT_SHAREHOLDER_PAGE_SIZE = 8
-const RELATED_ENTITY_PAGE_SIZE = 8
 
 // 各接口独立加载状态
 const sectionLoading = ref({
@@ -1623,6 +1636,28 @@ onMounted(() => {
 
 watch(companyId, () => {
   loadCompanyDetail()
+  selectedRelatedEntity.value = null
+  relatedEntityModalOpen.value = false
+})
+
+watch([() => peopleData.value?.relatedEntities, relatedMindMapRef], () => {
+  nextTick(() => initRelatedMindMap())
+}, { deep: true })
+
+watch(relatedMindMapHeight, () => {
+  nextTick(() => {
+    if (!relatedMindMapInstance) return
+    try {
+      relatedMindMapInstance.getElRectInfo()
+      relatedMindMapInstance.resize()
+    } catch {
+      // ignore
+    }
+  })
+})
+
+onMounted(() => {
+  nextTick(() => initRelatedMindMap())
 })
 
 const registerDisplayMap: Record<string, { label: string; icon: string }> = {
@@ -2005,15 +2040,108 @@ const indirectShareholderPageData = computed(() => {
   return { items: data.slice(start, start + INDIRECT_SHAREHOLDER_PAGE_SIZE), total, totalPages }
 })
 
-// 关联企业/人员分页
-const relatedEntityPageData = computed(() => {
-  const data = peopleData.value?.relatedEntities?.data
-  if (!data) return { items: [] as string[][], total: 0, totalPages: 0 }
-  const total = data.length
-  const totalPages = Math.ceil(total / RELATED_ENTITY_PAGE_SIZE)
-  const start = (relatedEntityPage.value - 1) * RELATED_ENTITY_PAGE_SIZE
-  return { items: data.slice(start, start + RELATED_ENTITY_PAGE_SIZE), total, totalPages }
-})
+// 关联企业/人员详情
+function openRelatedEntityDetail(rowIndex: number) {
+  const table = peopleData.value?.relatedEntities
+  if (!table?.data?.[rowIndex]) return
+  const row = table.data[rowIndex]
+  const nameIdx = table.column.findIndex(c =>
+    ['名称', '企业名称', '人员', '关联方', '股东'].some(k => c.includes(k)),
+  )
+  const title = nameIdx >= 0 && row[nameIdx] && row[nameIdx] !== '-'
+    ? row[nameIdx]
+    : `关联项 ${rowIndex + 1}`
+  selectedRelatedEntity.value = {
+    title,
+    fields: buildRelatedRowFields(table.column, row),
+  }
+  relatedEntityModalOpen.value = true
+}
+
+function handleRelatedMindMapNodeClick(node: { getData?: (key: string) => unknown }) {
+  const rowIndex = node.getData?.('relatedRowIndex')
+  if (typeof rowIndex !== 'number' || rowIndex < 0) return
+  openRelatedEntityDetail(rowIndex)
+}
+
+function buildRelatedMindMapData() {
+  const table = peopleData.value?.relatedEntities
+  if (!table?.data?.length) return null
+  const companyName = company.value?.company_name || '关联企业/人员'
+  return buildRelatedMindMapTree(table, companyName)
+}
+
+// 初始化关联企业/人员思维导图
+async function initRelatedMindMap() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (!relatedMindMapRef.value) return
+  const mindData = buildRelatedMindMapData()
+  if (!mindData) {
+    if (relatedMindMapInstance) {
+      relatedMindMapInstance.destroy()
+      relatedMindMapInstance = null
+    }
+    relatedMindMapInitialViewApplied = false
+    return
+  }
+
+  if (relatedMindMapInstance) {
+    relatedMindMapInstance.destroy()
+    relatedMindMapInstance = null
+  }
+  relatedMindMapInitialViewApplied = false
+
+  // 确保容器已有尺寸，避免 simple-mind-map 报宽高为0的错误
+  const el = relatedMindMapRef.value
+  const rect = el.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    requestAnimationFrame(() => initRelatedMindMap())
+    return
+  }
+
+  try {
+    const [{ default: MindMap }, { default: Drag }] = await Promise.all([
+      import('simple-mind-map'),
+      import('simple-mind-map/src/plugins/Drag.js'),
+    ])
+
+    registerRelatedMindMapNodeProps(MindMap)
+
+    relatedMindMapInstance = new MindMap({
+      el: relatedMindMapRef.value,
+      data: mindData,
+      layout: 'logicalStructure',
+      readonly: true,
+      fit: false,
+      fitPadding: 28,
+      alwaysShowExpandBtn: true,
+      notShowExpandBtn: false,
+      isShowExpandNum: true,
+      scaleRatio: 0.1,
+      minZoomRatio: 20,
+      maxZoomRatio: 300,
+      mousewheelAction: 'zoom',
+      mouseScaleCenterUseMousePosition: false,
+      initRootNodePosition: ['left', 'center'],
+      themeConfig: {
+        lineStyle: 'curve',
+        root: { fontSize: 18, paddingX: 20, paddingY: 10 },
+        second: { marginX: 110, marginY: 28, fontSize: 16, paddingX: 16, paddingY: 8 },
+        node: { marginX: 80, marginY: 14, fontSize: 14, paddingX: 14, paddingY: 6 },
+      },
+      customHandleLine: createRelatedLineLabelHandler(),
+    })
+    relatedMindMapInstance.addPlugin(Drag)
+    relatedMindMapInstance.on('node_click', handleRelatedMindMapNodeClick)
+    relatedMindMapInstance.on('node_tree_render_end', () => {
+      if (relatedMindMapInitialViewApplied) return
+      relatedMindMapInitialViewApplied = true
+      applyRelatedMindMapDefaultView(relatedMindMapInstance)
+    })
+  } catch (e) {
+    console.error('思维导图初始化失败:', e)
+  }
+}
 
 // 实际控制企业关系图谱
 const controlGraphOption = computed(() => {
@@ -2031,7 +2159,7 @@ const controlGraphOption = computed(() => {
 const socialSecurityChartOption = computed(() => {
   const data = peopleData.value?.socialSecurity?.data
   if (!data?.length || data.length <= 1) return null
-  const sorted = [...data].sort((a, b) => (a[0] || '').localeCompare(b[0] || ''))
+  const sorted = [...data].sort((a, b) => String(a[0] ?? '').localeCompare(String(b[0] ?? '')))
   return {
     tooltip: { trigger: 'axis' as const },
     grid: { left: 45, right: 20, top: 15, bottom: 30 },
@@ -2474,6 +2602,10 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('scroll', onContentScroll)
   cancelAnimationFrame(scrollRaf)
+  if (relatedMindMapInstance) {
+    relatedMindMapInstance.destroy()
+    relatedMindMapInstance = null
+  }
 })
 
 function getIndustryBg(industry: string): string {
@@ -2483,6 +2615,7 @@ function getIndustryBg(industry: string): string {
 
 <style scoped>
 .cd-page {
+  --cd-max-width: min(1720px, calc(100vw - 32px));
   margin: -24px;
   min-height: 100vh;
   background: var(--bg);
@@ -2493,15 +2626,18 @@ function getIndustryBg(industry: string): string {
 
 .cd-topbar {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 24px;
+  justify-content: center;
+  padding: 14px 28px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
   width: 100%;
+}
+.cd-shell {
+  width: 100%;
+  max-width: var(--cd-max-width);
 }
 .cd-back-link {
   display: inline-flex;
@@ -2586,7 +2722,7 @@ function getIndustryBg(industry: string): string {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--cd-max-width);
 }
 .cd-hero-logo {
   display: flex;
@@ -2664,16 +2800,16 @@ function getIndustryBg(industry: string): string {
 
 .cd-body {
   display: flex;
-  gap: 24px;
-  padding: 24px;
+  gap: 28px;
+  padding: 24px 28px 32px;
   align-items: flex-start;
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--cd-max-width);
 }
 
 .cd-sidebar {
-  width: 232px;
-  min-width: 232px;
+  width: 268px;
+  min-width: 268px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -4154,10 +4290,11 @@ function getIndustryBg(industry: string): string {
   flex-shrink: 0;
 }
 .cd-layout-info-value {
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
   color: var(--text);
   font-weight: 500;
-  word-break: break-all;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4585,118 +4722,47 @@ function getIndustryBg(industry: string): string {
   max-height: 2000px;
 }
 
-/* ── 关联企业/人员卡片 ───────────────────────── */
-.cd-related-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* ── 关联企业/人员思维导图 ───────────────────────── */
+.cd-related-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
 }
-.cd-related-item {
-  display: flex;
-  align-items: stretch;
+
+.cd-related-modal-table {
+  max-height: min(60vh, 520px);
+  overflow: auto;
+}
+
+.cd-related-kv-table th {
+  width: 28%;
+  min-width: 120px;
+  font-weight: 500;
+  color: var(--text-muted, #64748b);
+  background: var(--bg, #f8fafc);
+  white-space: nowrap;
+}
+
+.cd-related-kv-table td {
+  word-break: break-word;
+}
+
+.cd-related-mindmap {
+  width: 100%;
+  min-height: 720px;
   background: var(--surface);
-  border: 1px solid var(--border-light);
   border-radius: 10px;
+  border: 1px solid var(--border-light);
   overflow: hidden;
-  transition: all 0.2s;
+  cursor: pointer;
 }
-.cd-related-item:hover {
-  transform: translateX(4px);
+
+.cd-related-mindmap :deep(.smm-node) {
+  cursor: pointer;
 }
-.cd-related-direct:hover {
-  border-color: color-mix(in srgb, #10b981 40%, var(--border-light));
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.08);
-}
-.cd-related-indirect:hover {
-  border-color: color-mix(in srgb, #f59e0b 40%, var(--border-light));
-  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.08);
-}
-.cd-related-accent {
-  width: 4px;
-  flex-shrink: 0;
-}
-.cd-related-direct .cd-related-accent {
-  background: linear-gradient(180deg, #10b981, #059669);
-}
-.cd-related-indirect .cd-related-accent {
-  background: linear-gradient(180deg, #f59e0b, #d97706);
-}
-.cd-related-main {
-  flex: 1;
-  padding: 12px 16px;
-  min-width: 0;
-}
-.cd-related-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-.cd-related-entity {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.cd-related-icon {
-  flex-shrink: 0;
-}
-.cd-related-direct .cd-related-icon {
-  color: #10b981;
-}
-.cd-related-indirect .cd-related-icon {
-  color: #f59e0b;
-}
-.cd-related-entity-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-strong);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.cd-related-tags {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.cd-related-tag {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
-  background: var(--surface-alt);
-  color: var(--text-muted);
-}
-.cd-related-tag-type {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
-}
-.cd-related-indirect .cd-related-tag-type {
-  background: rgba(245, 158, 11, 0.1);
-  color: #d97706;
-}
-.cd-related-basis {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.5;
-  padding: 6px 10px;
-  background: var(--surface-alt);
-  border-radius: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-.cd-related-basis :deep(svg) {
-  opacity: 0.5;
-  flex-shrink: 0;
+
+.cd-related-mindmap :deep(.smm-expand-btn) {
+  cursor: pointer;
 }
 
 /* 鈹€鈹€ 鏂版ā鍧楀搷搴斿紡 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
@@ -4719,5 +4785,12 @@ function getIndustryBg(industry: string): string {
   .cd-strength-grid-detail {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+</style>
+
+<style>
+.cd-related-modal-content {
+  width: min(960px, calc(100vw - 40px)) !important;
+  max-width: min(960px, calc(100vw - 40px)) !important;
 }
 </style>

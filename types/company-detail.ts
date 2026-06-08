@@ -5,7 +5,7 @@ interface RawDetailItem {
   company_credit_code: string
   info_type: number
   info_type_name: string
-  info_txt: string
+  info_txt: string | Record<string, unknown>
 }
 
 interface RawResponse {
@@ -14,13 +14,20 @@ interface RawResponse {
   data: RawDetailItem[]
 }
 
-function parseRaw<T>(res: RawResponse): T | null {
-  if (res.code !== 0 || !res.data?.length) return null
+function parseInfoTxt<T>(raw: unknown): T | null {
+  if (raw == null) return null
+  if (typeof raw === 'object') return raw as T
+  if (typeof raw !== 'string') return null
   try {
-    return JSON.parse(res.data[0].info_txt) as T
+    return JSON.parse(raw) as T
   } catch {
     return null
   }
+}
+
+function parseRaw<T>(res: RawResponse): T | null {
+  if (res.code !== 0 || !res.data?.length) return null
+  return parseInfoTxt<T>(res.data[0].info_txt)
 }
 
 /* ─────────────── 股东信息 ─────────────── */
@@ -44,12 +51,11 @@ export async function fetchShareholders(code: string): Promise<ShareholderParsed
   if (raw.code !== 0 || !raw.data?.length) return result
 
   for (const item of raw.data) {
-    try {
-      const parsed = JSON.parse(item.info_txt) as ShareholderTable
-      if (item.info_type === 2) result.latest = parsed
-      else if (item.info_type === 8) result.members = parsed
-      // info_type 可能还有其他股东类型，这里统一处理
-    } catch { /* ignore */ }
+    const parsed = parseInfoTxt<ShareholderTable>(item.info_txt)
+    if (!parsed) continue
+    if (item.info_type === 2) result.latest = parsed
+    else if (item.info_type === 8) result.members = parsed
+    // info_type 可能还有其他股东类型，这里统一处理
   }
   return result
 }
@@ -141,12 +147,11 @@ export async function fetchHonors(code: string): Promise<HonorsParsed> {
   if (raw.code !== 0 || !raw.data?.length) return result
 
   for (const item of raw.data) {
-    try {
-      const parsed = JSON.parse(item.info_txt) as HonorTable
-      if (item.info_type === 9) result.honor = parsed
-      else if (item.info_type === 11) result.ranking = parsed
-      else if (item.info_type === 12) result.govAward = parsed
-    } catch { /* ignore */ }
+    const parsed = parseInfoTxt<HonorTable>(item.info_txt)
+    if (!parsed) continue
+    if (item.info_type === 9) result.honor = parsed
+    else if (item.info_type === 11) result.ranking = parsed
+    else if (item.info_type === 12) result.govAward = parsed
   }
   return result
 }
@@ -163,11 +168,7 @@ export async function fetchLayout(code: string): Promise<LayoutTable | null> {
   })
   const raw = res.data as unknown as RawResponse
   if (raw.code !== 0 || !raw.data?.length) return null
-  try {
-    return JSON.parse(raw.data[0].info_txt) as LayoutTable
-  } catch {
-    return null
-  }
+  return parseInfoTxt<LayoutTable>(raw.data[0].info_txt)
 }
 
 /* ─────────────── 对外投资 & 融资历程 ─────────────── */
@@ -190,11 +191,10 @@ export async function fetchFinance(code: string): Promise<FinanceParsed> {
   if (raw.code !== 0 || !raw.data?.length) return result
 
   for (const item of raw.data) {
-    try {
-      const parsed = JSON.parse(item.info_txt) as FinanceTable
-      if (item.info_type === 17) result.investment = parsed
-      else if (item.info_type === 18) result.financing = parsed
-    } catch { /* ignore */ }
+    const parsed = parseInfoTxt<FinanceTable>(item.info_txt)
+    if (!parsed) continue
+    if (item.info_type === 17) result.investment = parsed
+    else if (item.info_type === 18) result.financing = parsed
   }
   return result
 }
@@ -232,11 +232,10 @@ export async function fetchProduct(code: string): Promise<ProductParsed> {
   if (raw.code !== 0 || !raw.data?.length) return result
 
   for (const item of raw.data) {
-    try {
-      const parsed = JSON.parse(item.info_txt) as ProductTable
-      if (item.info_type === 100) result.mainProducts = parsed
-      else if (item.info_type === 101) result.brands = parsed
-    } catch { /* ignore */ }
+    const parsed = parseInfoTxt<ProductTable>(item.info_txt)
+    if (!parsed) continue
+    if (item.info_type === 100) result.mainProducts = parsed
+    else if (item.info_type === 101) result.brands = parsed
   }
   return result
 }
@@ -254,9 +253,9 @@ export async function fetchIntellectual(code: string): Promise<IntellectualTable
   const raw = res.data as unknown as RawResponse
   if (raw.code !== 0 || !raw.data?.length) return null
   for (const item of raw.data) {
-    try {
-      if (item.info_type === 19) return JSON.parse(item.info_txt) as IntellectualTable
-    } catch { /* ignore */ }
+    if (item.info_type !== 19) continue
+    const parsed = parseInfoTxt<IntellectualTable>(item.info_txt)
+    if (parsed) return parsed
   }
   return null
 }
@@ -282,12 +281,11 @@ export async function fetchPeople(code: string): Promise<PeopleParsed> {
   if (raw.code !== 0 || !raw.data?.length) return result
 
   for (const item of raw.data) {
-    try {
-      const parsed = JSON.parse(item.info_txt) as PeopleTable
-      if (item.info_type === 13 || item.info_type === 92) result.indirectShareholders = parsed
-      else if (item.info_type === 14 || item.info_type === 93) result.socialSecurity = parsed
-      else if (item.info_type === 15 || item.info_type === 94) result.relatedEntities = parsed
-    } catch { /* ignore */ }
+    const parsed = parseInfoTxt<PeopleTable>(item.info_txt)
+    if (!parsed) continue
+    if (item.info_type === 13 || item.info_type === 92) result.indirectShareholders = parsed
+    else if (item.info_type === 14 || item.info_type === 93) result.socialSecurity = parsed
+    else if (item.info_type === 15 || item.info_type === 94) result.relatedEntities = parsed
   }
   return result
 }

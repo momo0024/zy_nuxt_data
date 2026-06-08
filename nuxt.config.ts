@@ -1,5 +1,9 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import {defineNuxtConfig} from "nuxt/config";
+import { defineNuxtConfig } from 'nuxt/config'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
+
+const rootDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-11',
@@ -24,6 +28,15 @@ export default defineNuxtConfig({
   sourcemap: { server: false, client: false },
   vite: {
     logLevel: import.meta.dev ? 'info' : 'error',
+    resolve: {
+      alias: {
+        'eventemitter3-original': 'eventemitter3',
+        'eventemitter3': resolve(rootDir, 'lib/eventemitter3-shim.js'),
+      },
+    },
+    optimizeDeps: {
+      include: ['simple-mind-map', 'eventemitter3-original'],
+    },
     plugins: [
       {
         name: 'silence-tailwind-sourcemap',
@@ -71,7 +84,7 @@ export default defineNuxtConfig({
     }
   },
   build: {
-    transpile: ['echarts', 'vue-echarts', 'resize-detector']
+    transpile: ['echarts', 'vue-echarts', 'resize-detector', 'simple-mind-map'],
   },
   fonts: {
     provider: 'local'
