@@ -229,7 +229,7 @@
 <script setup lang="ts">
 import { CATEGORIES, IMPORT_TASKS_INIT } from '~/data/mock'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', keepalive: true })
 
 const authStore = useAuthStore()
 const toast = useToast()

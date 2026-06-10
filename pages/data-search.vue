@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div>
     <div class="card table-switch-card">
       <div>
@@ -139,7 +139,7 @@ import { computed, h, reactive, ref, resolveComponent, watch } from 'vue'
 import { DOC_FILES, DOC_CHUNKS, QUERY_LOGS, KB_MEMBERS, IMPORT_TASKS_INIT } from '../data/mock'
 
 // @ts-ignore Nuxt macro
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', keepalive: true })
 
 type DataRow = Record<string, string | number | null>
 type ColumnConfig = { key: string; label: string; visible: boolean }

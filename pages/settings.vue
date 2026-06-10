@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div>
     <!-- 主题设置 -->
     <div class="section-header">
@@ -154,7 +154,7 @@ import { useAuthStore } from '../stores/auth'
 import { THEMES, useSettingsStore } from '../stores/settings'
 
 // @ts-ignore Nuxt macro
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', keepalive: true })
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()

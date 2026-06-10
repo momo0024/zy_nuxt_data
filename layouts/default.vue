@@ -64,6 +64,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
   { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
   { path: '/public-opinion', name: '舆情监测', icon: 'i-lucide-radar' },
+  { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
   { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
   { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
   { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },

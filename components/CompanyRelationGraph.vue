@@ -81,7 +81,7 @@ function onLayoutFinish() {
   <div class="company-relation-graph" :style="{ '--canvas-h': canvasHeight + 'px' }">
     <div v-if="graphData" class="rg-canvas-wrap">
       <div v-if="!isReady" class="rg-loading-mask">
-        <span class="rg-loading-text">关联关系计算中...</span>
+        <span class="rg-loading-text">关系加载中...</span>
       </div>
       <RelationGraph
         :options="options"

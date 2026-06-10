@@ -3,7 +3,12 @@
     <div class="cd-topbar">
       <div class="cd-shell">
         <div class="cd-breadcrumb">
-          <span class="cd-bc-text">企业图谱</span>
+          <button type="button" class="cd-bc-back" @click="goBack">
+            <UIcon name="i-lucide-arrow-left" class="size-3.5" />
+            <span>返回上一级</span>
+          </button>
+          <UIcon name="i-lucide-chevron-right" class="size-3.5 cd-bc-sep" />
+          <span class="cd-bc-text">{{ parentLabel }}</span>
           <UIcon name="i-lucide-chevron-right" class="size-3.5 cd-bc-sep" />
           <span class="cd-bc-current">{{ company?.company_name || '企业详情' }}</span>
         </div>
@@ -1279,9 +1284,44 @@ import {
 } from '~/utils/related-mind-map'
 import { buildRelationGraphJsonData } from '~/utils/relation-graph'
 
-definePageMeta({ middleware: 'auth', layout: 'blank' })
+definePageMeta({ middleware: 'auth', layout: 'blank', keepalive: true })
 
 const route = useRoute()
+const router = useRouter()
+
+const PAGE_LABELS: Record<string, string> = {
+  '/': '产业图谱',
+  '/geo-screen': '企业地图',
+}
+
+function resolveFromPath(from?: string) {
+  if (!from || !from.startsWith('/') || from.startsWith('/company-detail')) return null
+  return from
+}
+
+const backTarget = computed(() => resolveFromPath(route.query.from as string | undefined))
+
+const parentLabel = computed(() => {
+  const target = backTarget.value
+  if (target) {
+    const path = target.split('?')[0]
+    return PAGE_LABELS[path] || '上一级'
+  }
+  return '产业图谱'
+})
+
+function goBack() {
+  if (backTarget.value) {
+    router.push(backTarget.value)
+    return
+  }
+  if (import.meta.client && window.history.length > 1) {
+    router.back()
+    return
+  }
+  router.push('/')
+}
+
 const companyId = computed(() => route.query.id as string | undefined)
 const company = ref<CompanyRecord | null>(null)
 const loading = ref(true)
@@ -1562,6 +1602,15 @@ function mergeCompanyFromItems(
   if (map['联系方式']) company.value.contact_info = map['联系方式']
 }
 
+let detailSectionsStarted = false
+let loadSeq = 0
+
+function startDetailSections(code: string) {
+  if (detailSectionsStarted) return
+  detailSectionsStarted = true
+  loadDetailSections(code, true)
+}
+
 function loadDetailSections(code: string, skipRegisterBasic = false) {
   if (!skipRegisterBasic) {
     sectionLoading.value.register = true
@@ -1600,99 +1649,83 @@ async function loadCompanyDetail() {
     loading.value = false
     return
   }
+
+  const seq = ++loadSeq
   loading.value = true
   company.value = null
+  detailSectionsStarted = false
 
   const id = companyId.value
   let code: string | null = null
-  let skipRegisterBasic = false
+
+  const applyCompany = (record: CompanyRecord) => {
+    if (seq !== loadSeq) return
+    company.value = record
+    loading.value = false
+    checkBizScopeOverflow()
+    if (code) startDetailSections(code)
+  }
 
   try {
     if (isCreditCode(id)) {
-      // URL id 即信用代码，直接请求详情子接口
       code = id
-      // 并行发起所有请求，但各自独立更新，不阻塞渲染
       sectionLoading.value.register = true
       sectionLoading.value.basic = true
 
-      // 先请求 enriched 数据，这个最快返回
-      fetchCompanyByCode(code).then(enriched => {
-        if (enriched) {
-          // 用 enriched 数据立即展示公司基本信息
-          company.value = {
-            ...enriched,
-            id: enriched.company_credit_code || `${enriched.company_name}-${enriched.company_longitude}`,
-          }
-          loading.value = false
-          checkBizScopeOverflow()
-          // 触发详情模块加载
-          loadDetailSections(code, skipRegisterBasic)
-          skipRegisterBasic = true
-        }
+      const enrichedP = fetchCompanyByCode(code).then((enriched) => {
+        if (seq !== loadSeq || !enriched) return
+        applyCompany({
+          ...enriched,
+          id: enriched.company_credit_code || `${enriched.company_name}-${enriched.company_longitude}`,
+        })
       }).catch(() => {})
 
-      // 注册信息
-      fetchRegisterInfo(code).then(r => {
+      const registerP = fetchRegisterInfo(code).then((r) => {
+        if (seq !== loadSeq) return
         registerInfo.value = r
         sectionLoading.value.register = false
-        // 合并注册信息到已有 company 数据
         if (r && company.value) {
-          mergeCompanyFromItems(code, r, null)
+          mergeCompanyFromItems(code!, r, null)
+        } else if (!company.value && r) {
+          const c = buildCompanyFromItems(code!, r, null, null)
+          if (c) applyCompany(c)
         }
-        // 如果 enriched 还没返回，尝试用注册信息构建
-        if (!company.value && r) {
-          const c = buildCompanyFromItems(code, r, null, null)
-          if (c) {
-            company.value = c
-            loading.value = false
-            checkBizScopeOverflow()
-            if (!skipRegisterBasic) {
-              loadDetailSections(code, skipRegisterBasic)
-              skipRegisterBasic = true
-            }
-          }
-        }
-      }).catch(() => { sectionLoading.value.register = false })
+      }).catch(() => {
+        if (seq === loadSeq) sectionLoading.value.register = false
+      })
 
-      // 基本信息
-      fetchBasicInfo(code).then(b => {
+      const basicP = fetchBasicInfo(code).then((b) => {
+        if (seq !== loadSeq) return
         basicInfo.value = b
         sectionLoading.value.basic = false
         if (b && company.value) {
-          mergeCompanyFromItems(code, null, b)
+          mergeCompanyFromItems(code!, null, b)
+        } else if (!company.value && b) {
+          const c = buildCompanyFromItems(code!, null, b, null)
+          if (c) applyCompany(c)
         }
-        if (!company.value && b) {
-          const c = buildCompanyFromItems(code, null, b, null)
-          if (c) {
-            company.value = c
-            loading.value = false
-            checkBizScopeOverflow()
-            if (!skipRegisterBasic) {
-              loadDetailSections(code, skipRegisterBasic)
-              skipRegisterBasic = true
-            }
-          }
-        }
-      }).catch(() => { sectionLoading.value.basic = false })
+      }).catch(() => {
+        if (seq === loadSeq) sectionLoading.value.basic = false
+      })
 
-      // 兜底：如果所有请求都失败，2秒后显示未找到
-      setTimeout(() => {
-        if (!company.value) {
-          loading.value = false
-        }
-      }, 2000)
+      // 等三个主接口都结束后再判定「未找到」，避免 2 秒超时误判
+      await Promise.allSettled([enrichedP, registerP, basicP])
+      if (seq !== loadSeq) return
+      loading.value = false
     } else {
       // 地图页旧格式 id（name-lng）
       const item = await fetchCompanyByLegacyId(id)
+      if (seq !== loadSeq) return
       if (item) {
         company.value = item
         code = item.company_credit_code || null
       }
       loading.value = false
       checkBizScopeOverflow()
-      if (code) loadDetailSections(code, skipRegisterBasic)
+      if (code) startDetailSections(code)
     }
   } catch (e) {
+    if (seq !== loadSeq) return
     console.error('[company-detail] 加载企业详情失败', e)
     loading.value = false
   }
@@ -2726,6 +2759,25 @@ function getIndustryBg(industry: string): string {
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  color: var(--text-muted);
+}
+.cd-bc-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.cd-bc-back:hover {
+  color: var(--primary);
+}
+.cd-bc-text {
   color: var(--text-muted);
 }
 .cd-bc-sep {

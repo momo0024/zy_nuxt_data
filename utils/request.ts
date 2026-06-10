@@ -1,6 +1,23 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
-const DEFAULT_BASE = import.meta.dev ? '/api' : 'http://119.96.30.33:8096'
+const BACKEND_BASE = process.env.NUXT_PUBLIC_API_BASE || 'http://119.96.30.33:8096'
+
+/** 客户端开发走 /api 代理；服务端 axios 必须用绝对地址 */
+function resolveDefaultBase(): string {
+  if (import.meta.server) return BACKEND_BASE
+  return import.meta.dev ? '/api' : BACKEND_BASE
+}
+
+const DEFAULT_BASE = resolveDefaultBase()
+
+/** 后端要求路径以 / 结尾，否则返回 301，浏览器会多记一条重定向请求 */
+function withTrailingSlash(url: string): string {
+  const qIndex = url.indexOf('?')
+  const path = qIndex === -1 ? url : url.slice(0, qIndex)
+  const query = qIndex === -1 ? '' : url.slice(qIndex)
+  if (path.endsWith('/')) return url
+  return `${path}/${query}`
+}
 
 interface ApiResponse<T = any> {
   code: number
@@ -28,6 +45,9 @@ class Request {
 
     this.instance.interceptors.request.use(
       (config) => {
+        if (config.url) {
+          config.url = withTrailingSlash(config.url)
+        }
         return config
       },
       (error) => {

@@ -257,7 +257,7 @@
 <script setup lang="ts">
 import { request } from '~/utils/request'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', keepalive: true })
 
 const route = useRoute()
 

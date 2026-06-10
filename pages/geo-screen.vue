@@ -242,16 +242,15 @@
               <div class="cd-title-wrap">
                 <div class="cd-name-row">
                   <div class="cd-name">{{ detailCompany.company_name }}</div>
-                  <a
+                  <NuxtLink
                     class="cd-detail-link"
-                    :href="`/company-detail?id=${detailCompany.id}`"
-                    target="_blank"
+                    :to="{ path: '/company-detail', query: { id: detailCompany.id, from: route.fullPath } }"
                     title="查看企业详情"
                     @click.stop
                   >
                     <span>查看详情</span>
-                    <UIcon name="i-lucide-external-link" class="size-3.5" />
-                  </a>
+                    <UIcon name="i-lucide-chevron-right" class="size-3.5" />
+                  </NuxtLink>
                 </div>
                 <div class="cd-sub">
                   <span v-if="detailCompany.company_traded === 1" class="cd-type-badge type-listed">上市公司</span>
@@ -420,7 +419,9 @@ import {
   type RegionSelectPayload,
 } from '~/composables/useGeoAmapMap'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', keepalive: true })
+
+const route = useRoute()
 
 const {
   mapContainerRef,

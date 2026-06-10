@@ -230,7 +230,7 @@ import { defineComponent, ref, computed, onMounted, onUnmounted } from 'vue'
 import VChart from 'vue-echarts'
 import { SENTIMENT_DATA } from '~/data/mock'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', keepalive: true })
 
 const settingsStore = useSettingsStore()
 

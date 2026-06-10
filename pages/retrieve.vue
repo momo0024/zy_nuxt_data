@@ -131,7 +131,7 @@
 <script setup lang="ts">
 import { CATEGORIES, RETRIEVE_DOCS } from '~/data/mock'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', keepalive: true })
 
 const authStore = useAuthStore()
 const route = useRoute()
