@@ -1195,18 +1195,29 @@
   <UModal
     v-model:open="relatedEntityModalOpen"
     :title="selectedRelatedEntity?.title || '关联详情'"
-    :ui="{ content: 'cd-related-modal-content' }"
+    :ui="{ content: 'cd-related-modal-content', body: 'overflow-y-auto max-h-[calc(100vh-140px)]' }"
   >
     <template #body>
-      <div v-if="selectedRelatedEntity" class="cd-table-wrap cd-table-elegant cd-related-modal-table">
-        <table class="cd-data-table cd-related-kv-table">
-          <tbody>
-            <tr v-for="(item, fi) in selectedRelatedEntity.fields" :key="`rel-modal-${fi}`">
-              <th>{{ item.label }}</th>
-              <td>{{ item.value }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-if="selectedRelatedEntity" class="cd-related-modal-body">
+        <!-- 关联关系图谱 -->
+        <div v-if="relationGraphData" class="cd-relation-graph-wrap">
+          <div class="cd-relation-graph-title">
+            <UIcon name="i-lucide-git-branch" class="size-4" />
+            <span>关联关系图谱</span>
+          </div>
+          <CompanyRelationGraph :graph-data="relationGraphData" />
+        </div>
+        <!-- 普通字段表格（隐藏关联方类型，已用图谱展示） -->
+        <div class="cd-table-wrap cd-table-elegant cd-related-modal-table">
+          <table class="cd-data-table cd-related-kv-table">
+            <tbody>
+              <tr v-for="(item, fi) in modalFilteredFields" :key="`rel-modal-${fi}`">
+                <th>{{ item.label }}</th>
+                <td>{{ item.value }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </template>
     <template #footer>
@@ -1264,6 +1275,7 @@ import {
   registerRelatedMindMapNodeProps,
   type RelatedFieldItem,
 } from '~/utils/related-mind-map'
+import { buildRelationGraphJsonData } from '~/utils/relation-graph'
 
 definePageMeta({ middleware: 'auth', layout: 'blank' })
 
@@ -1379,10 +1391,69 @@ const relatedEntityModalOpen = ref(false)
 const selectedRelatedEntity = ref<{
   title: string
   fields: RelatedFieldItem[]
+  rawRow?: string[]
 } | null>(null)
 const relatedMindMapHeight = computed(() =>
   estimateRelatedMindMapHeight(peopleData.value?.relatedEntities?.data?.length ?? 0),
 )
+
+// 弹窗表格字段（隐藏关联方类型/关联类型/关联路径，已用图谱展示）
+const modalFilteredFields = computed(() => {
+  return selectedRelatedEntity.value?.fields?.filter(
+    (f: any) => !['关联方类型', '关联类型', '关联路径'].some(k => f.label.includes(k)),
+  ) ?? []
+})
+
+// 关联详情弹窗中的关系图数据（给 relation-graph 组件使用）
+const relationGraphData = computed(() => {
+  const entity = selectedRelatedEntity.value
+  if (!entity?.rawRow) {
+    console.log('[relationGraphData] no rawRow')
+    return null
+  }
+  const table = peopleData.value?.relatedEntities
+  if (!table) {
+    console.log('[relationGraphData] no table')
+    return null
+  }
+
+  // 找到"关联方类型"列的索引
+  const typeColIdx = table.column.findIndex(
+    c => c.includes('关联方类型') || c.includes('关联类型') || c.includes('关联路径'),
+  )
+  console.log('[relationGraphData] typeColIdx:', typeColIdx, 'columns:', table.column)
+  if (typeColIdx < 0) return null
+
+  const rawValue = entity.rawRow[typeColIdx]
+  console.log('[relationGraphData] rawValue type:', typeof rawValue, 'isArray:', Array.isArray(rawValue), 'value:', rawValue)
+  if (!rawValue || rawValue === '-') return null
+
+  // rawValue 可能是数组（JSON.parse 后）或字符串
+  let pathTexts: string[]
+  if (Array.isArray(rawValue)) {
+    pathTexts = rawValue.filter((t: unknown) => typeof t === 'string' && t.trim())
+  } else if (typeof rawValue === 'string') {
+    try {
+      const parsed = JSON.parse(rawValue)
+      pathTexts = Array.isArray(parsed) ? parsed.filter((t: unknown) => typeof t === 'string' && t.trim()) : []
+    } catch {
+      pathTexts = []
+    }
+  } else {
+    return null
+  }
+
+  console.log('[relationGraphData] pathTexts count:', pathTexts.length)
+  if (!pathTexts.length) return null
+
+  const mainCompanyName = company.value?.company_name || '本企业'
+  const relatedPartyName = entity.title || '关联方'
+
+  const result = buildRelationGraphJsonData(pathTexts, mainCompanyName, relatedPartyName)
+  console.log('[relationGraphData] result:', !!result, 'nodes:', result?.nodes?.length, 'lines:', result?.lines?.length)
+  return result
+})
+
 const HONOR_PAGE_SIZE = 6
 const RANKING_PAGE_SIZE = 8
 const GOV_AWARD_PAGE_SIZE = 6
@@ -2054,6 +2125,7 @@ function openRelatedEntityDetail(rowIndex: number) {
   selectedRelatedEntity.value = {
     title,
     fields: buildRelatedRowFields(table.column, row),
+    rawRow: row,
   }
   relatedEntityModalOpen.value = true
 }
@@ -4790,7 +4862,44 @@ function getIndustryBg(industry: string): string {
 
 <style>
 .cd-related-modal-content {
-  width: min(960px, calc(100vw - 40px)) !important;
-  max-width: min(960px, calc(100vw - 40px)) !important;
+  width: min(1400px, calc(100vw - 40px)) !important;
+  max-width: min(1400px, calc(100vw - 40px)) !important;
+}
+
+/* ── 关联关系图谱 ───────────────────────── */
+.cd-related-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cd-relation-graph-wrap {
+  background: var(--surface, #fafcfd);
+  border-radius: 10px;
+  border: 1px solid var(--border-light, #e2e8f0);
+  overflow: hidden;
+}
+
+.cd-relation-graph-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #1e293b);
+  background: var(--bg, #f8fafc);
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+}
+
+.cd-relation-graph-chart {
+  width: 100%;
+  height: 520px;
+}
+
+/* 隐藏 relation-graph 工具栏中的 Force Layout 按钮，保留缩放、全屏等功能 */
+.rg-toolbar .rg-mb-button[title="Start Force Layout"],
+.rg-toolbar .rg-mb-button[title="Stop Force Layout"] {
+  display: none !important;
 }
 </style>

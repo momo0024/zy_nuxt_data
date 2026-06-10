@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@pinia/nuxt": "^0.5.4",
+    "@relation-graph/vue": "^3.0.13",
     "@vuepic/vue-datepicker": "^12.1.0",
     "axios": "^1.16.1",
     "class-variance-authority": "^0.7.1",
