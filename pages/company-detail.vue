@@ -1,20 +1,5 @@
 <template>
   <div class="cd-page">
-    <div class="cd-topbar">
-      <div class="cd-shell">
-        <div class="cd-breadcrumb">
-          <button type="button" class="cd-bc-back" @click="goBack">
-            <UIcon name="i-lucide-arrow-left" class="size-3.5" />
-            <span>返回上一级</span>
-          </button>
-          <UIcon name="i-lucide-chevron-right" class="size-3.5 cd-bc-sep" />
-          <span class="cd-bc-text">{{ parentLabel }}</span>
-          <UIcon name="i-lucide-chevron-right" class="size-3.5 cd-bc-sep" />
-          <span class="cd-bc-current">{{ company?.company_name || '企业详情' }}</span>
-        </div>
-      </div>
-    </div>
-
     <div v-if="loading" class="cd-loading">
       <div class="cd-loading-ring" />
       <span>加载中…</span>
@@ -1287,41 +1272,6 @@ import { buildRelationGraphJsonData } from '~/utils/relation-graph'
 definePageMeta({ middleware: 'auth', layout: 'blank', keepalive: true })
 
 const route = useRoute()
-const router = useRouter()
-
-const PAGE_LABELS: Record<string, string> = {
-  '/': '产业图谱',
-  '/geo-screen': '企业地图',
-}
-
-function resolveFromPath(from?: string) {
-  if (!from || !from.startsWith('/') || from.startsWith('/company-detail')) return null
-  return from
-}
-
-const backTarget = computed(() => resolveFromPath(route.query.from as string | undefined))
-
-const parentLabel = computed(() => {
-  const target = backTarget.value
-  if (target) {
-    const path = target.split('?')[0]
-    return PAGE_LABELS[path] || '上一级'
-  }
-  return '产业图谱'
-})
-
-function goBack() {
-  if (backTarget.value) {
-    router.push(backTarget.value)
-    return
-  }
-  if (import.meta.client && window.history.length > 1) {
-    router.back()
-    return
-  }
-  router.push('/')
-}
-
 const companyId = computed(() => route.query.id as string | undefined)
 const company = ref<CompanyRecord | null>(null)
 const loading = ref(true)
@@ -2726,68 +2676,6 @@ function getIndustryBg(industry: string): string {
   align-items: center;
 }
 
-.cd-topbar {
-  display: flex;
-  justify-content: center;
-  padding: 14px 28px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  width: 100%;
-}
-.cd-shell {
-  width: 100%;
-  max-width: var(--cd-max-width);
-}
-.cd-back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: color 0.15s;
-}
-.cd-back-link:hover {
-  color: var(--primary);
-}
-.cd-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-.cd-bc-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  font: inherit;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color 0.15s;
-}
-.cd-bc-back:hover {
-  color: var(--primary);
-}
-.cd-bc-text {
-  color: var(--text-muted);
-}
-.cd-bc-sep {
-  opacity: 0.4;
-}
-.cd-bc-current {
-  color: var(--text-strong);
-  font-weight: 600;
-}
-
 .cd-loading {
   display: flex;
   flex-direction: column;
@@ -2817,22 +2705,6 @@ function getIndustryBg(industry: string): string {
   padding: 80px 24px;
   color: var(--text-muted);
   font-size: 15px;
-}
-.cd-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #fff;
-  background: var(--primary);
-  border-radius: 8px;
-  text-decoration: none;
-  transition: opacity 0.15s;
-}
-.cd-back-btn:hover {
-  opacity: 0.85;
 }
 
 .cd-hero {

@@ -83,6 +83,8 @@
                   <NuxtLink
                     v-if="isValidCode(co.code)"
                     :to="companyUrl(co.code)"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     class="cb-col-item cb-col-item--link"
                   >
                     {{ co.name }}
@@ -169,6 +171,8 @@
                 <NuxtLink
                   v-if="isValidCode(co.code)"
                   :to="companyUrl(co.code)"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   class="cb-other-item cb-other-item--link"
                 >
                   {{ co.name }}
@@ -239,6 +243,8 @@
                     <NuxtLink
                       v-if="isValidCode(co.code)"
                       :to="companyUrl(co.code)"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       class="cb-popup-item cb-popup-item--link"
                     >
                       {{ co.name }}
@@ -272,7 +278,6 @@ export type MindChainNode = {
 
 const CHAIN_KEYS = new Set(['up', 'middle', 'midlle', 'down'])
 const MAX_VISIBLE_ITEMS = 8
-const route = useRoute()
 const cardColors = ['#c2780a', '#2d7a4f', '#1a7a72', '#9a7b0a', '#8b4513', '#5c4d7a', '#3d6b8e', '#6b5344']
 
 const phaseIcons: Record<string, string> = {
@@ -336,7 +341,7 @@ function isValidCode(c: string) {
 function companyUrl(code: string) {
   return {
     path: '/company-detail',
-    query: { id: code, from: route.fullPath },
+    query: { id: code },
   }
 }
 

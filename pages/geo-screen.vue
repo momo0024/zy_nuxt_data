@@ -244,7 +244,9 @@
                   <div class="cd-name">{{ detailCompany.company_name }}</div>
                   <NuxtLink
                     class="cd-detail-link"
-                    :to="{ path: '/company-detail', query: { id: detailCompany.id, from: route.fullPath } }"
+                    :to="{ path: '/company-detail', query: { id: detailCompany.id } }"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     title="查看企业详情"
                     @click.stop
                   >
@@ -420,8 +422,6 @@ import {
 } from '~/composables/useGeoAmapMap'
 
 definePageMeta({ middleware: 'auth', keepalive: true })
-
-const route = useRoute()
 
 const {
   mapContainerRef,

@@ -105,6 +105,8 @@
                 <NuxtLink
                   v-if="isValidCode(co.code)"
                   :to="companyUrl(co.code)"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   class="chain-co-item"
                 >
                   <span class="chain-co-av">{{ co.name.charAt(0) }}</span>
@@ -224,6 +226,8 @@
                   <NuxtLink
                     v-if="isValidCode(co.code)"
                     :to="companyUrl(co.code)"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     class="chain-co-item"
                     :title="co.name"
                   >
@@ -258,8 +262,6 @@
 import { request } from '~/utils/request'
 
 definePageMeta({ middleware: 'auth', keepalive: true })
-
-const route = useRoute()
 
 type CompanyItem = { code: string; name: string }
 
@@ -529,7 +531,7 @@ function isValidCode(c: string) {
 function companyUrl(code: string) {
   return {
     path: '/company-detail',
-    query: { id: code, from: route.fullPath },
+    query: { id: code },
   }
 }
 
