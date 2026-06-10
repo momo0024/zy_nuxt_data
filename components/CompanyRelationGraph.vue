@@ -30,12 +30,14 @@ interface GraphData {
   lines: GraphLine[]
 }
 
-const props = defineProps<{
+defineProps<{
   graphData: GraphData | null
 }>()
 
 const { RelationGraph, graphInstance } = useRelationGraph()
 const isReady = ref(false)
+
+const canvasHeight = 500
 
 const options = {
   defaultExpandHolderPosition: 'hide',
@@ -57,6 +59,8 @@ const options = {
   allowShowMiniToolBar: true,
   allowShowMiniView: false,
   backgroundColor: '#fafbfc',
+  viewHeight: canvasHeight + 'px',
+  viewWidth: '100%',
 }
 
 function onGraphReady() {
@@ -74,42 +78,42 @@ function onLayoutFinish() {
 </script>
 
 <template>
-  <ClientOnly>
-    <div class="company-relation-graph">
-      <div v-if="graphData" class="rg-canvas-wrap">
-        <!-- 布局计算期间用背景色遮罩覆盖，避免看到抖动 -->
-        <div v-if="!isReady" class="rg-loading-mask">
-          <span class="rg-loading-text">关联关系计算中...</span>
-        </div>
-        <RelationGraph
-          ref="graphRef"
-          :options="options"
-          :initialData="graphData"
-          @on-ready="onGraphReady"
-          @on-force-layout-finish="onLayoutFinish"
-          :style="{ width: '100%', height: '900px' }"
-        ></RelationGraph>
+  <div class="company-relation-graph" :style="{ '--canvas-h': canvasHeight + 'px' }">
+    <div v-if="graphData" class="rg-canvas-wrap">
+      <div v-if="!isReady" class="rg-loading-mask">
+        <span class="rg-loading-text">关联关系计算中...</span>
       </div>
-      <div v-else class="rg-empty">
-        <UIcon name="i-lucide-git-branch" class="size-8 text-gray-300" />
-        <span class="text-gray-400 text-sm mt-2">暂无关联关系数据</span>
-      </div>
+      <RelationGraph
+        :options="options"
+        :initialData="graphData"
+        @on-ready="onGraphReady"
+        @on-force-layout-finish="onLayoutFinish"
+      />
     </div>
-  </ClientOnly>
+    <div v-else class="rg-empty">
+      <UIcon name="i-lucide-git-branch" class="size-8 text-gray-300" />
+      <span class="text-gray-400 text-sm mt-2">暂无关联关系数据</span>
+    </div>
+  </div>
 </template>
 
-<style scoped>
+<style>
 .company-relation-graph {
   width: 100%;
   border-radius: 8px;
-  overflow: hidden;
   background: #fafbfc;
 }
-.rg-canvas-wrap {
+.company-relation-graph .rg-canvas-wrap {
   position: relative;
   width: 100%;
+  min-height: var(--canvas-h);
+  height: var(--canvas-h);
 }
-.rg-loading-mask {
+.company-relation-graph .relation-graph {
+  min-height: var(--canvas-h);
+  height: var(--canvas-h);
+}
+.company-relation-graph .rg-loading-mask {
   position: absolute;
   inset: 0;
   z-index: 10;
@@ -119,11 +123,11 @@ function onLayoutFinish() {
   background: #fafbfc;
   border-radius: 8px;
 }
-.rg-loading-text {
+.company-relation-graph .rg-loading-text {
   font-size: 13px;
   color: #94a3b8;
 }
-.rg-empty {
+.company-relation-graph .rg-empty {
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -1195,7 +1195,7 @@
   <UModal
     v-model:open="relatedEntityModalOpen"
     :title="selectedRelatedEntity?.title || '关联详情'"
-    :ui="{ content: 'cd-related-modal-content', body: 'overflow-y-auto max-h-[calc(100vh-140px)]' }"
+    :ui="{ content: 'cd-related-modal-content', body: 'overflow-y-auto max-h-[calc(100vh-120px)]' }"
   >
     <template #body>
       <div v-if="selectedRelatedEntity" class="cd-related-modal-body">
@@ -1205,13 +1205,15 @@
             <UIcon name="i-lucide-git-branch" class="size-4" />
             <span>关联关系图谱</span>
           </div>
-          <CompanyRelationGraph :graph-data="relationGraphData" />
+          <ClientOnly>
+            <CompanyRelationGraph :graph-data="relationGraphData" />
+          </ClientOnly>
         </div>
-        <!-- 普通字段表格（隐藏关联方类型，已用图谱展示） -->
+        <!-- 普通字段表格（展示所有字段） -->
         <div class="cd-table-wrap cd-table-elegant cd-related-modal-table">
           <table class="cd-data-table cd-related-kv-table">
             <tbody>
-              <tr v-for="(item, fi) in modalFilteredFields" :key="`rel-modal-${fi}`">
+              <tr v-for="(item, fi) in selectedRelatedEntity.fields" :key="`rel-modal-${fi}`">
                 <th>{{ item.label }}</th>
                 <td>{{ item.value }}</td>
               </tr>
@@ -1397,12 +1399,7 @@ const relatedMindMapHeight = computed(() =>
   estimateRelatedMindMapHeight(peopleData.value?.relatedEntities?.data?.length ?? 0),
 )
 
-// 弹窗表格字段（隐藏关联方类型/关联类型/关联路径，已用图谱展示）
-const modalFilteredFields = computed(() => {
-  return selectedRelatedEntity.value?.fields?.filter(
-    (f: any) => !['关联方类型', '关联类型', '关联路径'].some(k => f.label.includes(k)),
-  ) ?? []
-})
+// 弹窗表格字段（展示所有字段）
 
 // 关联详情弹窗中的关系图数据（给 relation-graph 组件使用）
 const relationGraphData = computed(() => {
