@@ -148,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { CATEGORIES } from '../data/mock'
 import { useAuthStore } from '../stores/auth'
 import { THEMES, useSettingsStore } from '../stores/settings'
@@ -205,7 +205,7 @@ async function saveAiConfig() {
   toast.add({ title: '配置已保存', color: 'success' })
 }
 
-onMounted(() => {
+usePageInit(() => {
   hydrated.value = true
 })
 </script>

@@ -38,7 +38,7 @@ export const THEMES: ThemeMeta[] = [
 ]
 
 export const useSettingsStore = defineStore('settings', () => {
-  const theme = ref<ThemeId>('warm')
+  const theme = ref<ThemeId>('light')
   const ai = ref<AiConfig>({
     enabled: false,
     apiBase: 'http://119.96.30.33:8087/v1',

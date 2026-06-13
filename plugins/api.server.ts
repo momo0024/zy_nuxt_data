@@ -1,12 +1,17 @@
-import { request } from '~/utils/request'
+import { newsRequest, request } from '~/utils/request'
 
-const BACKEND_BASE = process.env.NUXT_PUBLIC_API_BASE || 'http://119.96.30.33:8096'
+function resolveServerBaseURL(configured: string, fallback: string) {
+  return configured.startsWith('http') ? configured : fallback
+}
 
-/**
- * SSR 阶段 api.client.ts 不执行，需在此将 baseURL 设为绝对地址
- */
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig()
-  const base = config.public.apiBase as string
-  request.setBaseURL(base.startsWith('http') ? base : BACKEND_BASE)
+  request.setBaseURL(resolveServerBaseURL(
+    config.public.apiBase as string,
+    config.public.apiBaseFallback as string,
+  ))
+  newsRequest.setBaseURL(resolveServerBaseURL(
+    config.public.newsApiBase as string,
+    config.public.newsApiBaseFallback as string,
+  ))
 })

@@ -226,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent, ref, computed, onMounted, onUnmounted } from 'vue'
+import { defineComponent, ref, computed, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import VChart from 'vue-echarts'
 import { SENTIMENT_DATA } from '~/data/mock'
 
@@ -261,7 +261,7 @@ const THEME_VISUALS = {
   warm:   { bgTop:'#1c1208', bgBottom:'#0e0703', panelTop:'rgba(144,86,17,0.46)',   panelBottom:'rgba(47,24,5,0.86)', primary:'#ffbf47', secondary:'#38bdf8', accent:'#fb7185', line:'rgba(255,202,92,0.36)', lineSoft:'rgba(255,202,92,0.14)', shadow:'rgba(217,119,6,0.24)', titleGlow:'rgba(255,191,71,0.76)' }
 } as const
 
-const palette = computed(() => THEME_VISUALS[settingsStore.theme] ?? THEME_VISUALS.warm)
+const palette = computed(() => THEME_VISUALS[settingsStore.theme] ?? THEME_VISUALS.light)
 
 const screenVars = computed(() => ({
   '--op-bg-top':    palette.value.bgTop,
@@ -369,8 +369,21 @@ function _animateSphere() {
   _sphereRafId = requestAnimationFrame(_animateSphere)
 }
 
-onMounted(()    => { _sphereRafId = requestAnimationFrame(_animateSphere) })
-onUnmounted(()  => { cancelAnimationFrame(_sphereRafId) })
+function startSphereAnimation() {
+  if (_sphereRafId) return
+  _sphereRafId = requestAnimationFrame(_animateSphere)
+}
+
+function stopSphereAnimation() {
+  if (!_sphereRafId) return
+  cancelAnimationFrame(_sphereRafId)
+  _sphereRafId = 0
+}
+
+onMounted(startSphereAnimation)
+onActivated(startSphereAnimation)
+onDeactivated(stopSphereAnimation)
+onUnmounted(stopSphereAnimation)
 
 const entityTerms = [
   { name:'台积电',    count:218, heat:100, color:'#2ce9ff', type:'corp', typeLabel:'企业' },

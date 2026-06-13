@@ -1681,8 +1681,11 @@ async function loadCompanyDetail() {
   }
 }
 
-onMounted(() => {
-  loadCompanyDetail()
+usePageInit(loadCompanyDetail)
+
+// blank 布局无标签栏，离开页面时清除缓存，下次进入重新请求
+onDeactivated(() => {
+  resetPageInit(route.path)
 })
 
 watch(companyId, () => {

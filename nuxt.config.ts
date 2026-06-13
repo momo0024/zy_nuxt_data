@@ -5,6 +5,11 @@ import { dirname, resolve } from 'node:path'
 
 const rootDir = dirname(fileURLToPath(import.meta.url))
 
+/** 企业地图等主后端（8096） */
+const apiBase = process.env.NUXT_PUBLIC_API_BASE || 'http://119.96.30.33:8096'
+/** 新闻中心 zy-news 后端（默认本地 8000） */
+const newsApiBase = process.env.NUXT_PUBLIC_NEWS_API_BASE || 'http://localhost:8000'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-11',
   devtools: { enabled: false },
@@ -19,8 +24,11 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // 后端接口地址，开发环境通过 nitro devProxy 代理，生产环境直连
-      apiBase: import.meta.dev ? '/api' : (process.env.NUXT_PUBLIC_API_BASE || 'http://119.96.30.33:8096'),
+      // 开发：/api → 企业后端；/news-api → zy-news。生产：环境变量绝对地址
+      apiBase: import.meta.dev ? '/api' : apiBase,
+      apiBaseFallback: apiBase,
+      newsApiBase: import.meta.dev ? '/news-api' : newsApiBase,
+      newsApiBaseFallback: newsApiBase,
       amapKey: process.env.NUXT_PUBLIC_AMAP_KEY || '',
       amapSecurityCode: process.env.NUXT_PUBLIC_AMAP_SECURITY_CODE || '',
     },
@@ -69,7 +77,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: {
-        'data-theme': 'warm',
+        'data-theme': 'light',
       },
       title: '智知云 · 企业知识中台',
       meta: [
@@ -92,11 +100,15 @@ export default defineNuxtConfig({
   nitro: {
     devProxy: {
       '/api/': {
-        // 开发代理：将 /api/* 转发到后端，target 填后端实际地址
-        target: 'http://119.96.30.33:8096',
+        target: apiBase,
         changeOrigin: true,
-        rewrite: (path: string) => path.replace(/^\/api/, '')
-      }
+        rewrite: (path: string) => path.replace(/^\/api/, ''),
+      },
+      '/news-api/': {
+        target: newsApiBase,
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/news-api/, ''),
+      },
     },
     rollupConfig: {
       onwarn(warning: any, warn: any) {

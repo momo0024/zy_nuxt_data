@@ -552,7 +552,7 @@ async function fetchChainData() {
   }
 }
 
-onMounted(fetchChainData)
+usePageInit(fetchChainData)
 </script>
 
 <style scoped>

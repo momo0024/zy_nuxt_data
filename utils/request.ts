@@ -1,16 +1,17 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
-const BACKEND_BASE = process.env.NUXT_PUBLIC_API_BASE || 'http://119.96.30.33:8096'
-
-/** 客户端开发走 /api 代理；服务端 axios 必须用绝对地址 */
-function resolveDefaultBase(): string {
-  if (import.meta.server) return BACKEND_BASE
-  return import.meta.dev ? '/api' : BACKEND_BASE
+export interface ApiResponse<T = any> {
+  code: number
+  msg?: string
+  message?: string
+  data: T
 }
 
-const DEFAULT_BASE = resolveDefaultBase()
+export interface ApiClientOptions {
+  /** 是否自动追加尾部斜杠（8096 企业接口需要；zy-news FastAPI 不需要） */
+  trailingSlash?: boolean
+}
 
-/** 后端要求路径以 / 结尾，否则返回 301，浏览器会多记一条重定向请求 */
 function withTrailingSlash(url: string): string {
   const qIndex = url.indexOf('?')
   const path = qIndex === -1 ? url : url.slice(0, qIndex)
@@ -19,24 +20,19 @@ function withTrailingSlash(url: string): string {
   return `${path}/${query}`
 }
 
-interface ApiResponse<T = any> {
-  code: number
-  msg: string
-  data: T
-}
-
 class Request {
   private instance!: AxiosInstance
-  private _baseURL: string = DEFAULT_BASE
-  private _initialized = false
+  private _baseURL = ''
+  private readonly trailingSlash: boolean
 
-  constructor() {
+  constructor(options: ApiClientOptions = {}) {
+    this.trailingSlash = options.trailingSlash ?? true
     this._createInstance()
   }
 
   private _createInstance() {
     this.instance = axios.create({
-      baseURL: this._baseURL,
+      baseURL: this._baseURL || undefined,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
@@ -45,57 +41,58 @@ class Request {
 
     this.instance.interceptors.request.use(
       (config) => {
-        if (config.url) {
+        if (config.url && this.trailingSlash) {
           config.url = withTrailingSlash(config.url)
         }
         return config
       },
-      (error) => {
-        return Promise.reject(error)
-      },
+      error => Promise.reject(error),
     )
 
     this.instance.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
         const res = response.data
-        if (res.code !== 0) {
-          console.error(`[API Error] ${res.msg || '请求失败'}`)
+        if (res?.code !== undefined && res.code !== 0) {
+          console.error(`[API Error] ${res.msg || res.message || '请求失败'}`)
         }
         return response
       },
       (error) => {
-        const message = error.response?.data?.msg || error.message || '网络请求失败'
+        const message = error.response?.data?.msg
+          || error.response?.data?.message
+          || error.message
+          || '网络请求失败'
         console.error(`[Network Error] ${message}`)
         return Promise.reject(error)
       },
     )
   }
 
-  /**
-   * 由 Nuxt 插件在客户端初始化时调用，传入 runtimeConfig 中的 apiBase
-   */
   setBaseURL(baseURL: string) {
-    if (this._initialized && this._baseURL === baseURL) return
+    if (this._baseURL === baseURL) return
     this._baseURL = baseURL
     this._createInstance()
-    this._initialized = true
   }
 
-  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    return this.instance.get(url, config)
+  get<T = any>(url: string, config?: AxiosRequestConfig) {
+    return this.instance.get<ApiResponse<T>>(url, config)
   }
 
-  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    return this.instance.post(url, data, config)
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig) {
+    return this.instance.post<ApiResponse<T>>(url, data, config)
   }
 
-  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    return this.instance.put(url, data, config)
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig) {
+    return this.instance.put<ApiResponse<T>>(url, data, config)
   }
 
-  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    return this.instance.delete(url, config)
+  delete<T = any>(url: string, config?: AxiosRequestConfig) {
+    return this.instance.delete<ApiResponse<T>>(url, config)
   }
 }
 
-export const request = new Request()
+/** 企业地图、产业图谱等主后端（8096） */
+export const request = new Request({ trailingSlash: true })
+
+/** 新闻中心 zy-news 后端 */
+export const newsRequest = new Request({ trailingSlash: false })

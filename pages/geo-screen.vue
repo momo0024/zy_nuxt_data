@@ -459,6 +459,7 @@ const bubbleLabel = ref('')
 const pageSize = 500
 const companyTotal = ref(0)
 const isLoadingCompanies = ref(false)
+const mapInitialized = ref(false)
 const scopeExpanded = ref(false)
 const selectedAreaView = ref<string>('zone')
 const showAreaDropdown = ref(false)
@@ -575,24 +576,34 @@ async function loadCompanyData() {
   }
 }
 
-onMounted(async () => {
+async function initGeoScreenPage() {
   try {
     await loadCompanyData()
-    await initMap(allCompanies.value, {
-      onCompany: company => openDetail(company),
-      onRegion: payload => onRegionSelect(payload),
-      onBubble: (companies, label) => onBubbleClick(companies, label),
-    })
-  }
-  catch (e) {
+    if (!mapInitialized.value) {
+      await initMap(allCompanies.value, {
+        onCompany: company => openDetail(company),
+        onRegion: payload => onRegionSelect(payload),
+        onBubble: (companies, label) => onBubbleClick(companies, label),
+      })
+      mapInitialized.value = true
+    } else {
+      nextTick(() => invalidateSize())
+    }
+  } catch (e) {
     console.error('[geo-screen] 加载地图数据失败', e)
   }
+}
+
+usePageInit(initGeoScreenPage)
+
+onMounted(() => {
   document.addEventListener('fullscreenchange', onFsChange)
 })
 
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', onFsChange)
   destroyMap()
+  mapInitialized.value = false
 })
 
 watch(isFullscreen, () => {

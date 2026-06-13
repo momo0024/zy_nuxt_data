@@ -10,7 +10,7 @@ let bodyObserver: MutationObserver | null = null
 
 export function getThemeWatermarkColor(): string {
   if (typeof document === 'undefined') return 'rgba(0, 0, 0, 0.16)'
-  const theme = document.documentElement.getAttribute('data-theme') || 'warm'
+  const theme = document.documentElement.getAttribute('data-theme') || 'light'
   return ['dark', 'purple'].includes(theme)
     ? 'rgba(255, 255, 255, 0.14)'
     : 'rgba(0, 0, 0, 0.16)'

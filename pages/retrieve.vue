@@ -148,13 +148,15 @@ const pageSize = 20
 const previewDoc = ref<(typeof RETRIEVE_DOCS)[0] | null>(null)
 const isPreviewOpen = ref(false)
 
-onMounted(() => {
+function initRetrievePage() {
   hydrated.value = true
   if (route.query.category) {
     activeCategory.value = route.query.category as string
   }
   doSearch()
-})
+}
+
+usePageInit(initRetrievePage)
 
 const TAG_COLORS = ['primary', 'success', 'warning', 'error', 'info', 'purple', 'orange', 'teal', 'pink', 'amber'] as const
 

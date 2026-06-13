@@ -318,7 +318,7 @@ export function useGeoAmapMap() {
 
   function getMaskFillColor(): string {
     if (typeof document === 'undefined') return 'rgba(0,0,0,0.42)'
-    const sysTheme = document.documentElement.getAttribute('data-theme') || 'warm'
+    const sysTheme = document.documentElement.getAttribute('data-theme') || 'light'
     const darkThemes = ['dark', 'purple']
     if (darkThemes.includes(sysTheme)) {
       return 'rgba(0,0,0,0.42)'

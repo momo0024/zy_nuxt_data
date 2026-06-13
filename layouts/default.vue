@@ -98,6 +98,7 @@ function goToTab(path: string) {
 function closeTab(path: string) {
   const idx = tabs.value.findIndex((tab) => tab.path === path)
   if (idx === -1) return
+  resetPageInit(path)
   tabs.value.splice(idx, 1)
   if (currentPath.value === path) {
     const newTab = tabs.value[Math.max(0, idx - 1)]

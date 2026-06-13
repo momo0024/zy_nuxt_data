@@ -1,13 +1,13 @@
 <template>
   <div class="nc-root">
-    <!-- ── 顶栏：标题 + 搜索 ── -->
+    <!-- ── 顶栏 ── -->
     <header class="nc-hero">
       <div class="nc-hero-masthead">
         <div class="nc-brand">
           <span class="nc-brand-symbol">N</span>
           <div class="nc-brand-text">
             <h1 class="nc-brand-title">新闻中心</h1>
-            <p class="nc-brand-sub">财经资讯聚合 · 智能检索</p>
+            <p class="nc-brand-sub">创新平台资讯聚合 · 智能检索</p>
           </div>
         </div>
         <div class="nc-hero-stats">
@@ -17,185 +17,193 @@
           </div>
         </div>
       </div>
-
-      <!-- 搜索栏 -->
-      <div class="nc-search-bar">
-        <UIcon name="i-lucide-search" class="nc-search-icon" />
-        <input
-          v-model="filters.keyword"
-          class="nc-search-input"
-          placeholder="输入标题、关键词或内容搜索新闻..."
-          @keyup.enter="handleSearch"
-        />
-        <Transition name="nc-fade">
-          <button v-if="filters.keyword" class="nc-search-clear" @click="filters.keyword = ''">
-            <UIcon name="i-lucide-x" class="size-4" />
-          </button>
-        </Transition>
-      </div>
-
-      <!-- 快捷来源 filters -->
-      <div class="nc-source-ribbon">
-        <button
-          class="nc-source-chip"
-          :class="{ active: filters.source === 'all' }"
-          @click="filters.source = 'all'"
-        >全部</button>
-        <button
-          v-for="src in topSources"
-          :key="src"
-          class="nc-source-chip"
-          :class="{ active: filters.source === src }"
-          @click="filters.source = filters.source === src ? 'all' : src"
-        >{{ src }}</button>
-      </div>
     </header>
 
-    <!-- ── 主内容 ── -->
-    <div class="nc-body">
-      <!-- 左侧：分类 + 日期 -->
-      <aside class="nc-sidebar">
-        <div class="nc-side-section">
-          <div class="nc-side-label">新闻分类</div>
-          <div class="nc-cat-list">
-            <button
-              v-for="cat in categoryList"
-              :key="cat"
-              class="nc-cat-btn"
-              :class="{ active: filters.category === cat }"
-              @click="filters.category = filters.category === cat ? '' : cat"
-            >
-              <span class="nc-cat-dot" :style="{ '--cat-color': catColors[cat] || 'var(--primary)' }" />
-              <span>{{ cat }}</span>
-              <span class="nc-cat-count">{{ catCounts[cat] || 0 }}</span>
-            </button>
-          </div>
-        </div>
+    <!-- ── 筛选栏 ── -->
+    <div class="nc-filter-bar">
+      <!-- 第一行：关键词搜索 + 来源 + 搜索按钮 -->
+      <div class="nc-filter-row">
+        <UInput
+          v-model="filters.keyword"
+          placeholder="输入标题、关键词搜索新闻..."
+          icon="i-lucide-search"
+          size="lg"
+          class="nc-search-input"
+          @keyup.enter="handleSearch"
+        />
+        <USelect
+          v-model="filters.source"
+          :items="sourceOptions"
+          value-key="value"
+          placeholder="全部来源"
+          size="lg"
+          class="nc-filter-select"
+        />
+        <UButton
+          color="primary"
+          icon="i-lucide-search"
+          size="lg"
+          @click="handleSearch"
+        >
+          搜索
+        </UButton>
+      </div>
 
-        <div class="nc-side-section">
-          <div class="nc-side-label">日期筛选</div>
-          <div class="nc-date-fields">
-            <div class="nc-date-field">
-              <span class="nc-date-field-label">起</span>
-              <input v-model="filters.startDate" type="date" class="nc-date-input" />
-            </div>
-            <div class="nc-date-field">
-              <span class="nc-date-field-label">止</span>
-              <input v-model="filters.endDate" type="date" class="nc-date-input" />
-            </div>
-          </div>
+      <!-- 第二行：日期范围 -->
+      <div class="nc-filter-row">
+        <div class="nc-date-picker-wrap">
+          <label class="nc-filter-label">时间</label>
+          <DateRangePicker v-model="dateRange" placeholder="选择时间" class="nc-date-picker" />
         </div>
-
-        <div class="nc-side-section">
+        <div class="nc-reset-wrap">
           <UButton
-            variant="ghost"
+            v-if="hasActiveFilters"
             color="neutral"
-            size="sm"
+            variant="ghost"
             icon="i-lucide-rotate-ccw"
-            class="nc-reset-btn"
             @click="handleReset"
+            size="md"
           >
-            重置筛选
+            重置条件
           </UButton>
         </div>
-      </aside>
+      </div>
 
-      <!-- 右侧：新闻列表 -->
-      <main class="nc-main">
-        <!-- 活跃 filter 标签 -->
-        <div v-if="activeFilters.length" class="nc-active-tags">
+      <!-- 第三行：关键词标签选择 + 新增 -->
+      <div class="nc-filter-row nc-keyword-row">
+        <label class="nc-filter-label">关键词</label>
+        <div class="nc-keyword-list">
           <span
-            v-for="tag in activeFilters"
-            :key="tag.key"
-            class="nc-tag"
+            v-for="kw in keywordList"
+            :key="kw.id"
+            class="nc-keyword-chip"
+            :class="{ 'nc-keyword-chip--active': selectedKeywords.has(kw.keyword) }"
+            @click="toggleKeyword(kw.keyword)"
           >
-            {{ tag.label }}
-            <UIcon name="i-lucide-x" class="nc-tag-x" @click="tag.onRemove" />
+            {{ kw.keyword }}
           </span>
+          <span v-if="!keywordList.length" class="nc-keyword-empty">暂无关键词</span>
         </div>
-
-        <!-- 新闻网格 -->
-        <transition-group v-if="filteredNews.length" name="nc-list" tag="div" class="nc-news-grid">
-          <!-- 第一条：featured 大卡片 -->
-          <div
-            v-if="pagedNews.length > 0"
-            :key="pagedNews[0].id"
-            class="nc-card nc-card-featured"
+        <div class="nc-new-keyword">
+          <UInput
+            v-model="newKeyword"
+            placeholder="新增关键词..."
+            size="sm"
+            class="nc-new-kw-input"
+            @keyup.enter="handleAddKeyword"
+          />
+          <UButton
+            icon="i-lucide-plus"
+            color="primary"
+            variant="soft"
+            size="sm"
+            :disabled="!newKeyword.trim()"
+            @click="handleAddKeyword"
           >
-            <div class="nc-card-featured-inner">
-              <div class="nc-featured-meta">
-                <UBadge :label="pagedNews[0].source" :color="getSourceColor(pagedNews[0].source)" variant="soft" size="sm" />
-                <span class="nc-featured-date">{{ pagedNews[0].month }}{{ pagedNews[0].day }}日 {{ pagedNews[0].time }}</span>
-              </div>
-              <h2 class="nc-featured-title">{{ pagedNews[0].title }}</h2>
-              <div class="nc-featured-footer">
-                <span class="nc-featured-cat">{{ pagedNews[0].category }}</span>
-                <span class="nc-featured-link">
-                  阅读 <UIcon name="i-lucide-arrow-right" class="size-3.5" />
-                </span>
-              </div>
-            </div>
-            <div class="nc-featured-accent" aria-hidden="true">
-              <svg viewBox="0 0 120 120" class="nc-featured-svg">
-                <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.25" />
-                <circle cx="60" cy="60" r="35" fill="none" stroke="currentColor" stroke-width="0.3" opacity="0.15" />
-                <circle cx="60" cy="60" r="18" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.4" />
-                <line x1="60" y1="42" x2="60" y2="78" stroke="currentColor" stroke-width="0.5" opacity="0.2" />
-                <line x1="42" y1="60" x2="78" y2="60" stroke="currentColor" stroke-width="0.5" opacity="0.2" />
-              </svg>
-            </div>
-          </div>
-
-          <!-- 其余卡片：双列 -->
-          <div
-            v-for="item in pagedNews.slice(1)"
-            :key="item.id"
-            class="nc-card"
-          >
-            <div class="nc-card-date-stamp">
-              <span class="nc-stamp-day">{{ item.day }}</span>
-              <span class="nc-stamp-mo">{{ item.month.slice(0, -1) }}</span>
-            </div>
-            <div class="nc-card-body">
-              <h3 class="nc-card-title">{{ item.title }}</h3>
-              <div class="nc-card-meta">
-                <span class="nc-card-source" :style="{ color: sourceTextColors[item.source] || 'var(--text-muted)' }">
-                  {{ item.source }}
-                </span>
-                <span class="nc-card-time">{{ item.time }}</span>
-                <span class="nc-card-cat">{{ item.category }}</span>
-              </div>
-            </div>
-          </div>
-        </transition-group>
-
-        <!-- 空状态 -->
-        <div v-else class="nc-empty">
-          <div class="nc-empty-icon">
-            <UIcon name="i-lucide-newspaper" class="size-10" />
-          </div>
-          <p class="nc-empty-title">未找到匹配的新闻</p>
-          <p class="nc-empty-desc">尝试调整筛选条件或更换关键词</p>
-          <UButton variant="ghost" color="neutral" size="sm" icon="i-lucide-rotate-ccw" @click="handleReset">
-            清除所有条件
+            添加
           </UButton>
         </div>
-
-        <!-- 分页 -->
-        <div v-if="totalPages > 1" class="nc-pagination">
-          <UPagination
-            v-model:page="currentPage"
-            :items-per-page="pageSize"
-            :total="filteredNews.length"
-          />
-        </div>
-      </main>
+      </div>
     </div>
+
+    <!-- ── 主内容：新闻列表 ── -->
+    <main class="nc-main">
+      <!-- 活跃 filter 标签 -->
+      <div v-if="activeFilters.length" class="nc-active-tags">
+        <span
+          v-for="tag in activeFilters"
+          :key="tag.key"
+          class="nc-tag"
+        >
+          {{ tag.label }}
+          <UIcon name="i-lucide-x" class="nc-tag-x" @click="tag.onRemove" />
+        </span>
+      </div>
+
+      <!-- 新闻网格 -->
+      <transition-group v-if="newsList.length" name="nc-list" tag="div" class="nc-news-grid">
+        <div
+          v-if="pagedNews.length > 0"
+          :key="pagedNews[0].id"
+          class="nc-card nc-card-featured"
+          :class="{ 'nc-card--link': !!pagedNews[0].url }"
+          @click="openNews(pagedNews[0])"
+        >
+          <div class="nc-card-featured-inner">
+            <div class="nc-featured-meta">
+              <UBadge :label="pagedNews[0].source" :color="getSourceColor(pagedNews[0].source)" variant="soft" size="sm" />
+              <span class="nc-featured-date">{{ formatFullDate(pagedNews[0].date) }}</span>
+              <span class="nc-featured-time">{{ pagedNews[0].time }}</span>
+            </div>
+            <h2 class="nc-featured-title">{{ pagedNews[0].title }}</h2>
+            <div class="nc-featured-footer">
+              <span class="nc-featured-cat">{{ pagedNews[0].category }}</span>
+              <span class="nc-featured-link">
+                阅读 <UIcon name="i-lucide-arrow-right" class="size-3.5" />
+              </span>
+            </div>
+          </div>
+          <div class="nc-featured-accent" aria-hidden="true">
+            <svg viewBox="0 0 120 120" class="nc-featured-svg">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.25" />
+              <circle cx="60" cy="60" r="35" fill="none" stroke="currentColor" stroke-width="0.3" opacity="0.15" />
+              <circle cx="60" cy="60" r="18" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.4" />
+              <line x1="60" y1="42" x2="60" y2="78" stroke="currentColor" stroke-width="0.5" opacity="0.2" />
+              <line x1="42" y1="60" x2="78" y2="60" stroke="currentColor" stroke-width="0.5" opacity="0.2" />
+            </svg>
+          </div>
+        </div>
+
+        <div
+          v-for="item in pagedNews.slice(1)"
+          :key="item.id"
+          class="nc-card"
+          :class="{ 'nc-card--link': !!item.url }"
+          @click="openNews(item)"
+        >
+          <div class="nc-card-date-stamp">
+            <span class="nc-stamp-mo">{{ formatMonth(item.date) }}</span>
+            <span class="nc-stamp-day">{{ formatDay(item.date) }}</span>
+            <span v-if="getRelativeLabel(item.date)" class="nc-stamp-rel">{{ getRelativeLabel(item.date) }}</span>
+          </div>
+          <div class="nc-card-body">
+            <h3 class="nc-card-title">{{ item.title }}</h3>
+            <div class="nc-card-meta">
+              <span class="nc-card-source" :style="{ color: sourceTextColors[item.source] || 'var(--text-muted)' }">
+                {{ item.source }}
+              </span>
+              <span class="nc-card-time">{{ item.time }}</span>
+              <span class="nc-card-cat">{{ item.category }}</span>
+            </div>
+          </div>
+        </div>
+      </transition-group>
+
+      <div v-else class="nc-empty">
+        <div class="nc-empty-icon">
+          <UIcon name="i-lucide-newspaper" class="size-10" />
+        </div>
+        <p class="nc-empty-title">未找到匹配的新闻</p>
+        <p class="nc-empty-desc">尝试调整筛选条件或更换关键词</p>
+        <UButton variant="ghost" color="neutral" size="sm" icon="i-lucide-rotate-ccw" @click="handleReset">
+          清除所有条件
+        </UButton>
+      </div>
+
+      <div v-if="totalPages > 1" class="nc-pagination">
+        <UPagination
+          v-model:page="currentPage"
+          :items-per-page="pageSize"
+          :total="pagination.total"
+        />
+      </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import type { DateRangeValue } from '~/components/DateRangePicker.vue'
 
 definePageMeta({ middleware: 'auth', keepalive: true })
 
@@ -207,64 +215,25 @@ interface NewsItem {
   date: string
   time: string
   category: string
+  url: string
 }
 
 interface FilterState {
   keyword: string
-  startDate: string
-  endDate: string
   source: string
-  category: string
 }
 
-/* ── 数据 ── */
-const NEWS_DATA: NewsItem[] = [
-  { id: 'n001', title: '头部券商一季度业绩全面回暖，投行业务同比增长38%', source: '证券时报', date: '2026-05-09', time: '09:30', category: '财经' },
-  { id: 'n002', title: '新能源汽车出口再创新高，供应链竞争力显著提升', source: '经济日报', date: '2026-05-08', time: '14:15', category: '产业' },
-  { id: 'n003', title: '跨境电商平台Q1营收超预期，东南亚市场持续放量', source: '财经周报', date: '2026-05-07', time: '11:20', category: '商业' },
-  { id: 'n004', title: '央行发布金融稳定报告，强调防范系统性风险', source: '中国证券报', date: '2026-05-09', time: '16:45', category: '政策' },
-  { id: 'n005', title: '半导体行业周期调整接近尾声，去库存符合预期', source: '电子工程专辑', date: '2026-05-08', time: '10:00', category: '科技' },
-  { id: 'n006', title: '多家银行调整存款利率，市场预期逐步修复', source: '金融时报', date: '2026-05-07', time: '08:30', category: '金融' },
-  { id: 'n007', title: '部分中小房企资金链紧张，债务重组进入关键期', source: '21世纪经济报道', date: '2026-05-09', time: '13:20', category: '地产' },
-  { id: 'n008', title: '消费贷不良率小幅上升，金融机构风控压力增加', source: '银行家', date: '2026-05-08', time: '15:40', category: '金融' },
-  { id: 'n009', title: '出口订单环比下滑，部分出口企业面临承压', source: '贸易观察', date: '2026-05-06', time: '09:10', category: '贸易' },
-  { id: 'n010', title: 'AI大模型商业化落地加速，垂直领域应用爆发', source: '科技日报', date: '2026-05-09', time: '11:00', category: '科技' },
-  { id: 'n011', title: '医药集采扩围至中成药领域，行业格局面临重塑', source: '健康报', date: '2026-05-08', time: '16:00', category: '医药' },
-  { id: 'n012', title: '光伏产业链价格企稳，二季度排产环比提升', source: '能源杂志', date: '2026-05-07', time: '14:30', category: '能源' },
-  { id: 'n013', title: '智能制造专项政策出台，工业机器人迎发展良机', source: '中国制造', date: '2026-05-06', time: '10:20', category: '制造' },
-  { id: 'n014', title: '消费电子需求回暖，智能手机出货量环比回升', source: '通信世界', date: '2026-05-09', time: '08:45', category: '电子' },
-  { id: 'n015', title: '碳交易市场扩容在即，水泥钢铁纳入控排范围', source: '环境经济', date: '2026-05-08', time: '13:50', category: '环保' },
-  { id: 'n016', title: '跨境电商综试区扩容，新政策利好出口企业', source: '经济日报', date: '2026-05-07', time: '09:30', category: '贸易' },
-  { id: 'n017', title: '科创板迎来五周年，注册制改革成效显著', source: '证券时报', date: '2026-05-06', time: '11:15', category: '财经' },
-  { id: 'n018', title: '工业互联网平台连接设备突破千万台', source: '科技日报', date: '2026-05-09', time: '15:20', category: '科技' },
-  { id: 'n019', title: '绿色债券发行规模创新高，ESG投资持续升温', source: '金融时报', date: '2026-05-08', time: '10:45', category: '金融' },
-  { id: 'n020', title: '智慧城市建设提速，数字孪生技术应用落地', source: '通信世界', date: '2026-05-07', time: '14:00', category: '科技' },
-  { id: 'n021', title: '新能源汽车下乡活动启动，三四线城市渗透率提升', source: '经济日报', date: '2026-05-06', time: '08:20', category: '产业' },
-  { id: 'n022', title: '养老保险全国统筹稳步推进，基金调剂规模扩大', source: '中国证券报', date: '2026-05-09', time: '16:10', category: '政策' },
-  { id: 'n023', title: '生物医药产业创新加速，多个创新药获批上市', source: '健康报', date: '2026-05-08', time: '11:30', category: '医药' },
-  { id: 'n024', title: '储能产业迎来爆发期，新型储能装机规模翻倍', source: '能源杂志', date: '2026-05-07', time: '13:40', category: '能源' },
-]
-
-const categoryList = computed(() => {
-  const cats = Array.from(new Set(NEWS_DATA.map(n => n.category)))
-  return cats.sort()
-})
-
-const catCounts = computed(() => {
-  const counts: Record<string, number> = {}
-  NEWS_DATA.forEach(n => {
-    counts[n.category] = (counts[n.category] || 0) + 1
-  })
-  return counts
-})
-
-const catColors: Record<string, string> = {
-  '财经': '#d97706', '科技': '#0891b2', '金融': '#6366f1',
-  '产业': '#16a34a', '政策': '#dc2626', '地产': '#a855f7',
-  '贸易': '#2563eb', '医药': '#db2777', '能源': '#d97706',
-  '制造': '#52525b', '电子': '#0891b2', '环保': '#16a34a',
-  '商业': '#d97706',
+interface CrawlKeyword {
+  id: number
+  keyword: string
+  keyword_type: string
+  is_active: boolean
+  priority: number
+  description: string
 }
+
+/* ── 来源选项 ── */
+const sourceOptions = ref([{ label: '全部来源', value: 'all' }])
 
 const sourceTextColors: Record<string, string> = {
   '证券时报': '#d97706', '经济日报': '#16a34a', '财经周报': '#d97706',
@@ -274,8 +243,6 @@ const sourceTextColors: Record<string, string> = {
   '中国制造': '#52525b', '通信世界': '#0891b2', '环境经济': '#16a34a',
 }
 
-const ALL_SOURCES = Array.from(new Set(NEWS_DATA.map(n => n.source)))
-
 const sourceBadgeColors: Record<string, string> = {
   '证券时报': 'warning', '经济日报': 'success', '财经周报': 'warning',
   '中国证券报': 'warning', '电子工程专辑': 'neutral', '金融时报': 'primary',
@@ -284,88 +251,265 @@ const sourceBadgeColors: Record<string, string> = {
   '中国制造': 'neutral', '通信世界': 'success', '环境经济': 'success',
 }
 
-const topSources = ALL_SOURCES.slice(0, 6)
-
 /* ── 状态 ── */
-const filters = reactive<FilterState>({
-  keyword: '', startDate: '', endDate: '', source: 'all', category: '',
-})
+const filters = reactive<FilterState>({ keyword: '', source: 'all' })
+const appliedFilters = reactive<FilterState>({ keyword: '', source: 'all' })
 
+const dateRange = ref<DateRangeValue>({})
+const appliedDateRange = ref<DateRangeValue>({})
+
+const keywordList = ref<CrawlKeyword[]>([])
+const selectedKeywords = ref(new Set<string>())
+const newKeyword = ref('')
+const pageReady = ref(false)
+
+const newsList = ref<NewsItem[]>([])
+const pagination = ref({ page: 1, page_size: 9, total: 0, total_pages: 0 })
+const loading = ref(false)
 const pageSize = 9
 const currentPage = ref(1)
+const todayCount = ref(0)
+const sourceCount = ref(0)
 
-/* ── Hero 统计 ── */
-const heroStats = computed(() => {
-  const todayItems = NEWS_DATA.filter(n => n.date === '2026-05-09')
-  return [
-    { label: '今日更新', value: todayItems.length },
-    { label: '新闻总数', value: NEWS_DATA.length },
-    { label: '覆盖来源', value: ALL_SOURCES.length },
-  ]
-})
+/* ── 日期格式化 ── */
+function getTodayStr(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
 
-/* ── 筛选 ── */
-const filteredNews = computed(() => {
-  let result = [...NEWS_DATA]
-  const kw = filters.keyword.trim().toLowerCase()
-  if (kw) {
-    result = result.filter(n =>
-      n.title.toLowerCase().includes(kw) || n.source.toLowerCase().includes(kw) || n.category.toLowerCase().includes(kw)
-    )
+function formatFullDate(dateStr: string): string {
+  const [, m, d] = dateStr.split('-')
+  return `${parseInt(m)}月${parseInt(d)}日`
+}
+
+function formatMonth(dateStr: string): string {
+  const [, m] = dateStr.split('-')
+  return `${parseInt(m)}月`
+}
+
+function formatDay(dateStr: string): string {
+  const [, , d] = dateStr.split('-')
+  return parseInt(d).toString()
+}
+
+function parseLocalDateParts(isoTime: string): { date: string; time: string } {
+  if (!isoTime) return { date: '', time: '' }
+  // 后端北京时间：2026-06-12 15:29:00
+  const cnMatch = isoTime.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/)
+  if (cnMatch) {
+    return { date: cnMatch[1], time: cnMatch[2] }
   }
-  if (filters.startDate) result = result.filter(n => n.date >= filters.startDate)
-  if (filters.endDate) result = result.filter(n => n.date <= filters.endDate)
-  if (filters.source && filters.source !== 'all') result = result.filter(n => n.source === filters.source)
-  if (filters.category) result = result.filter(n => n.category === filters.category)
-  result.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
-  return result
+  const d = new Date(isoTime)
+  if (Number.isNaN(d.getTime())) {
+    return { date: '', time: '' }
+  }
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return { date: `${y}-${m}-${day}`, time: `${h}:${min}` }
+}
+
+function getRelativeLabel(dateStr: string): string {
+  const today = getTodayStr()
+  if (dateStr === today) return '今天'
+  const [y, m, d] = dateStr.split('-').map(Number)
+  if (!y || !m || !d) return ''
+  const itemDate = new Date(y, m - 1, d)
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const diff = Math.floor((todayStart.getTime() - itemDate.getTime()) / (1000 * 60 * 60 * 24))
+  if (diff === 1) return '昨天'
+  if (diff === 2) return '前天'
+  return ''
+}
+
+/* ── 计算属性 ── */
+const hasActiveFilters = computed(() => {
+  return appliedFilters.keyword || appliedFilters.source !== 'all'
+    || appliedDateRange.value.start || appliedDateRange.value.end || selectedKeywords.value.size > 0
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredNews.value.length / pageSize)))
+const heroStats = computed(() => [
+  { label: '今日更新', value: todayCount.value },
+  { label: '覆盖来源', value: sourceCount.value },
+])
 
-const pagedNews = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return filteredNews.value.slice(start, start + pageSize).map(item => {
-    const [, m, d] = item.date.split('-')
-    return { ...item, month: `${m}月`, day: d }
-  })
-})
+const totalPages = computed(() => Math.max(1, pagination.value.total_pages))
+
+const pagedNews = computed(() => newsList.value)
 
 const activeFilters = computed(() => {
   const t: Array<{ key: string; label: string; onRemove: () => void }> = []
-  if (filters.keyword.trim()) {
-    t.push({ key: 'kw', label: `"${filters.keyword.trim()}"`, onRemove: () => { filters.keyword = '' } })
+  if (appliedFilters.keyword.trim()) {
+    t.push({ key: 'kw', label: `"${appliedFilters.keyword.trim()}"`, onRemove: () => { appliedFilters.keyword = ''; filters.keyword = ''; fetchNews() } })
   }
-  if (filters.category) {
-    t.push({ key: 'cat', label: filters.category, onRemove: () => { filters.category = '' } })
+  if (appliedFilters.source !== 'all') {
+    t.push({ key: 'src', label: appliedFilters.source, onRemove: () => { appliedFilters.source = 'all'; filters.source = 'all'; fetchNews() } })
   }
-  if (filters.source !== 'all') {
-    t.push({ key: 'src', label: filters.source, onRemove: () => { filters.source = 'all' } })
+  if (appliedDateRange.value.start || appliedDateRange.value.end) {
+    const start = appliedDateRange.value.start
+    const end = appliedDateRange.value.end
+    if (start && end) {
+      t.push({ key: 'dr', label: `${start} ~ ${end}`, onRemove: () => { appliedDateRange.value = {}; dateRange.value = {}; fetchNews() } })
+    } else if (start) {
+      t.push({ key: 'ds', label: `从 ${start}`, onRemove: () => { appliedDateRange.value = {}; dateRange.value = {}; fetchNews() } })
+    } else if (end) {
+      t.push({ key: 'de', label: `到 ${end}`, onRemove: () => { appliedDateRange.value = {}; dateRange.value = {}; fetchNews() } })
+    }
   }
-  if (filters.startDate) {
-    t.push({ key: 'sd', label: `≥${filters.startDate}`, onRemove: () => { filters.startDate = '' } })
-  }
-  if (filters.endDate) {
-    t.push({ key: 'ed', label: `≤${filters.endDate}`, onRemove: () => { filters.endDate = '' } })
-  }
+  selectedKeywords.value.forEach(kw => {
+    t.push({ key: `kw-${kw}`, label: kw, onRemove: () => {
+      selectedKeywords.value.delete(kw)
+      currentPage.value = 1
+      fetchNews()
+    }})
+  })
   return t
 })
 
 /* ── 方法 ── */
 function getSourceColor(s: string): string { return sourceBadgeColors[s] || 'neutral' }
-function handleSearch() { currentPage.value = 1 }
-function handleReset() {
-  filters.keyword = ''; filters.startDate = ''; filters.endDate = ''
-  filters.source = 'all'; filters.category = ''
+
+function toggleKeyword(kw: string) {
+  if (selectedKeywords.value.has(kw)) {
+    selectedKeywords.value.delete(kw)
+  } else {
+    selectedKeywords.value.add(kw)
+  }
   currentPage.value = 1
+  fetchNews()
 }
 
-/* ── 监听 ── */
-watch(() => filters.keyword, () => { currentPage.value = 1 })
-watch(() => filters.source, () => { currentPage.value = 1 })
-watch(() => filters.category, () => { currentPage.value = 1 })
-watch(() => filters.startDate, () => { currentPage.value = 1 })
-watch(() => filters.endDate, () => { currentPage.value = 1 })
+function mapApiItem(item: any): NewsItem {
+  const { date, time } = parseLocalDateParts(item.publish_time || '')
+  return {
+    id: String(item.id),
+    title: item.title || '',
+    source: item.source || '',
+    date,
+    time,
+    category: item.category || item.matched_keyword || '',
+    url: item.url || '',
+  }
+}
+
+function openNews(item: NewsItem) {
+  if (!item.url) return
+  window.open(item.url, '_blank', 'noopener,noreferrer')
+}
+
+async function fetchNews(opts?: { includeSummary?: boolean }) {
+  loading.value = true
+  try {
+    const query: Record<string, any> = {
+      page: currentPage.value,
+      page_size: pageSize,
+      sort_by: 'publish_time',
+      sort_order: 'desc',
+    }
+    if (opts?.includeSummary) query.include_summary = true
+    if (appliedFilters.source && appliedFilters.source !== 'all') query.source = appliedFilters.source
+    if (appliedDateRange.value.start) query.start_date = appliedDateRange.value.start
+    if (appliedDateRange.value.end) query.end_date = appliedDateRange.value.end
+    const keywordParts: string[] = []
+    if (appliedFilters.keyword.trim()) keywordParts.push(appliedFilters.keyword.trim())
+    if (selectedKeywords.value.size) keywordParts.push(...selectedKeywords.value)
+    if (keywordParts.length) query.keyword = keywordParts.join(' ')
+
+    const res = await newsRequest.get('/news/list', { params: query })
+    if (res.data?.code === 0) {
+      const apiData = res.data.data
+      newsList.value = (apiData.items || []).map(mapApiItem)
+      pagination.value = apiData.pagination || { page: 1, page_size: pageSize, total: 0, total_pages: 0 }
+      if (apiData.summary) {
+        todayCount.value = apiData.summary.today_news ?? 0
+        sourceCount.value = apiData.summary.total_sources ?? 0
+      }
+    }
+  } catch (e) {
+    console.error('获取新闻列表失败:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function fetchSources() {
+  try {
+    const res = await newsRequest.get('/sources')
+    if (res.data?.code === 0) {
+      const sources = res.data.data || []
+      sourceOptions.value = [
+        { label: '全部来源', value: 'all' },
+        ...sources.map((s: string) => ({ label: s, value: s })),
+      ]
+    }
+  } catch (e) {
+    console.error('获取来源列表失败:', e)
+  }
+}
+
+async function handleSearch() {
+  appliedFilters.keyword = filters.keyword
+  appliedFilters.source = filters.source
+  appliedDateRange.value = { ...dateRange.value }
+  currentPage.value = 1
+  await fetchNews()
+}
+
+function handleReset() {
+  filters.keyword = ''; filters.source = 'all'
+  appliedFilters.keyword = ''; appliedFilters.source = 'all'
+  dateRange.value = {}
+  appliedDateRange.value = {}
+  selectedKeywords.value.clear()
+  currentPage.value = 1
+  fetchNews()
+}
+
+async function fetchKeywords() {
+  try {
+    const res = await newsRequest.get('/crawl-keywords')
+    if (res.data?.code === 0) {
+      keywordList.value = res.data.data || []
+    }
+  } catch (e) {
+    console.error('获取关键词失败:', e)
+  }
+}
+
+async function handleAddKeyword() {
+  const kw = newKeyword.value.trim()
+  if (!kw) return
+  try {
+    const res = await newsRequest.post('/crawl-keywords', null, { params: { keyword: kw } })
+    if (res.data?.code === 0) {
+      keywordList.value.push({ id: res.data.data.id, keyword: kw, keyword_type: '通用', is_active: true, priority: 0, description: '' })
+      newKeyword.value = ''
+    } else if (res.data?.code === 409) {
+      alert('关键词已存在')
+    }
+  } catch (e) {
+    console.error('新增关键词失败:', e)
+  }
+}
+
+watch(currentPage, () => {
+  if (pageReady.value) fetchNews()
+})
+
+async function initNewsCenterPage() {
+  await fetchNews({ includeSummary: true })
+  pageReady.value = true
+  void fetchKeywords()
+  void fetchSources()
+}
+
+usePageInit(initNewsCenterPage)
 </script>
 
 <style scoped>
@@ -378,22 +522,32 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
    Hero
 ═══════════════════════════════════════ */
 .nc-hero {
-  background: linear-gradient(165deg, var(--surface) 0%, color-mix(in srgb, var(--primary-soft) 68%, var(--surface)) 100%);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--surface-radius);
-  padding: 28px 28px 18px;
-  margin-bottom: 20px;
+  padding: 28px 28px 22px;
+  margin-bottom: 16px;
   position: relative;
   overflow: hidden;
+}
+
+.nc-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 600px 300px at 85% -20%, color-mix(in srgb, var(--primary) 4%, transparent), transparent),
+    radial-gradient(ellipse 400px 200px at 15% 120%, color-mix(in srgb, var(--primary) 3%, transparent), transparent);
+  pointer-events: none;
 }
 
 .nc-hero::after {
   content: '';
   position: absolute;
-  top: -40px; right: -40px;
-  width: 180px; height: 180px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 6%, transparent) 0%, transparent 70%);
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 15%, transparent) 50%, transparent);
   pointer-events: none;
 }
 
@@ -403,7 +557,6 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
   justify-content: space-between;
   position: relative;
   z-index: 1;
-  margin-bottom: 22px;
 }
 
 .nc-brand {
@@ -438,22 +591,28 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
   font-size: 12px; color: var(--text-muted);
 }
 
-/* Stats pills */
 .nc-hero-stats {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .nc-stat-pill {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  padding: 10px 16px;
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
-  border: 1px solid var(--border);
+  gap: 2px;
+  padding: 10px 18px;
+  background: color-mix(in srgb, var(--surface-alt) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   border-radius: 12px;
-  min-width: 68px;
+  min-width: 72px;
+  transition: border-color 0.2s ease;
+}
+
+.nc-stat-pill:hover {
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
 }
 
 .nc-stat-val {
@@ -465,189 +624,137 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
 
 .nc-stat-lbl {
   font-size: 10px; color: var(--text-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-/* Search bar */
-.nc-search-bar {
-  position: relative;
-  z-index: 1;
+/* ═══════════════════════════════════════
+   Filter Bar
+═══════════════════════════════════════ */
+.nc-filter-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--surface-radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nc-filter-row {
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.nc-search-icon {
-  position: absolute;
-  left: 16px; top: 50%;
-  transform: translateY(-50%);
+.nc-filter-label {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-muted);
-  z-index: 2;
-  pointer-events: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  min-width: 60px;
 }
 
 .nc-search-input {
-  width: 100%;
-  height: 48px;
-  padding: 0 48px 0 44px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  color: var(--text-strong);
-  font-size: 14px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.22s ease, box-shadow 0.22s ease;
+  flex: 1;
+  min-width: 220px;
 }
 
-.nc-search-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 10%, transparent);
-}
-
-.nc-search-input::placeholder { color: var(--text-muted); }
-
-.nc-search-clear {
-  position: absolute;
-  right: 12px; top: 50%;
-  transform: translateY(-50%);
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  width: 28px; height: 28px;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-  z-index: 2;
-}
-.nc-search-clear:hover { color: var(--text-strong); background: var(--border); }
-
-/* Source ribbon */
-.nc-source-ribbon {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 1;
-}
-
-.nc-source-chip {
-  padding: 5px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  font-family: inherit;
-}
-.nc-source-chip:hover { border-color: var(--primary); color: var(--primary); }
-.nc-source-chip.active {
-  background: var(--primary-soft);
-  border-color: var(--primary);
-  color: var(--primary);
-  font-weight: 600;
-}
-
-/* ═══════════════════════════════════════
-   Body: sidebar + main
-═══════════════════════════════════════ */
-.nc-body { display: flex; gap: 20px; align-items: flex-start; }
-
-/* ═══════════════════════════════════════
-   Sidebar
-═══════════════════════════════════════ */
-.nc-sidebar {
-  width: 200px; min-width: 200px;
-  display: flex; flex-direction: column; gap: 16px;
-  position: sticky; top: 0;
-}
-
-.nc-side-section {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-}
-
-.nc-side-label {
-  font-size: 10px; font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 12px;
-}
-
-.nc-cat-list { display: flex; flex-direction: column; gap: 2px; }
-
-.nc-cat-btn {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--text);
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-.nc-cat-btn:hover { background: var(--surface-alt); }
-.nc-cat-btn.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
-
-.nc-cat-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--cat-color);
+.nc-filter-select {
+  width: 260px;
+  min-width: 200px;
   flex-shrink: 0;
 }
 
-.nc-cat-count {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-family: var(--font-display);
-}
-
-/* Date fields */
-.nc-date-fields { display: flex; flex-direction: column; gap: 8px; }
-
-.nc-date-field {
-  display: flex; align-items: center; gap: 8px;
-}
-
-.nc-date-field-label {
-  font-size: 11px; font-weight: 600;
-  color: var(--text-muted);
-  min-width: 16px;
-}
-
-.nc-date-input {
+/* Date picker */
+.nc-date-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex: 1;
-  height: 34px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-alt);
-  color: var(--text-strong);
-  font-size: 12px;
-  font-family: inherit;
-  outline: none;
+  min-width: 280px;
 }
-.nc-date-input:focus { border-color: var(--primary); }
 
-.nc-reset-btn { width: 100%; justify-content: center; }
+.nc-date-picker {
+  flex: 1;
+  max-width: 420px;
+}
+
+.nc-reset-wrap {
+  flex-shrink: 0;
+}
+
+/* Keywords */
+.nc-keyword-row {
+  align-items: flex-start;
+}
+
+.nc-keyword-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.nc-keyword-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.nc-keyword-chip:hover {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.nc-keyword-chip--active {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.nc-keyword-chip--active:hover {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+  opacity: 0.85;
+}
+
+.nc-keyword-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.nc-new-keyword {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nc-new-kw-input {
+  width: 150px;
+}
 
 /* ═══════════════════════════════════════
    Main content
 ═══════════════════════════════════════ */
-.nc-main { flex: 1; min-width: 0; }
+.nc-main { min-width: 0; }
 
-/* Active filter tags */
 .nc-active-tags {
   display: flex; gap: 8px; flex-wrap: wrap;
   margin-bottom: 14px;
@@ -665,7 +772,6 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
 .nc-tag-x { cursor: pointer; opacity: 0.7; transition: opacity 0.15s; }
 .nc-tag-x:hover { opacity: 1; }
 
-/* News grid */
 .nc-news-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
 .nc-card {
@@ -687,7 +793,10 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
   transform: translateY(-2px);
 }
 
-/* Featured card: full width */
+.nc-card--link {
+  cursor: pointer;
+}
+
 .nc-card-featured {
   grid-column: 1 / -1;
   padding: 0;
@@ -714,17 +823,13 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
   flex-wrap: wrap;
 }
 
-.nc-featured-date {
-  font-size: 12px;
-  color: var(--text-muted);
-}
+.nc-featured-date { font-size: 13px; color: var(--text); font-weight: 500; }
+.nc-featured-time { font-size: 12px; color: var(--text-muted); }
 
 .nc-featured-title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 18px; font-weight: 700;
   color: var(--text-strong);
-  line-height: 1.55;
-  margin: 0;
+  line-height: 1.55; margin: 0;
 }
 
 .nc-featured-footer {
@@ -733,27 +838,20 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
   justify-content: space-between;
 }
 
-.nc-featured-cat {
-  font-size: 12px;
-  color: var(--text-muted);
-}
+.nc-featured-cat { font-size: 12px; color: var(--text-muted); }
 
 .nc-featured-link {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 12px; font-weight: 600;
   color: var(--primary);
   opacity: 0;
   transform: translateX(-6px);
   transition: all 0.2s ease;
 }
 
-.nc-card-featured:hover .nc-featured-link {
-  opacity: 1;
-  transform: translateX(0);
-}
+.nc-card-featured:hover .nc-featured-link { opacity: 1; transform: translateX(0); }
 
 .nc-featured-accent {
   width: 120px; min-width: 120px;
@@ -764,18 +862,21 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
   z-index: 0;
 }
 
-.nc-featured-svg {
-  width: 100px; height: 100px;
-}
+.nc-featured-svg { width: 100px; height: 100px; }
 
-/* Regular card date stamp */
 .nc-card-date-stamp {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  width: 38px; min-width: 38px;
+  width: 42px; min-width: 42px;
   padding-top: 4px;
+}
+
+.nc-stamp-mo {
+  font-size: 10px; font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1; margin-bottom: 2px;
 }
 
 .nc-stamp-day {
@@ -785,22 +886,22 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
   line-height: 0.9;
 }
 
-.nc-stamp-mo {
-  font-size: 9px; font-weight: 600;
-  color: var(--text-muted);
-  margin-top: 3px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.nc-stamp-rel {
+  margin-top: 4px;
+  font-size: 9px; font-weight: 700;
+  color: var(--surface);
+  background: var(--primary);
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.4;
 }
 
-/* Regular card body */
 .nc-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 
 .nc-card-title {
   font-size: 14px; font-weight: 600;
   color: var(--text-strong);
-  line-height: 1.5;
-  margin: 0;
+  line-height: 1.5; margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -816,12 +917,8 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
 }
 
 .nc-card-source { font-weight: 600; }
-
 .nc-card-time { color: var(--text-muted); }
-
-.nc-card-cat {
-  color: var(--text-muted); font-size: 11px;
-}
+.nc-card-cat { color: var(--text-muted); font-size: 11px; }
 
 /* ═══════════════════════════════════════
    Empty
@@ -848,9 +945,6 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
 .nc-empty-title { font-size: 15px; font-weight: 600; color: var(--text-strong); margin: 0; }
 .nc-empty-desc { font-size: 12px; color: var(--text-muted); margin: 0; }
 
-/* ═══════════════════════════════════════
-   Pagination
-═══════════════════════════════════════ */
 .nc-pagination { display: flex; justify-content: center; padding: 20px 0 8px; }
 
 /* ═══════════════════════════════════════
@@ -862,24 +956,16 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
 .nc-list-leave-to { opacity: 0; transform: translateY(-6px); }
 .nc-list-move { transition: transform 0.3s ease; }
 
-.nc-fade-enter-active, .nc-fade-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.nc-fade-enter-from, .nc-fade-leave-to { opacity: 0; transform: scale(0.8); }
-
 /* ═══════════════════════════════════════
    Responsive
 ═══════════════════════════════════════ */
 @media (max-width: 1024px) {
-  .nc-body { flex-direction: column; }
-  .nc-sidebar {
-    width: 100%; min-width: unset;
-    flex-direction: row; gap: 12px;
-    position: static; flex-wrap: wrap;
-  }
-  .nc-side-section { flex: 1 1 auto; padding: 14px; }
-  .nc-cat-list { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-  .nc-cat-btn { padding: 5px 10px; border-radius: 999px; font-size: 12px; }
-  .nc-cat-count { display: none; }
-  .nc-date-fields { flex-direction: row; }
+  .nc-filter-row { flex-direction: column; align-items: stretch; }
+  .nc-filter-select { width: 100%; }
+  .nc-date-picker-wrap { min-width: auto; }
+  .nc-date-picker { max-width: none; }
+  .nc-new-keyword { width: 100%; }
+  .nc-new-kw-input { flex: 1; }
 }
 
 @media (max-width: 640px) {
@@ -887,10 +973,41 @@ watch(() => filters.endDate, () => { currentPage.value = 1 })
   .nc-hero-masthead { flex-direction: column; gap: 16px; }
   .nc-hero-stats { width: 100%; justify-content: stretch; }
   .nc-stat-pill { flex: 1; }
+  .nc-filter-bar { padding: 16px; }
   .nc-news-grid { grid-template-columns: 1fr; }
   .nc-card-featured-inner { padding: 18px 20px; }
   .nc-featured-accent { display: none; }
   .nc-featured-title { font-size: 16px; }
-  .nc-search-input { height: 44px; font-size: 13px; }
+}
+</style>
+
+<style>
+/* 全局：确保日期选择器面板不被遮挡 */
+.dp__menu {
+  z-index: 9999 !important;
+}
+.dp__input {
+  cursor: pointer !important;
+}
+.dp__input_wrap {
+  cursor: pointer !important;
+}
+.dp__instance_calendar {
+  pointer-events: auto !important;
+}
+.dp__calendar_header {
+  pointer-events: auto !important;
+}
+.dp__calendar_row {
+  pointer-events: auto !important;
+}
+.dp__cell_inner {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+/* 来源下拉框文字完整显示 */
+.nc-filter-select :deep([data-slot="content"]) {
+  min-width: max-content !important;
 }
 </style>
