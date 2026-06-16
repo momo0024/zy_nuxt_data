@@ -21,7 +21,7 @@
 
     <!-- ── 筛选栏 ── -->
     <div class="nc-filter-bar">
-      <!-- 第一行：关键词搜索 + 来源 + 搜索按钮 -->
+      <!-- 第一行：关键词搜索 + 时间 + 来源 + 搜索按钮 -->
       <div class="nc-filter-row">
         <UInput
           v-model="filters.keyword"
@@ -31,30 +31,35 @@
           class="nc-search-input"
           @keyup.enter="handleSearch"
         />
-        <USelect
+        <div class="nc-date-picker-wrap">
+          <!-- <label class="nc-filter-label">时间</label> -->
+          <DateRangePicker v-model="dateRange" placeholder="选择时间" class="nc-date-picker" />
+        </div>
+        <USelectMenu
           v-model="filters.source"
           :items="sourceOptions"
           value-key="value"
           placeholder="全部来源"
           size="lg"
           class="nc-filter-select"
-        />
+        >
+          <template #item="{ item }">
+            <span :title="item.label" class="truncate">{{ item.label }}</span>
+          </template>
+        </USelectMenu>
         <UButton
           color="primary"
           icon="i-lucide-search"
           size="lg"
+          class="nc-search-btn"
           @click="handleSearch"
         >
           搜索
         </UButton>
       </div>
 
-      <!-- 第二行：日期范围 -->
-      <div class="nc-filter-row">
-        <div class="nc-date-picker-wrap">
-          <label class="nc-filter-label">时间</label>
-          <DateRangePicker v-model="dateRange" placeholder="选择时间" class="nc-date-picker" />
-        </div>
+      <!-- 第二行：重置 + 关键词 -->
+      <div class="nc-filter-row nc-reset-keyword-row">
         <div class="nc-reset-wrap">
           <UButton
             v-if="hasActiveFilters"
@@ -69,40 +74,31 @@
         </div>
       </div>
 
-      <!-- 第三行：关键词标签选择 + 新增 -->
+      <!-- 第三行：关键词标签选择 -->
       <div class="nc-filter-row nc-keyword-row">
-        <label class="nc-filter-label">关键词</label>
-        <div class="nc-keyword-list">
+        <label class="nc-filter-label">关键词：</label>
+        <div class="nc-keyword-list" :class="{ 'nc-keyword-list--expanded': keywordExpanded }">
           <span
-            v-for="kw in keywordList"
-            :key="kw.id"
+            v-for="kw in visibleKeywords"
+            :key="kw"
             class="nc-keyword-chip"
-            :class="{ 'nc-keyword-chip--active': selectedKeywords.has(kw.keyword) }"
-            @click="toggleKeyword(kw.keyword)"
+            :class="{ 'nc-keyword-chip--active': selectedKeywords.has(kw) }"
+            @click="toggleKeyword(kw)"
           >
-            {{ kw.keyword }}
+            {{ kw }}
           </span>
           <span v-if="!keywordList.length" class="nc-keyword-empty">暂无关键词</span>
         </div>
-        <div class="nc-new-keyword">
-          <UInput
-            v-model="newKeyword"
-            placeholder="新增关键词..."
-            size="sm"
-            class="nc-new-kw-input"
-            @keyup.enter="handleAddKeyword"
-          />
-          <UButton
-            icon="i-lucide-plus"
-            color="primary"
-            variant="soft"
-            size="sm"
-            :disabled="!newKeyword.trim()"
-            @click="handleAddKeyword"
-          >
-            添加
-          </UButton>
-        </div>
+        <UButton
+          v-if="keywordList.length > keywordShowLimit"
+          variant="ghost"
+          size="sm"
+          class="nc-keyword-expand-btn"
+          @click="keywordExpanded = !keywordExpanded"
+        >
+          {{ keywordExpanded ? '收起' : `展开更多 (${keywordList.length - keywordShowLimit})` }}
+          <UIcon :name="keywordExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3.5" />
+        </UButton>
       </div>
     </div>
 
@@ -223,15 +219,6 @@ interface FilterState {
   source: string
 }
 
-interface CrawlKeyword {
-  id: number
-  keyword: string
-  keyword_type: string
-  is_active: boolean
-  priority: number
-  description: string
-}
-
 /* ── 来源选项 ── */
 const sourceOptions = ref([{ label: '全部来源', value: 'all' }])
 
@@ -258,9 +245,10 @@ const appliedFilters = reactive<FilterState>({ keyword: '', source: 'all' })
 const dateRange = ref<DateRangeValue>({})
 const appliedDateRange = ref<DateRangeValue>({})
 
-const keywordList = ref<CrawlKeyword[]>([])
+const keywordList = ref<string[]>([])
 const selectedKeywords = ref(new Set<string>())
-const newKeyword = ref('')
+const keywordExpanded = ref(false)
+const keywordShowLimit = 16
 const pageReady = ref(false)
 
 const newsList = ref<NewsItem[]>([])
@@ -343,13 +331,21 @@ const totalPages = computed(() => Math.max(1, pagination.value.total_pages))
 
 const pagedNews = computed(() => newsList.value)
 
+const visibleKeywords = computed(() => {
+  if (keywordExpanded.value || keywordList.value.length <= keywordShowLimit) {
+    return keywordList.value
+  }
+  return keywordList.value.slice(0, keywordShowLimit)
+})
+
 const activeFilters = computed(() => {
   const t: Array<{ key: string; label: string; onRemove: () => void }> = []
   if (appliedFilters.keyword.trim()) {
     t.push({ key: 'kw', label: `"${appliedFilters.keyword.trim()}"`, onRemove: () => { appliedFilters.keyword = ''; filters.keyword = ''; fetchNews() } })
   }
   if (appliedFilters.source !== 'all') {
-    t.push({ key: 'src', label: appliedFilters.source, onRemove: () => { appliedFilters.source = 'all'; filters.source = 'all'; fetchNews() } })
+    const siteLabel = sourceOptions.value.find(o => o.value === appliedFilters.source)?.label || appliedFilters.source
+    t.push({ key: 'src', label: siteLabel, onRemove: () => { appliedFilters.source = 'all'; filters.source = 'all'; fetchNews() } })
   }
   if (appliedDateRange.value.start || appliedDateRange.value.end) {
     const start = appliedDateRange.value.start
@@ -413,19 +409,22 @@ async function fetchNews(opts?: { includeSummary?: boolean }) {
       sort_order: 'desc',
     }
     if (opts?.includeSummary) query.include_summary = true
-    if (appliedFilters.source && appliedFilters.source !== 'all') query.source = appliedFilters.source
+    if (appliedFilters.source && appliedFilters.source !== 'all') query.site_id = Number(appliedFilters.source)
     if (appliedDateRange.value.start) query.start_date = appliedDateRange.value.start
     if (appliedDateRange.value.end) query.end_date = appliedDateRange.value.end
     const keywordParts: string[] = []
     if (appliedFilters.keyword.trim()) keywordParts.push(appliedFilters.keyword.trim())
-    if (selectedKeywords.value.size) keywordParts.push(...selectedKeywords.value)
     if (keywordParts.length) query.keyword = keywordParts.join(' ')
+    if (selectedKeywords.value.size) query.matched_keywords = [...selectedKeywords.value].join(' ')
 
     const res = await newsRequest.get('/news/list', { params: query })
     if (res.data?.code === 0) {
       const apiData = res.data.data
       newsList.value = (apiData.items || []).map(mapApiItem)
       pagination.value = apiData.pagination || { page: 1, page_size: pageSize, total: 0, total_pages: 0 }
+      if (apiData.keywords) {
+        keywordList.value = apiData.keywords
+      }
       if (apiData.summary) {
         todayCount.value = apiData.summary.today_news ?? 0
         sourceCount.value = apiData.summary.total_sources ?? 0
@@ -445,7 +444,7 @@ async function fetchSources() {
       const sources = res.data.data || []
       sourceOptions.value = [
         { label: '全部来源', value: 'all' },
-        ...sources.map((s: string) => ({ label: s, value: s })),
+        ...sources.map((s: { id: number; site_name: string }) => ({ label: s.site_name, value: String(s.id) })),
       ]
     }
   } catch (e) {
@@ -471,33 +470,6 @@ function handleReset() {
   fetchNews()
 }
 
-async function fetchKeywords() {
-  try {
-    const res = await newsRequest.get('/crawl-keywords')
-    if (res.data?.code === 0) {
-      keywordList.value = res.data.data || []
-    }
-  } catch (e) {
-    console.error('获取关键词失败:', e)
-  }
-}
-
-async function handleAddKeyword() {
-  const kw = newKeyword.value.trim()
-  if (!kw) return
-  try {
-    const res = await newsRequest.post('/crawl-keywords', null, { params: { keyword: kw } })
-    if (res.data?.code === 0) {
-      keywordList.value.push({ id: res.data.data.id, keyword: kw, keyword_type: '通用', is_active: true, priority: 0, description: '' })
-      newKeyword.value = ''
-    } else if (res.data?.code === 409) {
-      alert('关键词已存在')
-    }
-  } catch (e) {
-    console.error('新增关键词失败:', e)
-  }
-}
-
 watch(currentPage, () => {
   if (pageReady.value) fetchNews()
 })
@@ -505,7 +477,6 @@ watch(currentPage, () => {
 async function initNewsCenterPage() {
   await fetchNews({ includeSummary: true })
   pageReady.value = true
-  void fetchKeywords()
   void fetchSources()
 }
 
@@ -661,13 +632,23 @@ usePageInit(initNewsCenterPage)
 
 .nc-search-input {
   flex: 1;
-  min-width: 220px;
+  min-width: 180px;
 }
 
 .nc-filter-select {
-  width: 260px;
-  min-width: 200px;
+  width: 200px;
+  min-width: 160px;
   flex-shrink: 0;
+}
+
+.nc-search-btn {
+  flex-shrink: 0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nc-search-btn :deep(span) {
+  color: #fff;
 }
 
 /* Date picker */
@@ -675,13 +656,13 @@ usePageInit(initNewsCenterPage)
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
-  min-width: 280px;
+  flex-shrink: 0;
 }
 
 .nc-date-picker {
-  flex: 1;
-  max-width: 420px;
+  width: 200px;
+  min-width: 150px;
+  max-width: 320px;
 }
 
 .nc-reset-wrap {
@@ -691,13 +672,6 @@ usePageInit(initNewsCenterPage)
 /* Keywords */
 .nc-keyword-row {
   align-items: flex-start;
-}
-
-.nc-keyword-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  flex: 1;
 }
 
 .nc-keyword-chip {
@@ -740,14 +714,25 @@ usePageInit(initNewsCenterPage)
   padding: 4px 0;
 }
 
-.nc-new-keyword {
+.nc-keyword-list {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  flex-shrink: 0;
+  flex: 1;
+  max-height: 32px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
 }
 
-.nc-new-kw-input {
-  width: 150px;
+.nc-keyword-list--expanded {
+  max-height: 600px;
+}
+
+.nc-keyword-expand-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--primary);
+  white-space: nowrap;
 }
 
 /* ═══════════════════════════════════════
