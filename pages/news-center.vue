@@ -187,10 +187,19 @@
       </div>
 
       <div v-if="totalPages > 1" class="nc-pagination">
+        <USelectMenu
+          v-model="pageSize"
+          :items="pageSizeOptions"
+          value-key="value"
+          size="xs"
+          class="nc-page-size-select"
+          @update:model-value="onPageSizeChange"
+        />
         <UPagination
           v-model:page="currentPage"
           :items-per-page="pageSize"
           :total="pagination.total"
+          :show-edges="true"
         />
       </div>
     </main>
@@ -242,8 +251,9 @@ const sourceBadgeColors: Record<string, string> = {
 const filters = reactive<FilterState>({ keyword: '', source: 'all' })
 const appliedFilters = reactive<FilterState>({ keyword: '', source: 'all' })
 
-const dateRange = ref<DateRangeValue>({})
-const appliedDateRange = ref<DateRangeValue>({})
+const todayStr = getTodayStr()
+const dateRange = ref<DateRangeValue>({ start: todayStr, end: todayStr })
+const appliedDateRange = ref<DateRangeValue>({ start: todayStr, end: todayStr })
 
 const keywordList = ref<string[]>([])
 const selectedKeywords = ref(new Set<string>())
@@ -252,9 +262,15 @@ const keywordShowLimit = 16
 const pageReady = ref(false)
 
 const newsList = ref<NewsItem[]>([])
-const pagination = ref({ page: 1, page_size: 9, total: 0, total_pages: 0 })
+const pagination = ref({ page: 1, page_size: 50, total: 0, total_pages: 0 })
 const loading = ref(false)
-const pageSize = 9
+const pageSize = ref(50)
+const pageSizeOptions = [
+  { label: '20 条/页', value: 20 },
+  { label: '50 条/页', value: 50 },
+  { label: '100 条/页', value: 100 },
+  { label: '200 条/页', value: 200 },
+]
 const currentPage = ref(1)
 const todayCount = ref(0)
 const sourceCount = ref(0)
@@ -404,7 +420,7 @@ async function fetchNews(opts?: { includeSummary?: boolean }) {
   try {
     const query: Record<string, any> = {
       page: currentPage.value,
-      page_size: pageSize,
+      page_size: pageSize.value,
       sort_by: 'publish_time',
       sort_order: 'desc',
     }
@@ -421,7 +437,7 @@ async function fetchNews(opts?: { includeSummary?: boolean }) {
     if (res.data?.code === 0) {
       const apiData = res.data.data
       newsList.value = (apiData.items || []).map(mapApiItem)
-      pagination.value = apiData.pagination || { page: 1, page_size: pageSize, total: 0, total_pages: 0 }
+      pagination.value = apiData.pagination || { page: 1, page_size: pageSize.value, total: 0, total_pages: 0 }
       if (apiData.keywords) {
         keywordList.value = apiData.keywords
       }
@@ -463,8 +479,9 @@ async function handleSearch() {
 function handleReset() {
   filters.keyword = ''; filters.source = 'all'
   appliedFilters.keyword = ''; appliedFilters.source = 'all'
-  dateRange.value = {}
-  appliedDateRange.value = {}
+  const tStr = getTodayStr()
+  dateRange.value = { start: tStr, end: tStr }
+  appliedDateRange.value = { start: tStr, end: tStr }
   selectedKeywords.value.clear()
   currentPage.value = 1
   fetchNews()
@@ -473,6 +490,11 @@ function handleReset() {
 watch(currentPage, () => {
   if (pageReady.value) fetchNews()
 })
+
+function onPageSizeChange() {
+  currentPage.value = 1
+  fetchNews()
+}
 
 async function initNewsCenterPage() {
   await fetchNews({ includeSummary: true })
@@ -635,9 +657,14 @@ usePageInit(initNewsCenterPage)
   min-width: 180px;
 }
 
+.nc-search-input :deep(input) {
+  height: 48px;
+  font-size: 15px;
+}
+
 .nc-filter-select {
-  width: 200px;
-  min-width: 160px;
+  width: 240px;
+  min-width: 180px;
   flex-shrink: 0;
 }
 
@@ -660,9 +687,9 @@ usePageInit(initNewsCenterPage)
 }
 
 .nc-date-picker {
-  width: 200px;
-  min-width: 150px;
-  max-width: 320px;
+  width: 280px;
+  min-width: 220px;
+  max-width: 360px;
 }
 
 .nc-reset-wrap {
@@ -930,7 +957,9 @@ usePageInit(initNewsCenterPage)
 .nc-empty-title { font-size: 15px; font-weight: 600; color: var(--text-strong); margin: 0; }
 .nc-empty-desc { font-size: 12px; color: var(--text-muted); margin: 0; }
 
-.nc-pagination { display: flex; justify-content: center; padding: 20px 0 8px; }
+.nc-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 20px 0 8px; }
+
+.nc-page-size-select { width: 100px; flex-shrink: 0; }
 
 /* ═══════════════════════════════════════
    Transition

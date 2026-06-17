@@ -12,6 +12,8 @@ import {
   isBefore,
   isWithinInterval,
   startOfDay,
+  subDays,
+  subMonths,
 } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 
@@ -62,10 +64,10 @@ const displayText = computed(() => {
   const start = rangeStart.value
   const end = rangeEnd.value
   if (start && end) {
-    return `${format(start, 'yyyy年MM月dd日', { locale: zhCN })} ~ ${format(end, 'yyyy年MM月dd日', { locale: zhCN })}`
+    return `${format(start, 'yyyy-MM-dd', { locale: zhCN })} ~ ${format(end, 'yyyy-MM-dd', { locale: zhCN })}`
   }
   if (start && pendingEnd.value) {
-    return `${format(start, 'yyyy年MM月dd日', { locale: zhCN })} ~ `
+    return `${format(start, 'yyyy-MM-dd', { locale: zhCN })} ~ `
   }
   return ''
 })
@@ -128,6 +130,31 @@ function selectDate(day: Date) {
   rangeEnd.value = end
   pendingEnd.value = false
   emitRange(start, end)
+  isOpen.value = false
+}
+
+function isToday(day: Date): boolean {
+  return isSameDay(day, new Date())
+}
+
+function selectQuickRange(type: 'week' | 'month') {
+  const end = startOfDay(new Date())
+  const start = type === 'week' ? subDays(end, 6) : subMonths(end, 1)
+  rangeStart.value = start
+  rangeEnd.value = end
+  pendingEnd.value = false
+  currentMonth.value = start
+  emitRange(start, end)
+  isOpen.value = false
+}
+
+function selectToday() {
+  const today = startOfDay(new Date())
+  rangeStart.value = today
+  rangeEnd.value = today
+  pendingEnd.value = false
+  currentMonth.value = today
+  emitRange(today, today)
   isOpen.value = false
 }
 
@@ -198,6 +225,13 @@ const days = computed(() => {
       class="date-dropdown absolute top-full left-0 mt-2 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] min-w-[280px]"
       @click.stop
     >
+      <!-- 快捷选择 -->
+      <div class="flex gap-2 mb-4">
+        <button type="button" class="dr-quick-btn" @click="selectToday">今天</button>
+        <button type="button" class="dr-quick-btn" @click="selectQuickRange('week')">最近一周</button>
+        <button type="button" class="dr-quick-btn" @click="selectQuickRange('month')">最近一月</button>
+      </div>
+
       <div class="flex items-center justify-between mb-4">
         <button type="button" class="p-1 hover:bg-[var(--surface-alt)] rounded-lg transition-colors text-[var(--text)]" @click="prevMonth">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,8 +271,9 @@ const days = computed(() => {
           :class="[
             !isSameMonth(day, currentMonth) ? 'text-[var(--text-muted)] opacity-40' : '',
             isRangeEndpoint(day) ? 'bg-[var(--primary)] text-white' : '',
-            isInRange(day) ? 'bg-[var(--primary-soft)] text-[var(--text)]' : '',
-            !isRangeEndpoint(day) && !isInRange(day) ? 'hover:bg-[var(--surface-alt)] text-[var(--text)]' : '',
+            isInRange(day) ? 'dr-in-range' : '',
+            isToday(day) && !isRangeEndpoint(day) ? 'dr-today' : '',
+            !isRangeEndpoint(day) && !isInRange(day) && !isToday(day) ? 'hover:bg-[var(--surface-alt)] text-[var(--text)]' : '',
           ]"
           @click="selectDate(day)"
         >
@@ -252,5 +287,47 @@ const days = computed(() => {
 <style scoped>
 .date-range-picker {
   width: 100%;
+}
+
+.dr-quick-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.dr-quick-btn:hover {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.dr-in-range {
+  background: color-mix(in srgb, var(--primary) 25%, transparent);
+  color: var(--text-strong);
+}
+
+.dr-today {
+  font-weight: 700;
+  color: var(--primary) !important;
+  position: relative;
+}
+
+.dr-today::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
 }
 </style>
