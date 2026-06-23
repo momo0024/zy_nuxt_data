@@ -27,3 +27,8 @@ export function usePageInit(init: () => void | Promise<void>) {
 
   return { reset: () => resetPageInit(route.path) }
 }
+
+/** 登出时调用，清除所有初始化标记 */
+export function clearPageInit() {
+  initializedPaths.clear()
+}

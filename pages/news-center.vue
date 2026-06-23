@@ -172,6 +172,9 @@
               <span class="nc-card-cat">{{ item.category }}</span>
             </div>
           </div>
+          <div class="nc-card-jump">
+            <UIcon name="i-lucide-arrow-up-right" class="nc-jump-icon" />
+          </div>
         </div>
       </transition-group>
 
@@ -692,6 +695,10 @@ usePageInit(initNewsCenterPage)
   max-width: 360px;
 }
 
+.nc-date-picker :deep(.date-input span) {
+  font-size: 12px;
+}
+
 .nc-reset-wrap {
   flex-shrink: 0;
 }
@@ -909,6 +916,28 @@ usePageInit(initNewsCenterPage)
 }
 
 .nc-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.nc-card-jump {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
+.nc-jump-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  opacity: 0.3;
+  transition: color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+.nc-card:hover .nc-jump-icon {
+  color: var(--primary);
+  opacity: 1;
+  transform: translate(1px, -1px);
+}
 
 .nc-card-title {
   font-size: 14px; font-weight: 600;

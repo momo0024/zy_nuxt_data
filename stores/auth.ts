@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { clearPageInit } from '~/composables/usePageInit'
 import { MOCK_USERS, ROLE_PERMISSIONS } from '~/data/mock'
 
 interface User {
@@ -81,6 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     user.value = null
     localStorage.removeItem('zhizhi_user')
+    clearPageInit()
   }
 
   return { user, isLoggedIn, loadFromStorage, login, register, logout }
