@@ -1,4 +1,4 @@
-<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="chain-page">
     <header class="chain-top">
       <div class="chain-top-title">
@@ -10,17 +10,6 @@
           <h1>产业链</h1>
 <!--          <p>上 · 中 · 下游关键环节</p>-->
         </div>
-      </div>
-      <div v-if="chainList.length > 1" class="chain-select">
-        <button
-          v-for="chain in chainList"
-          :key="chain.key"
-          class="chain-chain-btn"
-          :class="{ on: currentChainKey === chain.key }"
-          @click="switchChain(chain.key)"
-        >
-          {{ chain.name }}
-        </button>
       </div>
       <div v-if="chainPhases.some(p => p.key !== 'all')" class="chain-tabs">
         <button class="chain-tab" :class="{ on: !phaseFilter }" @click="phaseFilter = ''">
@@ -69,52 +58,176 @@
 
       <template v-else>
         <!-- 产业链结构 -->
-        <section v-if="viewMode === 'structure'" class="chain-structure">
-          <div
-            v-for="phase in visiblePhases"
-            :key="phase.key"
-            class="chain-phase"
-            :style="{ '--tc': phase.color }"
-          >
-            <div class="chain-phase-head">
-              <UIcon :name="phase.icon" class="size-4" />
-              <span>{{ phase.name }}</span>
-              <em>{{ phase.totalCount }}</em>
-            </div>
-            <div class="chain-phase-body">
+        <section v-if="viewMode === 'structure'" class="chain-structure-v2">
+
+          <!-- ① 双行平行四边形鱼形箭头：上行 \ 方向，下行 / 方向，合成鱼身 -->
+          <div class="chain-arrow-banner">
+            <!-- 上行：阶段（\ 方向平行四边形） -->
+            <div class="chain-arrow-row chain-arrow-top">
               <div
-                v-for="industry in phase.children"
-                :key="industry.secondIndustryId"
-                class="chain-industry"
+                v-for="(phase, pi) in visiblePhases"
+                :key="phase.key"
+                class="chain-par chain-par-phase"
+                :class="{ 'par-first': pi === 0, 'par-last': pi === visiblePhases.length - 1 }"
+                :style="{ '--tc': phase.color, '--f': Math.max(phase.children.length, 1) }"
               >
-                <div v-if="!(phase.children.length === 1 && phase.name === industry.name)" class="chain-industry-head">
-                  <span class="chain-industry-dot" />
-                  {{ industry.name }}
-                </div>
-                <div class="chain-product-list">
-                  <div
-                    v-for="product in industry.children"
-                    :key="product.productTypeId"
-                    class="chain-product-card"
-                    :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
-                  >
-                    <span class="chain-product-name" :title="product.name">{{ product.name }}</span>
-                    <div class="chain-product-actions">
-                      <button
-                        v-for="src in product.companyInfo"
-                        :key="src.sourceId"
-                        type="button"
-                        class="chain-source-btn"
-                        @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
-                      >
-                        {{ src.sourceName }}<span class="csb-num">{{ src.num }}</span>
-                      </button>
-                    </div>
-                  </div>
+                <div class="chain-par-in">
+                  <span class="cpi-icon"><UIcon :name="phase.icon" class="size-4" /></span>
+                  <span class="cpi-name">{{ phase.name }}</span>
+                  <em class="cpi-cnt">{{ phase.totalCount }}</em>
                 </div>
               </div>
             </div>
+            <!-- 下行：子模块（\ 方向平行四边形，与上行镜像） -->
+            <div class="chain-arrow-row chain-arrow-bot">
+              <template v-for="(phase, pi) in visiblePhases" :key="phase.key">
+                <div
+                  v-for="(ind, ii) in phase.children"
+                  :key="ind.secondIndustryId"
+                  class="chain-par chain-par-sub"
+                  :class="{
+                    'par-first': pi === 0 && ii === 0,
+                    'par-last': pi === visiblePhases.length - 1 && ii === phase.children.length - 1
+                  }"
+                  :style="{ '--tc': phase.color }"
+                >
+                  <div class="chain-par-in">
+                    <span class="cpi-sub-name">{{ ind.name }}</span>
+                    <span class="cpi-sub-cnt">{{ ind.totalCount }}</span>
+                  </div>
+                </div>
+                <div
+                  v-if="!phase.children.length"
+                  class="chain-par chain-par-sub"
+                  :class="{
+                    'par-first': pi === 0,
+                    'par-last': pi === visiblePhases.length - 1
+                  }"
+                  :style="{ '--tc': phase.color, '--f': 1 }"
+                >
+                  <div class="chain-par-in"><span class="cpi-sub-name">{{ phase.name }}</span></div>
+                </div>
+              </template>
+            </div>
           </div>
+
+          <!-- ② 节点卡片区域（每子模块一列，含"本土培育/招商引资"来源按钮） -->
+          <div class="chain-nodes-board">
+            <template v-for="phase in visiblePhases" :key="phase.key">
+              <div
+                v-for="industry in phase.children"
+                :key="industry.secondIndustryId"
+                class="chain-node-col"
+                :style="{ '--tc': phase.color }"
+              >
+                <!-- 列标题 -->
+                <div class="chain-node-col-head">
+                  <span class="cnch-dot" />
+                  <span class="cnch-name">{{ industry.name }}</span>
+                  <span class="cnch-cnt">{{ industry.totalCount }}</span>
+                </div>
+                <!-- 产品类型节点卡片 -->
+                <div
+                  v-for="product in industry.children"
+                  :key="product.productTypeId"
+                  class="chain-product-node"
+                  :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
+                >
+                  <div class="cpn-name" :title="product.name">{{ product.name }}</div>
+                  <div class="cpn-sources">
+                    <button
+                      v-for="src in product.companyInfo"
+                      :key="src.sourceId"
+                      type="button"
+                      class="cpn-src-btn"
+                      :data-src-type="src.sourceName.includes('本土') ? 'native' : src.sourceName.includes('招商') ? 'attract' : 'other'"
+                      @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
+                    >
+                      <span class="cpn-src-label">{{ src.sourceName }}</span>
+                      <span class="cpn-src-num">{{ src.num }}</span>
+                    </button>
+                  </div>
+                </div>
+                <div v-if="!industry.children.length" class="chain-node-empty">暂无数据</div>
+              </div>
+              <div
+                v-if="!phase.children.length"
+                class="chain-node-col chain-node-col-empty"
+                :style="{ '--tc': phase.color }"
+              >
+                <div class="chain-node-empty">暂无数据</div>
+              </div>
+            </template>
+          </div>
+
+          <!-- ③ 其他产业链（tab 卡片形式，点击切换） -->
+          <template v-if="chainList.filter(c => c.key !== currentChainKey).length > 0">
+            <div class="chain-other-header">
+              <span class="coh-line" />
+              <span class="coh-title">
+                <UIcon name="i-lucide-layers" class="size-4" />
+                其他产业领域
+              </span>
+              <span class="coh-line" />
+            </div>
+            <div class="chain-other-grid">
+              <div
+                v-for="(other, oi) in chainList.filter(c => c.key !== currentChainKey)"
+                :key="other.key"
+                class="chain-other-card"
+              >
+                <div class="chain-other-card-head">
+                  <span class="coc-name">{{ other.name }}</span>
+                </div>
+                <div class="chain-other-card-body">
+                  <template v-for="(sub, si) in getOtherSubList(other)" :key="sub.product_type_id || sub.sencond_industry_id || sub.name || JSON.stringify(sub)">
+                    <div v-if="si < 3" class="chain-other-sub-card">
+                      <div class="cosc-main">
+                        <span class="cosc-name">{{ sub.name }}</span>
+                        <div v-if="sub.company_info" class="cosc-sources">
+                          <template v-if="!Array.isArray(sub.company_info)">
+                            <template v-for="(info, sid) in sub.company_info" :key="sid">
+                              <span
+                                v-if="info && (info.num || info.num === 0)"
+                                class="cosc-src-btn"
+                                :class="{
+                                  'csc-native': sid === 'native' || (info.source_name && info.source_name.includes('本土')),
+                                  'csc-attract': sid === 'attract' || (info.source_name && info.source_name.includes('招商'))
+                                }"
+                                @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: sid })"
+                              >
+                                {{ info.source_name || sid }}<span class="cosc-src-num">{{ info.num }}</span>
+                              </span>
+                            </template>
+                          </template>
+                          <template v-else>
+                            <template v-for="info in sub.company_info" :key="info.sourceId || info.source_name || JSON.stringify(info)">
+                              <span
+                                v-if="info && (info.num || info.num === 0)"
+                                class="cosc-src-btn"
+                                :class="{
+                                  'csc-native': info.sourceId === 'native' || (info.sourceName && info.sourceName.includes('本土')),
+                                  'csc-attract': info.sourceId === 'attract' || (info.sourceName && info.sourceName.includes('招商'))
+                                }"
+                                @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: info.sourceId })"
+                              >
+                                {{ info.source_name || info.sourceId }}<span class="cosc-src-num">{{ info.num }}</span>
+                              </span>
+                            </template>
+                          </template>
+                        </div>
+                      </div>
+                      <span v-if="sub.total_count || sub.num" class="cosc-cnt">{{ sub.total_count || sub.num }}</span>
+                    </div>
+                  </template>
+                  <button v-if="getOtherSubList(other).length > 3" class="chain-other-more-btn" @click="showOtherSubModal(other)">
+                    展示更多 ({{ getOtherSubList(other).length - 3 }})
+                  </button>
+                  <div v-if="!getOtherSubList(other).length" class="chain-other-empty">暂无细分数据</div>
+                </div>
+              </div>
+            </div>
+          </template>
         </section>
 
         <!-- 树形图 -->
@@ -163,7 +276,7 @@
             <div class="chain-modal-head">
               <div>
                 <h3>企业列表</h3>
-                <p v-if="selectedProduct">{{ selectedProduct.name }} · 共 {{ companyTotal }} 家</p>
+                <p v-if="companyModalTitle || selectedProduct">{{ companyModalTitle || selectedProduct?.name }} · 共 {{ companyTotal }} 家</p>
               </div>
               <button class="chain-modal-close" @click="closeCompanyList">
                 <UIcon name="i-lucide-x" class="size-5" />
@@ -190,6 +303,71 @@
                 </div>
                 <div v-if="!companyList.length" class="chain-modal-empty">暂无企业数据</div>
               </template>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 其他产业领域子项弹窗 -->
+    <Teleport to="body">
+      <Transition name="chain-modal">
+        <div v-if="otherSubModalVisible" class="chain-modal-overlay" @click.self="closeOtherSubModal">
+          <div class="chain-modal-panel">
+            <div class="chain-modal-head">
+              <div>
+                <h3>{{ otherSubModalTitle }}</h3>
+                <p>共 {{ otherSubModalList.length }} 项</p>
+              </div>
+              <button class="chain-modal-close" @click="closeOtherSubModal">
+                <UIcon name="i-lucide-x" class="size-5" />
+              </button>
+            </div>
+            <div class="chain-modal-body">
+              <div class="chain-other-card-body" style="padding: 12px;">
+                <div
+                  v-for="sub in otherSubModalList"
+                  :key="sub.product_type_id || sub.sencond_industry_id || sub.name || JSON.stringify(sub)"
+                  class="chain-other-sub-card"
+                >
+                  <div class="cosc-main">
+                    <span class="cosc-name">{{ sub.name }}</span>
+                    <div v-if="sub.company_info" class="cosc-sources">
+                      <template v-if="!Array.isArray(sub.company_info)">
+                        <template v-for="(info, sid) in sub.company_info" :key="sid">
+                          <span
+                            v-if="info && (info.num || info.num === 0)"
+                            class="cosc-src-btn"
+                            :class="{
+                              'csc-native': sid === 'native' || (info.source_name && info.source_name.includes('本土')),
+                              'csc-attract': sid === 'attract' || (info.source_name && info.source_name.includes('招商'))
+                            }"
+                            @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: sid })"
+                          >
+                            {{ info.source_name || sid }}<span class="cosc-src-num">{{ info.num }}</span>
+                          </span>
+                        </template>
+                      </template>
+                      <template v-else>
+                        <template v-for="info in sub.company_info" :key="info.sourceId || info.source_name || JSON.stringify(info)">
+                          <span
+                            v-if="info && (info.num || info.num === 0)"
+                            class="cosc-src-btn"
+                            :class="{
+                              'csc-native': info.sourceId === 'native' || (info.sourceName && info.sourceName.includes('本土')),
+                              'csc-attract': info.sourceId === 'attract' || (info.sourceName && info.sourceName.includes('招商'))
+                            }"
+                            @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: info.sourceId })"
+                          >
+                            {{ info.source_name || info.sourceId }}<span class="cosc-src-num">{{ info.num }}</span>
+                          </span>
+                        </template>
+                      </template>
+                    </div>
+                  </div>
+                  <span v-if="sub.total_count || sub.num" class="cosc-cnt">{{ sub.total_count || sub.num }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -247,6 +425,8 @@ type ChainItem = { key: string; name: string; raw: any }
 
 const PHASE_KEYS = ['up', 'middle', 'midlle', 'down']
 
+const otherCardColors = ['#c2780a', '#2d7a4f', '#1a7a72', '#9a7b0a', '#8b4513', '#5c4d7a', '#3d6b8e', '#6b5344']
+
 const phaseMeta: Record<string, { name: string; color: string; icon: string; order: number }> = {
   up: { name: '上游', color: '#38bdf8', icon: 'i-lucide-arrow-up-circle', order: 1 },
   middle: { name: '中游', color: '#a78bfa', icon: 'i-lucide-cpu', order: 2 },
@@ -287,6 +467,12 @@ const companyLoading = ref(false)
 const companyList = ref<CompanyItem[]>([])
 const companyTotal = ref(0)
 const companyFilter = ref<Record<string, any>>({})
+const companyModalTitle = ref('')
+
+// 其他产业领域子项弹窗
+const otherSubModalVisible = ref(false)
+const otherSubModalTitle = ref('')
+const otherSubModalList = ref<any[]>([])
 
 // 底部图表
 const globalParkList = ref<ParkItem[]>([])
@@ -441,8 +627,49 @@ function openCompanyList(extra: Record<string, any>) {
     ...(selectedSecondIndustry.value ? { sencond_industry_id: selectedSecondIndustry.value.secondIndustryId } : {}),
     ...extra,
   }
+  companyModalTitle.value = selectedProduct.value.name
   companyModalVisible.value = true
   fetchCompanyList()
+}
+
+function openOtherCompanyList(productTypeId: number, secondIndustryId: number | null, productName: string, extra: Record<string, any>) {
+  companyFilter.value = {
+    product_type: productTypeId,
+    ...(secondIndustryId ? { sencond_industry_id: secondIndustryId } : {}),
+    ...extra,
+  }
+  companyModalTitle.value = productName
+  selectedProduct.value = null
+  companyModalVisible.value = true
+  fetchCompanyList()
+}
+
+function getOtherSubList(other: any) {
+  const subs: any[] = []
+  for (const child of (other.raw.child_info || [])) {
+    if (child.child_info && child.child_info.length) {
+      for (const sub of child.child_info) {
+        subs.push({
+          ...sub,
+          _secondIndustryId: child.sencond_industry_id,
+          _secondIndustryName: child.name,
+        })
+      }
+    } else {
+      subs.push(child)
+    }
+  }
+  return subs
+}
+
+function showOtherSubModal(other: any) {
+  otherSubModalTitle.value = other.name
+  otherSubModalList.value = getOtherSubList(other)
+  otherSubModalVisible.value = true
+}
+
+function closeOtherSubModal() {
+  otherSubModalVisible.value = false
 }
 
 async function fetchCompanyList() {
@@ -745,11 +972,6 @@ usePageInit(() => {
   flex-shrink: 0;
 }
 
-.chain-view-toggle {
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
 .chain-top-icon {
   display: flex;
   align-items: center;
@@ -768,47 +990,6 @@ usePageInit(() => {
   font-weight: 700;
   color: var(--text-strong);
   letter-spacing: 0.02em;
-}
-
-.chain-top p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.chain-select {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.chain-chain-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  white-space: nowrap;
-}
-
-.chain-chain-btn:hover {
-  background: var(--surface-alt);
-  color: var(--text);
-}
-
-.chain-chain-btn.on {
-  background: var(--surface);
-  border-color: var(--primary);
-  color: var(--primary);
-  box-shadow: var(--shadow-sm);
 }
 
 .chain-tabs {
@@ -834,26 +1015,14 @@ usePageInit(() => {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.chain-tab span {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--tc);
-}
+.chain-tab span { font-size: 11px; font-weight: 700; color: var(--tc); }
+.chain-tab:hover { background: var(--surface-alt); color: var(--text); }
+.chain-tab.on { background: var(--surface); color: var(--text-strong); box-shadow: var(--shadow-sm); }
 
-.chain-tab:hover {
-  background: var(--surface-alt);
-  color: var(--text);
-}
-
-.chain-tab.on {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text-strong);
-  box-shadow: var(--shadow-sm);
-}
-
-/* ── 布局切换 ── */
+/* ── 视图切换 ── */
 .chain-view-toggle {
+  flex-shrink: 0;
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -877,21 +1046,11 @@ usePageInit(() => {
   transition: background 0.15s, color 0.15s;
 }
 
-.chain-view-btn:hover {
-  background: var(--surface-alt);
-  color: var(--text);
-}
-
-.chain-view-btn.on {
-  background: var(--surface-alt);
-  color: var(--primary);
-  box-shadow: var(--shadow-sm);
-}
+.chain-view-btn:hover { background: var(--surface-alt); color: var(--text); }
+.chain-view-btn.on { background: var(--surface-alt); color: var(--primary); box-shadow: var(--shadow-sm); }
 
 /* ── 主区域 ── */
-.chain-main {
-  padding: 0 24px;
-}
+.chain-main { padding: 0 24px; }
 
 .chain-state {
   display: flex;
@@ -904,183 +1063,245 @@ usePageInit(() => {
 }
 
 .chain-spin { animation: spin 1s linear infinite; }
-
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── 产业链结构 ── */
-.chain-structure {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 36px;
+/* ═══════════════════════════════════════════════════════
+   新版产业链结构视图
+   ═══════════════════════════════════════════════════════ */
+.chain-structure-v2 {
   margin-bottom: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   双行平行四边形鱼形箭头
+   上行（阶段）/ 方向 + 下行（子模块）\ 方向 = 完整鱼身
+   ═══════════════════════════════════════════════════════ */
+.chain-arrow-banner {
+  --s: 14px;             /* 斜切量 */
+  background: var(--bg); /* 裁剪留白透出该色，形成间隔线 */
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  padding: 0 1px;        /* 与 chain-nodes-board 左右边框对齐 */
+}
+
+.chain-arrow-row {
+  display: flex;
+  gap: 0;
+}
+
+.chain-arrow-top {
+  padding-bottom: 3px; /* 上下行间隔 */
+}
+
+/* ── 每格基础样式 ── */
+.chain-par {
+  --tc: var(--primary);
+  --f: 1;
+  flex: var(--f);
+  min-width: 0;
   position: relative;
 }
 
-.chain-phase {
-  --tc: var(--primary);
+/* ══ 上行（\ 方向）：左低右高 ══
+   ・默认（中游）：左右均钝角斜切
+   ・上游（par-first）：左侧同样钝角斜切，不特殊处理，沿用默认
+   ・下游（par-last）：右侧垂直线
+   ══ */
+.chain-arrow-top .chain-par {
+  clip-path: polygon(0 0, calc(100% - var(--s)) 0, 100% 100%, var(--s) 100%);
+}
+.chain-arrow-top .chain-par.par-last {
+  /* 下游右侧垂直线 */
+  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--s) 100%);
+}
+.chain-arrow-top .chain-par.par-first.par-last {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--s) 100%);
+}
+
+/* ══ 下行（/ 方向）：与上行镜像，合成鱼身 ══
+   ・默认（中游）：左右均钝角斜切（反向）
+   ・上游（par-first）：同默认，不单独处理
+   ・下游（par-last）：左侧钝角斜切，右侧改为垂直线
+   ══ */
+.chain-arrow-bot .chain-par {
+  clip-path: polygon(var(--s) 0, 100% 0, calc(100% - var(--s)) 100%, 0 100%);
+}
+.chain-arrow-bot .chain-par.par-last {
+  /* 下游右侧垂直线 */
+  clip-path: polygon(var(--s) 0, 100% 0, 100% 100%, 0 100%);
+}
+.chain-arrow-bot .chain-par.par-first.par-last {
+  clip-path: polygon(var(--s) 0, 100% 0, 100% 100%, 0 100%);
+}
+
+/* ── 阶段格（上行，实色底） ── */
+.chain-par-phase {
+  background: var(--tc);
+  min-height: 54px;
+}
+
+/* ── 子模块格（下行，淡色底） ── */
+.chain-par-sub {
+  background: color-mix(in srgb, var(--tc) 20%, var(--surface-alt));
+  min-height: 34px;
+}
+
+/* 内容层：居中，左右内边距防止文字被裁剪角覆盖 */
+.chain-par-in {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  padding: 6px calc(var(--s) + 10px);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.chain-arrow-top .chain-par-in { color: #fff; }
+.chain-par-sub .chain-par-in { color: var(--text-strong); }
+
+.cpi-icon { display: flex; align-items: center; opacity: 0.9; flex-shrink: 0; }
+.cpi-name { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+.cpi-cnt {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.22);
+  flex-shrink: 0;
+}
+
+.cpi-sub-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--tc) 85%, var(--text-strong));
+}
+.cpi-sub-cnt {
+  font-size: 10px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--tc) 70%, var(--text-muted));
+  background: color-mix(in srgb, var(--tc) 14%, transparent);
+  padding: 1px 5px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+/* ── 节点卡片区域 ── */
+.chain-nodes-board {
+  display: flex;
+  align-items: flex-start;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
   overflow: hidden;
   background: var(--surface);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  position: relative;
-  display: flex;
-  flex-direction: column;
 }
 
-/* phase 之间的连接线 + 箭头 */
-.chain-phase:not(:last-child)::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -26px;
-  width: 22px;
-  height: 2px;
-  background: repeating-linear-gradient(90deg, var(--tc) 0, var(--tc) 4px, transparent 4px, transparent 7px);
-  opacity: 0.45;
-  transform: translateY(-50%);
-  z-index: 1;
-}
-
-.chain-phase:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -32px;
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 7px solid var(--tc);
-  transform: translateY(-50%);
-  z-index: 2;
-  opacity: 0.6;
-}
-
-.chain-phase-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-alt);
-  color: var(--tc);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.chain-phase-head em {
-  margin-left: auto;
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--tc) 12%, transparent);
-}
-
-.chain-phase-body {
-  padding: 12px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 12px;
+.chain-node-col {
+  --tc: var(--primary);
   flex: 1;
-}
-
-.chain-industry {
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--tc) 2%, var(--surface));
 }
 
-.chain-industry-head {
-  display: inline-flex;
+.chain-node-col:last-child { border-right: none; }
+
+/* 列标题 */
+.chain-node-col-head {
+  display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 10px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  font-size: 13px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--tc) 6%, var(--surface-alt));
+  border-bottom: 2px solid var(--tc);
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-strong);
+  flex-shrink: 0;
 }
 
-.chain-industry-dot {
-  width: 7px;
-  height: 7px;
+.cnch-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--tc);
+  flex-shrink: 0;
 }
 
-.chain-product-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chain-product-name {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.chain-source-btn {
-  color: var(--text-muted);
-}
-
-.chain-product-card {
-  --tc: var(--primary);
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: default;
-  transition: all 0.15s;
+.cnch-name {
+  flex: 1;
   min-width: 0;
-}
-
-.chain-product-card:hover {
-  border-color: color-mix(in srgb, var(--tc) 40%, var(--border));
-  background: color-mix(in srgb, var(--tc) 5%, var(--surface));
-}
-
-.chain-product-card.on {
-  border-color: var(--tc);
-  background: color-mix(in srgb, var(--tc) 10%, var(--surface));
-  color: var(--text-strong);
-}
-
-.chain-product-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 120px;
 }
 
-.chain-product-actions {
-  display: inline-flex;
-  align-items: center;
+.cnch-cnt {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tc);
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tc) 14%, transparent);
+  flex-shrink: 0;
+}
+
+/* 产品节点卡片 */
+.chain-product-node {
+  margin: 10px 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: var(--surface);
+  cursor: default;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.chain-product-node:last-child { margin-bottom: 10px; }
+
+.chain-product-node:hover {
+  border-color: color-mix(in srgb, var(--tc) 40%, var(--border));
+  background: color-mix(in srgb, var(--tc) 4%, var(--surface));
+}
+
+.chain-product-node.on {
+  border-color: var(--tc);
+  background: color-mix(in srgb, var(--tc) 8%, var(--surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tc) 20%, transparent);
+}
+
+.cpn-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.4;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 来源按钮区（本土培育 / 招商引资） */
+.cpn-sources {
+  display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.chain-source-btn {
+.cpn-src-btn {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
+  gap: 4px;
+  padding: 3px 7px;
   border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--surface-alt);
-  color: var(--text);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -1088,113 +1309,278 @@ usePageInit(() => {
   white-space: nowrap;
 }
 
-.chain-source-btn:hover {
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 6%, var(--surface-alt));
+.cpn-src-btn:hover {
+  border-color: var(--tc, var(--primary));
+  background: color-mix(in srgb, var(--tc, var(--primary)) 8%, var(--surface-alt));
   color: var(--text-strong);
 }
 
-.csb-num {
+/* 本土培育：绿色 */
+.cpn-src-btn[data-src-type="native"] {
+  border-color: color-mix(in srgb, var(--success) 50%, var(--border));
+  color: var(--text-muted);
+}
+.cpn-src-btn[data-src-type="native"] .cpn-src-num { color: var(--success); }
+.cpn-src-btn[data-src-type="native"]:hover {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, var(--surface-alt));
+}
+
+/* 招商引资：蓝色 */
+.cpn-src-btn[data-src-type="attract"] {
+  border-color: color-mix(in srgb, #38bdf8 50%, var(--border));
+  color: var(--text-muted);
+}
+.cpn-src-btn[data-src-type="attract"] .cpn-src-num { color: #38bdf8; }
+.cpn-src-btn[data-src-type="attract"]:hover {
+  border-color: #38bdf8;
+  background: color-mix(in srgb, #38bdf8 10%, var(--surface-alt));
+}
+
+.cpn-src-label { font-size: 11px; }
+
+.cpn-src-num {
+  font-size: 11px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--tc, var(--primary));
   font-variant-numeric: tabular-nums;
 }
 
-/* ── 详情弹窗 ── */
-.chain-detail-modal {
-  max-width: 720px;
+.chain-node-empty {
+  padding: 16px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
-.chain-detail-modal .chain-modal-head {
-  border-bottom-color: var(--tc, var(--border));
+/* ── 其他产业领域 ── */
+.chain-other-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 14px;
 }
 
-.chain-detail-body {
+.coh-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.coh-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.coh-title :deep(svg) { color: var(--primary); }
+
+.chain-other-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 16px;
 }
 
-.chain-detail-section {
+.chain-other-card {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px;
+  border-radius: 14px;
   background: var(--surface);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  transition: all 0.18s;
 }
 
-.chain-detail-section-title {
+.chain-other-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.chain-other-card-head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-strong);
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
 }
 
-.chain-detail-section-title :deep(svg) {
-  color: var(--primary);
-}
-
-.chain-detail-tags {
+.chain-other-card-body {
+  padding: 10px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
 
-.chain-detail-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+.chain-other-sub-card {
+  margin: 0;
   border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--surface-alt);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.12s;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  transition: border-color 0.15s, background 0.15s;
 }
 
-.chain-detail-tag:hover {
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 6%, var(--surface-alt));
+.chain-other-sub-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface));
+}
+
+.coc-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text-strong);
-}
-
-.cdt-label {
-  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.cdt-num {
+.cosc-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cosc-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cosc-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cosc-src-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.cosc-src-btn:hover {
+  border-color: var(--tc, var(--primary));
+  background: color-mix(in srgb, var(--tc, var(--primary)) 8%, var(--surface-alt));
+  color: var(--text-strong);
+}
+
+.cosc-src-btn.csc-native {
+  border-color: color-mix(in srgb, var(--success) 50%, var(--border));
+  color: var(--text-muted);
+}
+.cosc-src-btn.csc-native .cosc-src-num { color: var(--success); }
+.cosc-src-btn.csc-native:hover {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, var(--surface-alt));
+}
+
+.cosc-src-btn.csc-attract {
+  border-color: color-mix(in srgb, #38bdf8 50%, var(--border));
+  color: var(--text-muted);
+}
+.cosc-src-btn.csc-attract .cosc-src-num { color: #38bdf8; }
+.cosc-src-btn.csc-attract:hover {
+  border-color: #38bdf8;
+  background: color-mix(in srgb, #38bdf8 10%, var(--surface-alt));
+}
+
+.cosc-src-num {
+  font-size: 10px;
   font-weight: 700;
   color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
 
-.chain-detail-empty {
-  font-size: 12px;
-  color: var(--text-muted);
-  padding: 8px 0;
+.cosc-cnt {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  flex-shrink: 0;
 }
 
-.chain-detail-loading {
+.chain-other-empty {
+  padding: 16px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.chain-other-more-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 60px;
+  gap: 6px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
   color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
 }
+
+.chain-other-more-btn:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface-alt));
+  color: var(--primary);
+}
+
+/* ── 树形图 ── */
+.chain-tree-wrap {
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  padding: 12px;
+}
+
+.chain-tree-chart {
+  width: 100%;
+  height: 560px;
+}
+
+.chain-tree-chart :deep(.smm-node) { cursor: pointer; }
+.chain-tree-chart :deep(.smm-expand-btn) { cursor: pointer; }
 
 /* ── 底部图表 ── */
 .chain-charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 16px;
+  margin-top: 24px;
 }
 
 .chain-chart-card {
@@ -1218,19 +1604,14 @@ usePageInit(() => {
   color: var(--text-strong);
 }
 
-.chain-chart-title :deep(svg) {
-  color: var(--primary);
-}
+.chain-chart-title :deep(svg) { color: var(--primary); }
 
 .chain-chart-wrap {
   padding: 12px;
   height: 300px;
 }
 
-.chain-chart {
-  width: 100%;
-  height: 100%;
-}
+.chain-chart { width: 100%; height: 100%; }
 
 .chain-chart-empty {
   display: flex;
@@ -1239,30 +1620,6 @@ usePageInit(() => {
   height: 100%;
   color: var(--text-muted);
   font-size: 13px;
-}
-
-/* ── 树形图 ── */
-.chain-tree-wrap {
-  margin-bottom: 24px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--surface);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  padding: 12px;
-}
-
-.chain-tree-chart {
-  width: 100%;
-  height: 560px;
-}
-
-.chain-tree-chart :deep(.smm-node) {
-  cursor: pointer;
-}
-
-.chain-tree-chart :deep(.smm-expand-btn) {
-  cursor: pointer;
 }
 
 /* ── 企业列表弹窗 ── */
@@ -1277,9 +1634,7 @@ usePageInit(() => {
   backdrop-filter: blur(4px);
 }
 
-.company-modal-overlay {
-  z-index: 10000;
-}
+.company-modal-overlay { z-index: 10000; }
 
 .chain-modal-panel {
   width: 90vw;
@@ -1303,18 +1658,8 @@ usePageInit(() => {
   background: var(--surface-alt);
 }
 
-.chain-modal-head h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-strong);
-}
-
-.chain-modal-head p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--text-muted);
-}
+.chain-modal-head h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-strong); }
+.chain-modal-head p { margin: 4px 0 0; font-size: 12px; color: var(--text-muted); }
 
 .chain-modal-close {
   display: flex;
@@ -1330,10 +1675,7 @@ usePageInit(() => {
   transition: background 0.12s, color 0.12s;
 }
 
-.chain-modal-close:hover {
-  background: var(--surface);
-  color: var(--text-strong);
-}
+.chain-modal-close:hover { background: var(--surface); color: var(--text-strong); }
 
 .chain-modal-body {
   flex: 1;
@@ -1399,44 +1741,40 @@ usePageInit(() => {
   font-size: 13px;
 }
 
-/* ── 弹窗过渡动画 ── */
-.chain-modal-enter-active,
-.chain-modal-leave-active {
-  transition: opacity 0.25s ease;
-}
-
+/* ── 弹窗过渡 ── */
+.chain-modal-enter-active, .chain-modal-leave-active { transition: opacity 0.25s ease; }
 .chain-modal-enter-active .chain-modal-panel,
-.chain-modal-leave-active .chain-modal-panel {
-  transition: transform 0.25s ease;
-}
+.chain-modal-leave-active .chain-modal-panel { transition: transform 0.25s ease; }
+.chain-modal-enter-from, .chain-modal-leave-to { opacity: 0; }
+.chain-modal-enter-from .chain-modal-panel { transform: scale(0.95) translateY(10px); }
+.chain-modal-leave-to .chain-modal-panel { transform: scale(0.95) translateY(10px); }
 
-.chain-modal-enter-from,
-.chain-modal-leave-to {
-  opacity: 0;
-}
-
-.chain-modal-enter-from .chain-modal-panel {
-  transform: scale(0.95) translateY(10px);
-}
-
-.chain-modal-leave-to .chain-modal-panel {
-  transform: scale(0.95) translateY(10px);
-}
-
+/* ── 响应式 ── */
 @media (max-width: 900px) {
   .chain-top { flex-direction: column; align-items: flex-start; }
-  .chain-structure { grid-template-columns: 1fr; gap: 16px; }
-  .chain-phase:not(:last-child)::before,
-  .chain-phase:not(:last-child)::after { display: none; }
+  /* 移动端：取消鱼形，改为普通堆叠 */
+  .chain-arrow-row { flex-wrap: wrap; }
+  .chain-par,
+  .chain-arrow-top .chain-par,
+  .chain-arrow-bot .chain-par {
+    clip-path: none !important;
+    border-radius: 6px;
+    margin-bottom: 2px;
+    flex: none;
+    width: 100%;
+  }
+  .chain-arrow-top .chain-par { width: 100%; }
+  .chain-arrow-bot .chain-par { width: calc(50% - 2px); }
+  .chain-nodes-board { flex-direction: column; border-top: 1px solid var(--border); }
+  .chain-node-col { border-right: none; border-bottom: 1px solid var(--border); }
+  .chain-node-col:last-child { border-bottom: none; }
   .chain-charts { grid-template-columns: 1fr; }
-  .chain-detail-body { grid-template-columns: 1fr; }
   .chain-tree-chart { height: 420px; }
 }
 
 @media (max-width: 520px) {
-  .chain-main { padding: 0 16px; }
-  .chain-top { padding: 16px 16px 12px; }
-  .chain-tabs { width: 100%; }
+  .chain-main { padding: 0 12px; }
+  .chain-top { padding: 14px 12px; }
   .chain-modal-panel { width: 100vw; max-width: 100vw; border-radius: 12px 12px 0 0; }
   .chain-tree-chart { height: 360px; }
 }
