@@ -10,10 +10,23 @@ let bodyObserver: MutationObserver | null = null
 
 export function getThemeWatermarkColor(): string {
   if (typeof document === 'undefined') return 'rgba(0, 0, 0, 0.16)'
-  const theme = document.documentElement.getAttribute('data-theme') || 'light'
-  return ['dark', 'purple'].includes(theme)
-    ? 'rgba(255, 255, 255, 0.14)'
-    : 'rgba(0, 0, 0, 0.16)'
+  const root = document.documentElement
+  const textColor = getComputedStyle(root).getPropertyValue('--text').trim() || '#334155'
+  // 解析 hex 颜色
+  if (textColor.startsWith('#')) {
+    const r = parseInt(textColor.slice(1, 3), 16)
+    const g = parseInt(textColor.slice(3, 5), 16)
+    const b = parseInt(textColor.slice(5, 7), 16)
+    return `rgba(${r}, ${g}, ${b}, 0.16)`
+  }
+  // 解析 rgb/rgba 颜色
+  if (textColor.startsWith('rgb')) {
+    const match = textColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+    if (match) {
+      return `rgba(${match[1]}, ${match[2]}, ${match[3]}, 0.16)`
+    }
+  }
+  return 'rgba(0, 0, 0, 0.16)'
 }
 
 export function getWatermarkContent(): string {

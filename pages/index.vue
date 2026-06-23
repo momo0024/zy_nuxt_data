@@ -6,8 +6,9 @@
           <UIcon name="i-lucide-git-branch" class="size-5" />
         </div>
         <div>
-          <h1>{{ chainTitle }}</h1>
-          <p>上 · 中 · 下游关键环节</p>
+<!--          <h1>{{ chainTitle }}</h1>-->
+          <h1>产业链</h1>
+<!--          <p>上 · 中 · 下游关键环节</p>-->
         </div>
       </div>
       <div v-if="chainList.length > 1" class="chain-select">
@@ -123,8 +124,7 @@
           </ClientOnly>
         </section>
 
-
-
+        
         <!-- 底部统计图表 -->
         <section class="chain-charts">
           <div class="chain-chart-card">
@@ -134,7 +134,7 @@
             </h3>
             <div class="chain-chart-wrap">
               <ClientOnly>
-                <VChart v-if="parkChartOption" :option="parkChartOption" class="chain-chart" autoresize @click="handleChartClick" />
+                <VChart v-if="parkChartOption" :option="parkChartOption" class="chain-chart" autoresize @click="handleChartClick($event, 'park')" />
                 <div v-else class="chain-chart-empty">暂无数据</div>
               </ClientOnly>
             </div>
@@ -146,7 +146,7 @@
             </h3>
             <div class="chain-chart-wrap">
               <ClientOnly>
-                <VChart v-if="typeChartOption" :option="typeChartOption" class="chain-chart" autoresize @click="handleChartClick" />
+                <VChart v-if="typeChartOption" :option="typeChartOption" class="chain-chart" autoresize @click="handleChartClick($event, 'type')" />
                 <div v-else class="chain-chart-empty">暂无数据</div>
               </ClientOnly>
             </div>
@@ -199,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted } from 'vue'
+import { nextTick, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { request } from '~/utils/request'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
@@ -473,9 +473,40 @@ function companyUrl(code: string) {
   return { path: '/company-detail', query: { id: code } }
 }
 
-const chartTextColor = computed(() => 'var(--text)')
-const chartAxisColor = computed(() => 'var(--border)')
-const chartGridColor = computed(() => 'var(--border)')
+const chartTextColor = ref('#334155')
+const chartAxisColor = ref('#cbd5e1')
+const chartGridColor = ref('#cbd5e1')
+const chartSurfaceColor = ref('#ffffff')
+const chartSurfaceAltColor = ref('#f8fafc')
+
+function updateChartColors() {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  const get = (name: string, fallback: string) =>
+    getComputedStyle(root).getPropertyValue(name).trim() || fallback
+  chartTextColor.value = get('--text', '#334155')
+  chartAxisColor.value = get('--border', '#cbd5e1')
+  chartGridColor.value = get('--border', '#cbd5e1')
+  chartSurfaceColor.value = get('--surface', '#ffffff')
+  chartSurfaceAltColor.value = get('--surface-alt', '#f8fafc')
+  if (chainMindMapInstance && chainMindMapRef.value) {
+    chainMindMapInstance.themeConfig.backgroundColor = chartSurfaceColor.value
+    chainMindMapInstance.initTheme()
+  }
+  if (viewMode.value === 'tree') {
+    nextTick(() => initChainMindMap())
+  }
+}
+
+let chartColorObserver: MutationObserver | null = null
+onMounted(() => {
+  updateChartColors()
+  chartColorObserver = new MutationObserver(() => updateChartColors())
+  chartColorObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+})
+onBeforeUnmount(() => {
+  chartColorObserver?.disconnect()
+})
 
 // 树形思维导图
 const chainMindMapRef = ref<HTMLElement | null>(null)
@@ -484,6 +515,10 @@ let chainMindMapViewApplied = false
 
 function buildChainMindMapData() {
   if (!chainPhases.value.length) return null
+  const textColor = chartTextColor.value
+  const borderColor = chartAxisColor.value
+  const surfaceAlt = chartSurfaceAltColor.value
+  const surface = chartSurfaceColor.value
   return {
     data: { text: chainTitle.value, expand: true },
     children: chainPhases.value.map(phase => ({
@@ -497,9 +532,9 @@ function buildChainMindMapData() {
       children: phase.children.map(industry => ({
         data: {
           text: industry.name,
-          fillColor: '#f1f5f9',
-          borderColor: '#64748b',
-          color: '#334155',
+          fillColor: surfaceAlt,
+          borderColor: borderColor,
+          color: textColor,
           expand: true,
         },
         children: industry.children.map(product => ({
@@ -507,9 +542,9 @@ function buildChainMindMapData() {
             text: product.name,
             value: product.totalCount,
             productTypeId: product.productTypeId,
-            fillColor: '#f8fafc',
-            borderColor: '#94a3b8',
-            color: '#64748b',
+            fillColor: surface,
+            borderColor: borderColor,
+            color: textColor,
           },
           children: [],
         })),
@@ -526,6 +561,7 @@ function handleChainMindMapNodeClick(node: any) {
       const product = ind.children.find(p => p.productTypeId === productTypeId)
       if (product) {
         selectProduct(product)
+        openCompanyList({})
         return
       }
     }
@@ -583,6 +619,7 @@ async function initChainMindMap() {
       initRootNodePosition: ['left', 'center'],
       themeConfig: {
         lineStyle: 'curve',
+        backgroundColor: chartSurfaceColor.value,
         root: { fontSize: 18, paddingX: 20, paddingY: 10 },
         second: { marginX: 120, marginY: 28, fontSize: 15, paddingX: 16, paddingY: 8 },
         node: { marginX: 90, marginY: 14, fontSize: 13, paddingX: 12, paddingY: 5 },
@@ -660,10 +697,11 @@ function buildBarOption(data: { name: string; value: number; id: number }[], col
   }
 }
 
-function handleChartClick(params: any) {
+function handleChartClick(params: any, chartType: 'park' | 'type') {
   const id = params?.data?.id
   if (!id) return
-  companyFilter.value = { park_id: id }
+  const key = chartType === 'park' ? 'park_id' : 'company_type'
+  companyFilter.value = { [key]: id }
   selectedProduct.value = null
   companyModalVisible.value = true
   fetchCompanyList()
@@ -890,21 +928,33 @@ usePageInit(() => {
   flex-direction: column;
 }
 
-/* phase 之间的箭头 */
+/* phase 之间的连接线 + 箭头 */
+.chain-phase:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -26px;
+  width: 22px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--tc) 0, var(--tc) 4px, transparent 4px, transparent 7px);
+  opacity: 0.45;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
 .chain-phase:not(:last-child)::after {
   content: '';
   position: absolute;
-  top: 18px;
-  right: -28px;
-  width: 20px;
-  height: 20px;
-  background: var(--surface);
-  border: 2px solid var(--border);
-  border-left-color: transparent;
-  border-bottom-color: transparent;
-  transform: rotate(45deg);
+  top: 50%;
+  right: -32px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--tc);
+  transform: translateY(-50%);
   z-index: 2;
-  box-shadow: 2px -2px 4px rgba(0, 0, 0, 0.04);
+  opacity: 0.6;
 }
 
 .chain-phase-head {
@@ -943,18 +993,22 @@ usePageInit(() => {
 }
 
 .chain-industry-head {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
-  font-size: 12px;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-strong);
 }
 
 .chain-industry-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--tc);
 }
@@ -963,6 +1017,16 @@ usePageInit(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.chain-product-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.chain-source-btn {
+  color: var(--text-muted);
 }
 
 .chain-product-card {
@@ -1362,6 +1426,7 @@ usePageInit(() => {
 @media (max-width: 900px) {
   .chain-top { flex-direction: column; align-items: flex-start; }
   .chain-structure { grid-template-columns: 1fr; gap: 16px; }
+  .chain-phase:not(:last-child)::before,
   .chain-phase:not(:last-child)::after { display: none; }
   .chain-charts { grid-template-columns: 1fr; }
   .chain-detail-body { grid-template-columns: 1fr; }
