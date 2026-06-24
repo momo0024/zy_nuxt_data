@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="chain-page">
     <header class="chain-top">
       <div class="chain-top-title">
@@ -112,7 +112,7 @@
           </div>
 
           <!-- ② 节点卡片区域（每子模块一列，含"本土培育/招商引资"来源按钮） -->
-          <div class="chain-nodes-board">
+          <div ref="chainNodesBoardRef" class="chain-nodes-board">
             <template v-for="phase in visiblePhases" :key="phase.key">
               <div
                 v-for="industry in phase.children"
@@ -120,62 +120,40 @@
                 class="chain-node-col"
                 :style="{ '--tc': phase.color }"
               >
-                <!-- 列标题 -->
-                <div class="chain-node-col-head">
-                  <span class="cnch-dot" />
-                  <span class="cnch-name">{{ industry.name }}</span>
-                  <span class="cnch-cnt">{{ industry.totalCount }}</span>
-                </div>
                 <!-- 产品类型节点卡片 -->
-                <template v-if="industry.children.length > 3">
-                  <div
-                    v-for="product in industry.children.slice(0, 3)"
-                    :key="product.productTypeId"
-                    class="chain-product-node"
-                    :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
-                  >
-                    <div class="cpn-name" :title="product.name">{{ product.name }}</div>
-                    <div class="cpn-sources">
-                      <button
-                        v-for="src in product.companyInfo"
-                        :key="src.sourceId"
-                        type="button"
-                        class="cpn-src-btn"
-                        :data-src-type="src.sourceName.includes('本土') ? 'native' : src.sourceName.includes('招商') ? 'attract' : 'other'"
-                        @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
-                      >
-                        <span class="cpn-src-label">{{ src.sourceName }}</span>
-                        <span class="cpn-src-num">{{ src.num }}</span>
-                      </button>
-                    </div>
+                <div
+                  v-for="product in (expandedIndustries.has(industry.secondIndustryId) ? industry.children : industry.children.slice(0, 3))"
+                  :key="product.productTypeId"
+                  class="chain-product-node"
+                  :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
+                >
+                  <div class="cpn-name" :title="product.name">{{ product.name }}</div>
+                  <div class="cpn-sources">
+                    <button
+                      v-for="src in product.companyInfo"
+                      :key="src.sourceId"
+                      type="button"
+                      class="cpn-src-btn"
+                      :data-src-type="src.sourceName.includes('本土') ? 'native' : src.sourceName.includes('招商') ? 'attract' : 'other'"
+                      @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
+                    >
+                      <span class="cpn-src-label">{{ src.sourceName }}</span>
+                      <span class="cpn-src-num">{{ src.num }}</span>
+                    </button>
                   </div>
-                  <button class="chain-other-more-btn" @click="showICSubModal(industry)">
-                    展示更多 ({{ industry.children.length - 3 }})
-                  </button>
-                </template>
-                <template v-else>
-                  <div
-                    v-for="product in industry.children"
-                    :key="product.productTypeId"
-                    class="chain-product-node"
-                    :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
-                  >
-                    <div class="cpn-name" :title="product.name">{{ product.name }}</div>
-                    <div class="cpn-sources">
-                      <button
-                        v-for="src in product.companyInfo"
-                        :key="src.sourceId"
-                        type="button"
-                        class="cpn-src-btn"
-                        :data-src-type="src.sourceName.includes('本土') ? 'native' : src.sourceName.includes('招商') ? 'attract' : 'other'"
-                        @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
-                      >
-                        <span class="cpn-src-label">{{ src.sourceName }}</span>
-                        <span class="cpn-src-num">{{ src.num }}</span>
-                      </button>
-                    </div>
-                  </div>
-                </template>
+                </div>
+                <button
+                  v-if="industry.children.length > 3"
+                  class="chain-inline-expand-btn"
+                  @click="toggleIndustryExpand(industry.secondIndustryId)"
+                >
+                  <UIcon
+                    :name="expandedIndustries.has(industry.secondIndustryId) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                    class="size-3"
+                  />
+                  <span v-if="!expandedIndustries.has(industry.secondIndustryId)">展开更多 ({{ industry.children.length - 3 }})</span>
+                  <span v-else>收起</span>
+                </button>
                 <div v-if="!industry.children.length" class="chain-node-empty">暂无数据</div>
               </div>
               <div
@@ -275,7 +253,7 @@
             </h3>
             <div class="chain-chart-wrap">
               <ClientOnly>
-                <VChart v-if="parkChartOption" :option="parkChartOption" class="chain-chart" autoresize @click="handleChartClick($event, 'park')" />
+                <VChart ref="parkChartRef" v-if="parkChartOption" :option="parkChartOption" class="chain-chart" autoresize @zr:click="handleChartAreaClick($event, 'park')" />
                 <div v-else class="chain-chart-empty">暂无数据</div>
               </ClientOnly>
             </div>
@@ -287,7 +265,7 @@
             </h3>
             <div class="chain-chart-wrap">
               <ClientOnly>
-                <VChart v-if="typeChartOption" :option="typeChartOption" class="chain-chart" autoresize @click="handleChartClick($event, 'type')" />
+                <VChart ref="typeChartRef" v-if="typeChartOption" :option="typeChartOption" class="chain-chart" autoresize @zr:click="handleChartAreaClick($event, 'type')" />
                 <div v-else class="chain-chart-empty">暂无数据</div>
               </ClientOnly>
             </div>
@@ -471,6 +449,7 @@ const phaseFilter = ref('')
 const viewMode = ref<'structure' | 'tree'>('structure')
 const selectedProduct = ref<ProductType | null>(null)
 const selectedSecondIndustry = ref<SecondIndustry | null>(null)
+const expandedIndustries = ref(new Set<number>())
 
 const visiblePhases = computed(() =>
   phaseFilter.value ? chainPhases.value.filter(p => p.key === phaseFilter.value) : chainPhases.value
@@ -505,6 +484,8 @@ const otherSubModalList = ref<any[]>([])
 // 底部图表
 const globalParkList = ref<ParkItem[]>([])
 const globalTypeList = ref<TypeItem[]>([])
+const parkChartRef = ref<any>(null)
+const typeChartRef = ref<any>(null)
 
 function parseSourceInfo(info: Record<string, any>): SourceInfo[] {
   if (!info || typeof info !== 'object') return []
@@ -613,6 +594,7 @@ function switchChain(key: string) {
   chainPhases.value = buildChain(target.raw)
   phaseFilter.value = ''
   selectedProduct.value = null
+  expandedIndustries.value = new Set()
 }
 
 async function fetchGlobalCharts() {
@@ -712,6 +694,14 @@ function showICSubModal(industry: SecondIndustry) {
   otherSubModalVisible.value = true
 }
 
+function toggleIndustryExpand(id: number) {
+  const next = new Set(expandedIndustries.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  expandedIndustries.value = next
+  nextTick(() => requestAnimationFrame(alignNodeCols))
+}
+
 function closeOtherSubModal() {
   otherSubModalVisible.value = false
 }
@@ -785,57 +775,118 @@ let chainMindMapInstance: any = null
 let chainMindMapViewApplied = false
 
 function buildChainMindMapData() {
-  if (!chainPhases.value.length) return null
+  if (!chainList.value.length) return null
   const textColor = chartTextColor.value
   const borderColor = chartAxisColor.value
   const surfaceAlt = chartSurfaceAltColor.value
   const surface = chartSurfaceColor.value
-  return {
-    data: { text: chainTitle.value, expand: true },
-    children: chainPhases.value.map(phase => ({
+  const NATIVE_COLOR = '#10b981'
+  const ATTRACT_COLOR = '#3b82f6'
+
+  const mkSourceNode = (
+    src: SourceInfo,
+    productTypeId: number,
+    secondIndustryId: number,
+    productName: string,
+  ) => {
+    const isNative = src.sourceName.includes('本土')
+    const c = isNative ? NATIVE_COLOR : ATTRACT_COLOR
+    return {
       data: {
-        text: phase.name,
-        fillColor: `${phase.color}1f`,
-        borderColor: phase.color,
-        color: phase.color,
-        expand: true,
+        text: `${src.sourceName}\u2002${src.num}家`,
+        nodeType: 'source',
+        productTypeId,
+        secondIndustryId,
+        sourceId: src.sourceId,
+        sourceName: src.sourceName,
+        productName,
+        fillColor: `${c}18`,
+        borderColor: c,
+        color: c,
       },
-      children: phase.children.map(industry => ({
+      children: [],
+    }
+  }
+
+  const mkProductNode = (product: ProductType, secondIndustryId: number) => ({
+    data: {
+      text: product.name,
+      nodeType: 'product',
+      productTypeId: product.productTypeId,
+      secondIndustryId,
+      productName: product.name,
+      fillColor: surface,
+      borderColor,
+      color: textColor,
+      expand: false,
+    },
+    children: product.companyInfo
+      .filter(s => s.num > 0)
+      .map(src => mkSourceNode(src, product.productTypeId, secondIndustryId, product.name)),
+  })
+
+  return {
+    data: { text: '产业链', expand: true, nodeType: 'root' },
+    children: chainList.value.map(chain => {
+      const phases = buildChain(chain.raw)
+      const isCurrent = chain.key === currentChainKey.value
+      const chainColor = isCurrent ? '#6366f1' : '#64748b'
+      return {
         data: {
-          text: industry.name,
-          fillColor: surfaceAlt,
-          borderColor: borderColor,
-          color: textColor,
-          expand: true,
+          text: chain.name,
+          nodeType: 'chain',
+          fillColor: `${chainColor}1f`,
+          borderColor: chainColor,
+          color: chainColor,
+          expand: isCurrent,
         },
-        children: industry.children.map(product => ({
+        children: phases.map(phase => ({
           data: {
-            text: product.name,
-            value: product.totalCount,
-            productTypeId: product.productTypeId,
-            fillColor: surface,
-            borderColor: borderColor,
-            color: textColor,
+            text: phase.name,
+            nodeType: 'phase',
+            fillColor: `${phase.color}1f`,
+            borderColor: phase.color,
+            color: phase.color,
+            expand: isCurrent,
           },
-          children: [],
+          children: phase.children.map(industry => ({
+            data: {
+              text: industry.name,
+              nodeType: 'industry',
+              fillColor: surfaceAlt,
+              borderColor,
+              color: textColor,
+              expand: isCurrent,
+            },
+            children: industry.children.map(p => mkProductNode(p, industry.secondIndustryId)),
+          })),
         })),
-      })),
-    })),
+      }
+    }),
   }
 }
 
 function handleChainMindMapNodeClick(node: any) {
-  const productTypeId = node?.getData?.('productTypeId')
-  if (!productTypeId) return
-  for (const phase of chainPhases.value) {
-    for (const ind of phase.children) {
-      const product = ind.children.find(p => p.productTypeId === productTypeId)
-      if (product) {
-        selectProduct(product)
-        openCompanyList({})
-        return
-      }
-    }
+  const nodeType = node?.getData?.('nodeType')
+  if (nodeType === 'product') {
+    const productTypeId = node?.getData?.('productTypeId')
+    const secondIndustryId = node?.getData?.('secondIndustryId')
+    const productName = node?.getData?.('productName') || ''
+    if (!productTypeId) return
+    openOtherCompanyList(productTypeId, secondIndustryId, productName, {})
+  } else if (nodeType === 'source') {
+    const productTypeId = node?.getData?.('productTypeId')
+    const secondIndustryId = node?.getData?.('secondIndustryId')
+    const sourceId = node?.getData?.('sourceId')
+    const sourceName = node?.getData?.('sourceName') || ''
+    const productName = node?.getData?.('productName') || ''
+    if (!productTypeId || !sourceId) return
+    openOtherCompanyList(
+      productTypeId,
+      secondIndustryId,
+      productName ? `${productName} · ${sourceName}` : sourceName,
+      { company_source: sourceId },
+    )
   }
 }
 
@@ -871,7 +922,7 @@ async function initChainMindMap() {
       import('simple-mind-map/src/plugins/Drag.js'),
     ])
 
-    ;(MindMap as any).extendNodeDataNoStylePropList(['productTypeId', 'value'])
+    ;(MindMap as any).extendNodeDataNoStylePropList(['productTypeId', 'value', 'secondIndustryId', 'sourceId', 'sourceName', 'productName', 'nodeType'])
     chainMindMapInstance = new (MindMap as any)({
       el,
       data: mindData,
@@ -953,7 +1004,7 @@ function buildBarOption(data: { name: string; value: number; id: number }[], col
     yAxis: {
       type: 'value' as const,
       axisLabel: { color: chartTextColor.value, fontSize: 11 },
-      splitLine: { lineStyle: { color: chartGridColor.value, opacity: 0.08, type: 'dashed' } },
+      splitLine: { lineStyle: { color: chartGridColor.value, opacity: 0.25, type: 'dashed' } },
     },
     series: [{
       type: 'bar' as const,
@@ -968,11 +1019,31 @@ function buildBarOption(data: { name: string; value: number; id: number }[], col
   }
 }
 
-function handleChartClick(params: any, chartType: 'park' | 'type') {
-  const id = params?.data?.id
-  if (!id) return
+function handleChartAreaClick(evt: any, chartType: 'park' | 'type') {
+  const chartComp = chartType === 'park' ? parkChartRef.value : typeChartRef.value
+  if (!chartComp?.chart) return
+  const ec = chartComp.chart
+  const list = chartType === 'park' ? globalParkList.value : globalTypeList.value
+  if (!list.length) return
+
+  // 用 xAxisIndex 转换：将像素 x 坐标映射到分类索引，不依赖 y 坐标
+  // 这样点击整列纵向任意位置都能命中对应分类
+  let idx: number | null = null
+  const xPt = ec.convertFromPixel({ xAxisIndex: 0 }, evt.offsetX)
+  if (xPt != null && !isNaN(Number(xPt))) {
+    idx = Math.round(Number(xPt))
+  } else {
+    // 降级：从 grid 转换
+    const pt = ec.convertFromPixel({ gridIndex: 0 }, [evt.offsetX, evt.offsetY])
+    if (pt != null && Array.isArray(pt)) idx = Math.round(pt[0])
+  }
+
+  if (idx == null || idx < 0 || idx >= list.length) return
+  const item = list[idx]
+  const id = chartType === 'park' ? (item as ParkItem).park_id : (item as TypeItem).type_id
   const key = chartType === 'park' ? 'park_id' : 'company_type'
   companyFilter.value = { [key]: id }
+  companyModalTitle.value = item.park_name
   selectedProduct.value = null
   companyModalVisible.value = true
   fetchCompanyList()
@@ -990,6 +1061,97 @@ usePageInit(() => {
   fetchChainData()
   fetchGlobalCharts()
 })
+
+/* ── 卡片列与平行四边形底边对齐 ── */
+const chainNodesBoardRef = ref<HTMLElement | null>(null)
+
+function alignNodeCols() {
+  if (typeof document === 'undefined') return
+  const board = chainNodesBoardRef.value
+  if (!board) return
+  const cols = board.querySelectorAll<HTMLElement>(':scope > .chain-node-col')
+  if (!cols.length) return
+
+  /* 移动端垂直布局：清除定位，恢复自然流 */
+  if (getComputedStyle(board).flexDirection === 'column') {
+    cols.forEach(col => {
+      col.style.position = ''
+      col.style.top = ''
+      col.style.bottom = ''
+      col.style.left = ''
+      col.style.width = ''
+      col.style.flex = ''
+      col.style.marginLeft = ''
+      col.style.marginRight = ''
+      col.style.gridColumn = ''
+    })
+    board.style.position = ''
+    board.style.minHeight = ''
+    board.style.gridTemplateColumns = ''
+    return
+  }
+
+  const banner = board.parentElement?.querySelector('.chain-arrow-banner') as HTMLElement | null
+  if (!banner) return
+  const s = parseFloat(getComputedStyle(banner).getPropertyValue('--s')) || 14
+
+  const botRow = banner.querySelector('.chain-arrow-bot') as HTMLElement | null
+  if (!botRow) return
+  const pars = botRow.querySelectorAll<HTMLElement>(':scope > .chain-par-sub')
+  if (!pars.length || pars.length !== cols.length) return
+
+  /* 绝对定位方案：每列卡片的 left/width 直接对应平行四边形底边的 left/width，无累计误差 */
+  const boardRect = board.getBoundingClientRect()
+  const bannerRect = banner.getBoundingClientRect()
+  const boardContentLeft = boardRect.left + parseFloat(getComputedStyle(board).borderLeftWidth)
+
+  let maxColHeight = 0
+  Array.from(pars).forEach((par, i) => {
+    const rect = par.getBoundingClientRect()
+    const isLast = par.classList.contains('par-last')
+    const isEmpty = cols[i]?.classList.contains('chain-node-col-empty')
+    /* 下行平行四边形底边投影宽度：
+       默认/中间列：底边从 x=0 到 x=parW-s，宽度 = parW - s
+       par-last：底边从 x=0 到 x=parW，宽度 = parW */
+    const bottomW = isLast ? rect.width : rect.width - s
+    /* 占位列保持原外接矩形宽度，普通列使用底边宽度 */
+    const colW = Math.max(1, isEmpty ? rect.width : bottomW)
+    const left = rect.left - boardContentLeft
+
+    if (cols[i]) {
+      cols[i].style.position = 'absolute'
+      cols[i].style.top = '0'
+      cols[i].style.bottom = ''   // 先清除，让列高等于真实内容高再量取
+      cols[i].style.left = `${left}px`
+      cols[i].style.width = `${colW}px`
+      cols[i].style.flex = 'none'
+      cols[i].style.marginLeft = '0'
+      cols[i].style.marginRight = '0'
+      cols[i].style.gridColumn = ''
+      maxColHeight = Math.max(maxColHeight, cols[i].scrollHeight)
+    }
+  })
+
+  /* 绝对定位不撑开父容器，需显式设置 board 高度 */
+  board.style.position = 'relative'
+  board.style.minHeight = `${maxColHeight}px`
+  /* 量取完毕后再统一拉伸到 board 底部，保证边框线整齐 */
+  cols.forEach(col => { col.style.bottom = '0' })
+}
+
+watch([visiblePhases, viewMode], () => {
+  if (viewMode.value === 'structure') {
+    nextTick(() => {
+      requestAnimationFrame(alignNodeCols)
+    })
+  }
+})
+
+onMounted(() => {
+  window.addEventListener('resize', alignNodeCols)
+  requestAnimationFrame(alignNodeCols)
+})
+onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
 </script>
 
 <style scoped>
@@ -1005,8 +1167,10 @@ usePageInit(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 24px 16px;
+  padding: 22px 28px 18px;
   flex-wrap: wrap;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), var(--surface));
+  border-bottom: 1px solid var(--border);
 }
 
 .chain-top-title {
@@ -1020,18 +1184,19 @@ usePageInit(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
   color: #fff;
   flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
 }
 
 .chain-top h1 {
   margin: 0;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: var(--text-strong);
   letter-spacing: 0.02em;
 }
@@ -1050,18 +1215,23 @@ usePageInit(() => {
   gap: 6px;
   padding: 7px 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 20px;
   background: var(--surface);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: all 0.2s ease;
 }
 
 .chain-tab span { font-size: 11px; font-weight: 700; color: var(--tc); }
-.chain-tab:hover { background: var(--surface-alt); color: var(--text); }
-.chain-tab.on { background: var(--surface); color: var(--text-strong); box-shadow: var(--shadow-sm); }
+.chain-tab:hover { background: var(--surface-alt); color: var(--text); border-color: color-mix(in srgb, var(--tc) 30%, var(--border)); }
+.chain-tab.on {
+  background: color-mix(in srgb, var(--tc) 10%, var(--surface));
+  color: var(--text-strong);
+  border-color: color-mix(in srgb, var(--tc) 50%, var(--border));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tc) 15%, transparent);
+}
 
 /* ── 视图切换 ── */
 .chain-view-toggle {
@@ -1072,8 +1242,8 @@ usePageInit(() => {
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 10px;
+  background: var(--surface-alt);
 }
 
 .chain-view-btn {
@@ -1083,15 +1253,15 @@ usePageInit(() => {
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.18s;
 }
 
-.chain-view-btn:hover { background: var(--surface-alt); color: var(--text); }
-.chain-view-btn.on { background: var(--surface-alt); color: var(--primary); box-shadow: var(--shadow-sm); }
+.chain-view-btn:hover { background: var(--surface); color: var(--text); }
+.chain-view-btn.on { background: var(--surface); color: var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
 
 /* ── 主区域 ── */
 .chain-main { padding: 0 24px; }
@@ -1114,18 +1284,18 @@ usePageInit(() => {
    ═══════════════════════════════════════════════════════ */
 .chain-structure-v2 {
   margin-bottom: 24px;
+  margin-top: 20px;
 }
 
 /* ═══════════════════════════════════════════════════════
    双行平行四边形鱼形箭头
-   上行（阶段）/ 方向 + 下行（子模块）\ 方向 = 完整鱼身
    ═══════════════════════════════════════════════════════ */
 .chain-arrow-banner {
-  --s: 14px;             /* 斜切量 */
-  background: var(--bg); /* 裁剪留白透出该色，形成间隔线 */
-  border-radius: 10px 10px 0 0;
+  --s: 14px;
+  background: var(--bg);
+  border-radius: 12px 12px 0 0;
   overflow: hidden;
-  padding: 0 1px;        /* 与 chain-nodes-board 左右边框对齐 */
+  padding: 0 1px;
 }
 
 .chain-arrow-row {
@@ -1178,16 +1348,16 @@ usePageInit(() => {
   clip-path: polygon(var(--s) 0, 100% 0, 100% 100%, 0 100%);
 }
 
-/* ── 阶段格（上行，实色底） ── */
+/* ── 阶段格（上行，渐变色底） ── */
 .chain-par-phase {
-  background: var(--tc);
-  min-height: 54px;
+  background: linear-gradient(135deg, var(--tc), color-mix(in srgb, var(--tc) 70%, #000));
+  min-height: 56px;
 }
 
-/* ── 子模块格（下行，淡色底） ── */
+/* ── 子模块格（下行，淡渐变底） ── */
 .chain-par-sub {
-  background: color-mix(in srgb, var(--tc) 20%, var(--surface-alt));
-  min-height: 34px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 22%, var(--surface-alt)), color-mix(in srgb, var(--tc) 12%, var(--surface-alt)));
+  min-height: 36px;
 }
 
 /* 内容层：居中，左右内边距防止文字被裁剪角覆盖 */
@@ -1205,16 +1375,17 @@ usePageInit(() => {
 .chain-arrow-top .chain-par-in { color: #fff; }
 .chain-par-sub .chain-par-in { color: var(--text-strong); }
 
-.cpi-icon { display: flex; align-items: center; opacity: 0.9; flex-shrink: 0; }
-.cpi-name { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+.cpi-icon { display: flex; align-items: center; opacity: 0.85; flex-shrink: 0; }
+.cpi-name { font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
 .cpi-cnt {
   font-style: normal;
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.22);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.25);
   flex-shrink: 0;
+  backdrop-filter: blur(4px);
 }
 
 .cpi-sub-name {
@@ -1227,20 +1398,21 @@ usePageInit(() => {
   font-weight: 600;
   color: color-mix(in srgb, var(--tc) 70%, var(--text-muted));
   background: color-mix(in srgb, var(--tc) 14%, transparent);
-  padding: 1px 5px;
-  border-radius: 5px;
+  padding: 1px 6px;
+  border-radius: 6px;
   flex-shrink: 0;
 }
 
 /* ── 节点卡片区域 ── */
 .chain-nodes-board {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  align-items: stretch;
   border: 1px solid var(--border);
   border-top: none;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 14px 14px;
   overflow: hidden;
   background: var(--surface);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 .chain-node-col {
@@ -1249,82 +1421,54 @@ usePageInit(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
-  background: color-mix(in srgb, var(--tc) 2%, var(--surface));
-}
-
-.chain-node-col:last-child { border-right: none; }
-
-/* 列标题 */
-.chain-node-col-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  background: color-mix(in srgb, var(--tc) 6%, var(--surface-alt));
-  border-bottom: 2px solid var(--tc);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-strong);
-  flex-shrink: 0;
-}
-
-.cnch-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--tc);
-  flex-shrink: 0;
-}
-
-.cnch-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cnch-cnt {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--tc);
-  padding: 1px 5px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--tc) 14%, transparent);
-  flex-shrink: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 3%, var(--surface)), var(--surface));
+  padding-top: 4px;
+  box-sizing: border-box;
 }
 
 /* 产品节点卡片 */
 .chain-product-node {
-  margin: 10px 10px 0;
+  margin: 6px 6px 0;
   border: 1px solid var(--border);
+  border-left: 2px solid color-mix(in srgb, var(--tc) 45%, var(--border));
   border-radius: 8px;
-  padding: 8px 9px;
+  padding: 6px 8px;
   background: var(--surface);
   cursor: default;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  animation: cpn-in 0.18s ease;
 }
 
-.chain-product-node:last-child { margin-bottom: 10px; }
+@keyframes cpn-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chain-product-node:last-child { margin-bottom: 6px; }
 
 .chain-product-node:hover {
   border-color: color-mix(in srgb, var(--tc) 40%, var(--border));
+  border-left-color: var(--tc);
   background: color-mix(in srgb, var(--tc) 4%, var(--surface));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tc) 10%, transparent);
+  transform: translateY(-1px);
 }
 
 .chain-product-node.on {
-  border-color: var(--tc);
+  border-color: color-mix(in srgb, var(--tc) 50%, var(--border));
+  border-left-color: var(--tc);
   background: color-mix(in srgb, var(--tc) 8%, var(--surface));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tc) 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tc) 20%, transparent), 0 2px 8px color-mix(in srgb, var(--tc) 12%, transparent);
 }
 
 .cpn-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-strong);
-  line-height: 1.4;
-  margin-bottom: 6px;
+  line-height: 1.3;
+  margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1334,19 +1478,19 @@ usePageInit(() => {
 .cpn-sources {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
 }
 
 .cpn-src-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 7px;
+  gap: 3px;
+  padding: 2px 6px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 4px;
   background: var(--surface-alt);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
@@ -1359,34 +1503,56 @@ usePageInit(() => {
   color: var(--text-strong);
 }
 
-/* 本土培育：黄色 */
+/* 本土培育：精致标签 */
 .cpn-src-btn[data-src-type="native"] {
-  border-color: color-mix(in srgb, #f59e0b 50%, var(--border));
-  background: color-mix(in srgb, #f59e0b 12%, var(--surface-alt));
-  color: var(--text-muted);
+  --src: #10b981;
+  border-color: color-mix(in srgb, var(--src) 40%, var(--border));
+  background: color-mix(in srgb, var(--src) 8%, var(--surface-alt));
+  color: color-mix(in srgb, var(--src) 55%, var(--text-strong));
+  border-radius: 16px;
+  padding: 2px 6px;
 }
-.cpn-src-btn[data-src-type="native"] .cpn-src-num { color: #d97706; }
+.cpn-src-btn[data-src-type="native"]::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--src);
+  opacity: 0.8;
+}
+.cpn-src-btn[data-src-type="native"] .cpn-src-num { color: color-mix(in srgb, var(--src) 80%, #000); }
 .cpn-src-btn[data-src-type="native"]:hover {
-  border-color: #f59e0b;
-  background: color-mix(in srgb, #f59e0b 20%, var(--surface-alt));
+  border-color: color-mix(in srgb, var(--src) 65%, var(--border));
+  background: color-mix(in srgb, var(--src) 14%, var(--surface-alt));
 }
 
-/* 招商引资：红色 */
+/* 招商引资：精致标签 */
 .cpn-src-btn[data-src-type="attract"] {
-  border-color: color-mix(in srgb, #ef4444 50%, var(--border));
-  background: color-mix(in srgb, #ef4444 12%, var(--surface-alt));
-  color: var(--text-muted);
+  --src: #3b82f6;
+  border-color: color-mix(in srgb, var(--src) 40%, var(--border));
+  background: color-mix(in srgb, var(--src) 8%, var(--surface-alt));
+  color: color-mix(in srgb, var(--src) 55%, var(--text-strong));
+  border-radius: 16px;
+  padding: 2px 6px;
 }
-.cpn-src-btn[data-src-type="attract"] .cpn-src-num { color: #dc2626; }
+.cpn-src-btn[data-src-type="attract"]::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--src);
+  opacity: 0.8;
+}
+.cpn-src-btn[data-src-type="attract"] .cpn-src-num { color: color-mix(in srgb, var(--src) 80%, #000); }
 .cpn-src-btn[data-src-type="attract"]:hover {
-  border-color: #ef4444;
-  background: color-mix(in srgb, #ef4444 20%, var(--surface-alt));
+  border-color: color-mix(in srgb, var(--src) 65%, var(--border));
+  background: color-mix(in srgb, var(--src) 14%, var(--surface-alt));
 }
 
-.cpn-src-label { font-size: 10px; }
+.cpn-src-label { font-size: 9px; }
 
 .cpn-src-num {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: var(--tc, var(--primary));
   font-variant-numeric: tabular-nums;
@@ -1399,29 +1565,58 @@ usePageInit(() => {
   text-align: center;
 }
 
+/* 内联展开/收起按钮 */
+.chain-inline-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 6px 6px;
+  padding: 6px 10px;
+  border: 1px dashed color-mix(in srgb, var(--tc) 35%, var(--border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--tc) 4%, var(--surface-alt));
+  color: color-mix(in srgb, var(--tc) 75%, var(--text-muted));
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  width: calc(100% - 12px);
+  letter-spacing: 0.02em;
+}
+
+.chain-inline-expand-btn:hover {
+  border-color: color-mix(in srgb, var(--tc) 60%, var(--border));
+  background: color-mix(in srgb, var(--tc) 10%, var(--surface-alt));
+  color: var(--tc);
+  border-style: solid;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--tc) 12%, transparent);
+}
+
 /* ── 其他产业领域 ── */
 .chain-other-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 28px 0 14px;
+  gap: 14px;
+  margin: 32px 0 16px;
 }
 
 .coh-line {
   flex: 1;
   height: 1px;
-  background: var(--border);
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
 }
 
 .coh-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-muted);
   white-space: nowrap;
   flex-shrink: 0;
+  letter-spacing: 0.04em;
 }
 
 .coh-title :deep(svg) { color: var(--primary); }
@@ -1438,12 +1633,13 @@ usePageInit(() => {
   background: var(--surface);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   overflow: hidden;
-  transition: all 0.18s;
+  transition: all 0.2s ease;
 }
 
 .chain-other-card:hover {
   border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .chain-other-card-head {
@@ -1452,7 +1648,7 @@ usePageInit(() => {
   gap: 10px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--surface)), color-mix(in srgb, var(--primary) 3%, var(--surface)));
 }
 
 .chain-other-card-body {
@@ -1465,19 +1661,20 @@ usePageInit(() => {
 .chain-other-sub-card {
   margin: 0;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 10px;
+  padding: 9px 11px;
   background: var(--surface);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  transition: border-color 0.15s, background 0.15s;
+  transition: all 0.15s ease;
 }
 
 .chain-other-sub-card:hover {
   border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
   background: color-mix(in srgb, var(--primary) 4%, var(--surface));
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
 .coc-name {
@@ -1493,13 +1690,13 @@ usePageInit(() => {
 .cosc-main {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
 
 .cosc-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-strong);
   overflow: hidden;
@@ -1510,19 +1707,19 @@ usePageInit(() => {
 .cosc-sources {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
 }
 
 .cosc-src-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 7px;
+  gap: 3px;
+  padding: 2px 6px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 4px;
   background: var(--surface-alt);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
@@ -1535,41 +1732,65 @@ usePageInit(() => {
   color: var(--text-strong);
 }
 
+/* 本土培育：精致标签 */
 .cosc-src-btn.csc-native {
-  border-color: color-mix(in srgb, #f59e0b 50%, var(--border));
-  background: color-mix(in srgb, #f59e0b 12%, var(--surface-alt));
-  color: var(--text-muted);
+  --src: #10b981;
+  border-color: color-mix(in srgb, var(--src) 40%, var(--border));
+  background: color-mix(in srgb, var(--src) 8%, var(--surface-alt));
+  color: color-mix(in srgb, var(--src) 55%, var(--text-strong));
+  border-radius: 16px;
+  padding: 2px 6px;
 }
-.cosc-src-btn.csc-native .cosc-src-num { color: #d97706; }
+.cosc-src-btn.csc-native::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--src);
+  opacity: 0.8;
+}
+.cosc-src-btn.csc-native .cosc-src-num { color: color-mix(in srgb, var(--src) 80%, #000); }
 .cosc-src-btn.csc-native:hover {
-  border-color: #f59e0b;
-  background: color-mix(in srgb, #f59e0b 20%, var(--surface-alt));
+  border-color: color-mix(in srgb, var(--src) 65%, var(--border));
+  background: color-mix(in srgb, var(--src) 14%, var(--surface-alt));
 }
 
+/* 招商引资：精致标签 */
 .cosc-src-btn.csc-attract {
-  border-color: color-mix(in srgb, #ef4444 50%, var(--border));
-  background: color-mix(in srgb, #ef4444 12%, var(--surface-alt));
-  color: var(--text-muted);
+  --src: #3b82f6;
+  border-color: color-mix(in srgb, var(--src) 40%, var(--border));
+  background: color-mix(in srgb, var(--src) 8%, var(--surface-alt));
+  color: color-mix(in srgb, var(--src) 55%, var(--text-strong));
+  border-radius: 16px;
+  padding: 2px 6px;
 }
-.cosc-src-btn.csc-attract .cosc-src-num { color: #dc2626; }
+.cosc-src-btn.csc-attract::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--src);
+  opacity: 0.8;
+}
+.cosc-src-btn.csc-attract .cosc-src-num { color: color-mix(in srgb, var(--src) 80%, #000); }
 .cosc-src-btn.csc-attract:hover {
-  border-color: #ef4444;
-  background: color-mix(in srgb, #ef4444 20%, var(--surface-alt));
+  border-color: color-mix(in srgb, var(--src) 65%, var(--border));
+  background: color-mix(in srgb, var(--src) 14%, var(--surface-alt));
 }
 
 .cosc-src-num {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
 
 .cosc-cnt {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: var(--primary);
-  padding: 1px 6px;
-  border-radius: 8px;
+  padding: 1px 5px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--primary) 12%, transparent);
   flex-shrink: 0;
 }
@@ -1588,25 +1809,27 @@ usePageInit(() => {
   gap: 6px;
   padding: 10px;
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface-alt);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.18s ease;
   width: 100%;
 }
 
 .chain-other-more-btn:hover {
-  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
   background: color-mix(in srgb, var(--primary) 6%, var(--surface-alt));
   color: var(--primary);
+  border-style: solid;
 }
 
 /* ── 树形图 ── */
 .chain-tree-wrap {
   margin-bottom: 24px;
+  margin-top: 20px;
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
@@ -1637,6 +1860,11 @@ usePageInit(() => {
   overflow: hidden;
   background: var(--surface);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.chain-chart-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }
 
 .chain-chart-title {
@@ -1646,7 +1874,7 @@ usePageInit(() => {
   margin: 0;
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-alt);
+  background: linear-gradient(180deg, var(--surface-alt), var(--surface));
   font-size: 14px;
   font-weight: 700;
   color: var(--text-strong);
@@ -1689,8 +1917,8 @@ usePageInit(() => {
   max-width: 700px;
   max-height: 80vh;
   background: var(--surface);
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1701,9 +1929,9 @@ usePageInit(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 18px 22px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-alt);
+  background: linear-gradient(180deg, var(--surface-alt), var(--surface));
 }
 
 .chain-modal-head h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-strong); }
@@ -1742,32 +1970,33 @@ usePageInit(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface);
   text-decoration: none;
   color: inherit;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition: all 0.15s ease;
 }
 
 .chain-modal-item:hover {
   background: var(--surface-alt);
   border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  transform: translateX(2px);
 }
 
 .chain-modal-av {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-alt);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--surface-alt)), var(--surface-alt));
   border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 6px;
-  font-size: 11px;
+  color: var(--primary);
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1790,12 +2019,12 @@ usePageInit(() => {
 }
 
 /* ── 弹窗过渡 ── */
-.chain-modal-enter-active, .chain-modal-leave-active { transition: opacity 0.25s ease; }
+.chain-modal-enter-active, .chain-modal-leave-active { transition: opacity 0.3s ease; }
 .chain-modal-enter-active .chain-modal-panel,
-.chain-modal-leave-active .chain-modal-panel { transition: transform 0.25s ease; }
+.chain-modal-leave-active .chain-modal-panel { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .chain-modal-enter-from, .chain-modal-leave-to { opacity: 0; }
-.chain-modal-enter-from .chain-modal-panel { transform: scale(0.95) translateY(10px); }
-.chain-modal-leave-to .chain-modal-panel { transform: scale(0.95) translateY(10px); }
+.chain-modal-enter-from .chain-modal-panel { transform: scale(0.92) translateY(16px); }
+.chain-modal-leave-to .chain-modal-panel { transform: scale(0.92) translateY(16px); }
 
 /* ── 响应式 ── */
 @media (max-width: 900px) {
@@ -1813,8 +2042,8 @@ usePageInit(() => {
   }
   .chain-arrow-top .chain-par { width: 100%; }
   .chain-arrow-bot .chain-par { width: calc(50% - 2px); }
-  .chain-nodes-board { flex-direction: column; border-top: 1px solid var(--border); }
-  .chain-node-col { border-right: none; border-bottom: 1px solid var(--border); }
+  .chain-nodes-board { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+  .chain-node-col { border-right: none; border-bottom: 1px solid var(--border); width: 100% !important; grid-column: auto !important; }
   .chain-node-col:last-child { border-bottom: none; }
   .chain-charts { grid-template-columns: 1fr; }
   .chain-tree-chart { height: 420px; }
