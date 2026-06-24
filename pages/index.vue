@@ -122,7 +122,7 @@
               >
                 <!-- 产品类型节点卡片 -->
                 <div
-                  v-for="product in (expandedIndustries.has(industry.secondIndustryId) ? industry.children : industry.children.slice(0, 3))"
+                  v-for="product in industry.children.slice(0, 3)"
                   :key="product.productTypeId"
                   class="chain-product-node"
                   :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
@@ -145,14 +145,10 @@
                 <button
                   v-if="industry.children.length > 3"
                   class="chain-inline-expand-btn"
-                  @click="toggleIndustryExpand(industry.secondIndustryId)"
+                  @click="showICSubModal(industry)"
                 >
-                  <UIcon
-                    :name="expandedIndustries.has(industry.secondIndustryId) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                    class="size-3"
-                  />
-                  <span v-if="!expandedIndustries.has(industry.secondIndustryId)">展开更多 ({{ industry.children.length - 3 }})</span>
-                  <span v-else>收起</span>
+                  <UIcon name="i-lucide-layers" class="size-3" />
+                  <span>展示更多 ({{ industry.children.length - 3 }})</span>
                 </button>
                 <div v-if="!industry.children.length" class="chain-node-empty">暂无数据</div>
               </div>
