@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="chain-page">
     <header class="chain-top">
       <div class="chain-top-title">
@@ -127,27 +127,55 @@
                   <span class="cnch-cnt">{{ industry.totalCount }}</span>
                 </div>
                 <!-- 产品类型节点卡片 -->
-                <div
-                  v-for="product in industry.children"
-                  :key="product.productTypeId"
-                  class="chain-product-node"
-                  :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
-                >
-                  <div class="cpn-name" :title="product.name">{{ product.name }}</div>
-                  <div class="cpn-sources">
-                    <button
-                      v-for="src in product.companyInfo"
-                      :key="src.sourceId"
-                      type="button"
-                      class="cpn-src-btn"
-                      :data-src-type="src.sourceName.includes('本土') ? 'native' : src.sourceName.includes('招商') ? 'attract' : 'other'"
-                      @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
-                    >
-                      <span class="cpn-src-label">{{ src.sourceName }}</span>
-                      <span class="cpn-src-num">{{ src.num }}</span>
-                    </button>
+                <template v-if="industry.children.length > 3">
+                  <div
+                    v-for="product in industry.children.slice(0, 3)"
+                    :key="product.productTypeId"
+                    class="chain-product-node"
+                    :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
+                  >
+                    <div class="cpn-name" :title="product.name">{{ product.name }}</div>
+                    <div class="cpn-sources">
+                      <button
+                        v-for="src in product.companyInfo"
+                        :key="src.sourceId"
+                        type="button"
+                        class="cpn-src-btn"
+                        :data-src-type="src.sourceName.includes('本土') ? 'native' : src.sourceName.includes('招商') ? 'attract' : 'other'"
+                        @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
+                      >
+                        <span class="cpn-src-label">{{ src.sourceName }}</span>
+                        <span class="cpn-src-num">{{ src.num }}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                  <button class="chain-other-more-btn" @click="showICSubModal(industry)">
+                    展示更多 ({{ industry.children.length - 3 }})
+                  </button>
+                </template>
+                <template v-else>
+                  <div
+                    v-for="product in industry.children"
+                    :key="product.productTypeId"
+                    class="chain-product-node"
+                    :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
+                  >
+                    <div class="cpn-name" :title="product.name">{{ product.name }}</div>
+                    <div class="cpn-sources">
+                      <button
+                        v-for="src in product.companyInfo"
+                        :key="src.sourceId"
+                        type="button"
+                        class="cpn-src-btn"
+                        :data-src-type="src.sourceName.includes('本土') ? 'native' : src.sourceName.includes('招商') ? 'attract' : 'other'"
+                        @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
+                      >
+                        <span class="cpn-src-label">{{ src.sourceName }}</span>
+                        <span class="cpn-src-num">{{ src.num }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </template>
                 <div v-if="!industry.children.length" class="chain-node-empty">暂无数据</div>
               </div>
               <div
@@ -354,8 +382,8 @@
                             v-if="info && (info.num || info.num === 0)"
                             class="cosc-src-btn"
                             :class="{
-                              'csc-native': info.sourceId === 'native' || (info.sourceName && info.sourceName.includes('本土')),
-                              'csc-attract': info.sourceId === 'attract' || (info.sourceName && info.sourceName.includes('招商'))
+                              'csc-native': info.sourceId === 'native' || (info.source_name && info.source_name.includes('本土')),
+                              'csc-attract': info.sourceId === 'attract' || (info.source_name && info.source_name.includes('招商'))
                             }"
                             @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: info.sourceId })"
                           >
@@ -665,6 +693,22 @@ function getOtherSubList(other: any) {
 function showOtherSubModal(other: any) {
   otherSubModalTitle.value = other.name
   otherSubModalList.value = getOtherSubList(other)
+  otherSubModalVisible.value = true
+}
+
+function showICSubModal(industry: SecondIndustry) {
+  otherSubModalTitle.value = industry.name
+  otherSubModalList.value = industry.children.map(p => ({
+    name: p.name,
+    product_type_id: p.productTypeId,
+    total_count: p.totalCount,
+    company_info: (p.companyInfo || []).map((s: any) => ({
+      sourceId: s.sourceId,
+      source_name: s.sourceName,
+      num: s.num,
+    })),
+    _secondIndustryId: industry.secondIndustryId,
+  }))
   otherSubModalVisible.value = true
 }
 
@@ -1302,7 +1346,7 @@ usePageInit(() => {
   border-radius: 5px;
   background: var(--surface-alt);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
@@ -1315,32 +1359,34 @@ usePageInit(() => {
   color: var(--text-strong);
 }
 
-/* 本土培育：绿色 */
+/* 本土培育：黄色 */
 .cpn-src-btn[data-src-type="native"] {
-  border-color: color-mix(in srgb, var(--success) 50%, var(--border));
+  border-color: color-mix(in srgb, #f59e0b 50%, var(--border));
+  background: color-mix(in srgb, #f59e0b 12%, var(--surface-alt));
   color: var(--text-muted);
 }
-.cpn-src-btn[data-src-type="native"] .cpn-src-num { color: var(--success); }
+.cpn-src-btn[data-src-type="native"] .cpn-src-num { color: #d97706; }
 .cpn-src-btn[data-src-type="native"]:hover {
-  border-color: var(--success);
-  background: color-mix(in srgb, var(--success) 10%, var(--surface-alt));
+  border-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 20%, var(--surface-alt));
 }
 
-/* 招商引资：蓝色 */
+/* 招商引资：红色 */
 .cpn-src-btn[data-src-type="attract"] {
-  border-color: color-mix(in srgb, #38bdf8 50%, var(--border));
+  border-color: color-mix(in srgb, #ef4444 50%, var(--border));
+  background: color-mix(in srgb, #ef4444 12%, var(--surface-alt));
   color: var(--text-muted);
 }
-.cpn-src-btn[data-src-type="attract"] .cpn-src-num { color: #38bdf8; }
+.cpn-src-btn[data-src-type="attract"] .cpn-src-num { color: #dc2626; }
 .cpn-src-btn[data-src-type="attract"]:hover {
-  border-color: #38bdf8;
-  background: color-mix(in srgb, #38bdf8 10%, var(--surface-alt));
+  border-color: #ef4444;
+  background: color-mix(in srgb, #ef4444 20%, var(--surface-alt));
 }
 
-.cpn-src-label { font-size: 11px; }
+.cpn-src-label { font-size: 10px; }
 
 .cpn-src-num {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--tc, var(--primary));
   font-variant-numeric: tabular-nums;
@@ -1476,7 +1522,7 @@ usePageInit(() => {
   border-radius: 5px;
   background: var(--surface-alt);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
@@ -1490,23 +1536,25 @@ usePageInit(() => {
 }
 
 .cosc-src-btn.csc-native {
-  border-color: color-mix(in srgb, var(--success) 50%, var(--border));
+  border-color: color-mix(in srgb, #f59e0b 50%, var(--border));
+  background: color-mix(in srgb, #f59e0b 12%, var(--surface-alt));
   color: var(--text-muted);
 }
-.cosc-src-btn.csc-native .cosc-src-num { color: var(--success); }
+.cosc-src-btn.csc-native .cosc-src-num { color: #d97706; }
 .cosc-src-btn.csc-native:hover {
-  border-color: var(--success);
-  background: color-mix(in srgb, var(--success) 10%, var(--surface-alt));
+  border-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 20%, var(--surface-alt));
 }
 
 .cosc-src-btn.csc-attract {
-  border-color: color-mix(in srgb, #38bdf8 50%, var(--border));
+  border-color: color-mix(in srgb, #ef4444 50%, var(--border));
+  background: color-mix(in srgb, #ef4444 12%, var(--surface-alt));
   color: var(--text-muted);
 }
-.cosc-src-btn.csc-attract .cosc-src-num { color: #38bdf8; }
+.cosc-src-btn.csc-attract .cosc-src-num { color: #dc2626; }
 .cosc-src-btn.csc-attract:hover {
-  border-color: #38bdf8;
-  background: color-mix(in srgb, #38bdf8 10%, var(--surface-alt));
+  border-color: #ef4444;
+  background: color-mix(in srgb, #ef4444 20%, var(--surface-alt));
 }
 
 .cosc-src-num {
