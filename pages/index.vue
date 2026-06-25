@@ -1116,9 +1116,14 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
 
 <style scoped>
 .chain-page {
+  --chain-max-width: min(1400px, calc(100vw - 32px));
   min-height: 100%;
   color: var(--text);
   background: var(--bg);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding-bottom: 32px;
 }
 
@@ -1131,6 +1136,8 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   flex-wrap: wrap;
   background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), var(--surface));
   border-bottom: 1px solid var(--border);
+  width: 100%;
+  max-width: var(--chain-max-width);
 }
 
 .chain-top-title {
@@ -1224,7 +1231,11 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
 .chain-view-btn.on { background: var(--surface); color: var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
 
 /* ── 主区域 ── */
-.chain-main { padding: 0 24px; }
+.chain-main {
+  width: 100%;
+  max-width: var(--chain-max-width);
+  padding: 0 24px;
+}
 
 .chain-state {
   display: flex;

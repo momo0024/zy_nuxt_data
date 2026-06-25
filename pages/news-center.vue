@@ -540,7 +540,21 @@ usePageInit(initNewsCenterPage)
 /* ═══════════════════════════════════════
    Root
 ═══════════════════════════════════════ */
-.nc-root { display: flex; flex-direction: column; gap: 0; }
+.nc-root {
+  --nc-max-width: min(1400px, calc(100vw - 32px));
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.nc-hero,
+.nc-filter-bar,
+.nc-main {
+  width: 100%;
+  max-width: var(--nc-max-width);
+}
 
 /* ═══════════════════════════════════════
    Hero
@@ -1091,6 +1105,7 @@ usePageInit(initNewsCenterPage)
   color: var(--text-strong);
   line-height: 1.5; margin: 0;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
