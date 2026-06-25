@@ -125,15 +125,24 @@
           :class="{ 'nc-card--link': !!pagedNews[0].url }"
           @click="openNews(pagedNews[0])"
         >
+          <div class="nc-card-accent-bar"></div>
           <div class="nc-card-featured-inner">
             <div class="nc-featured-meta">
-              <UBadge :label="pagedNews[0].source" :color="getSourceColor(pagedNews[0].source)" variant="soft" size="sm" />
+              <span class="nc-source-badge" :class="'nc-source-badge--' + getSourceColor(pagedNews[0].source)">
+                <UIcon name="i-lucide-newspaper" class="size-3" />
+                {{ pagedNews[0].source }}
+              </span>
               <span class="nc-featured-date">{{ formatFullDate(pagedNews[0].date) }}</span>
               <span class="nc-featured-time">{{ pagedNews[0].time }}</span>
             </div>
             <h2 class="nc-featured-title">{{ pagedNews[0].title }}</h2>
             <div class="nc-featured-footer">
-              <span class="nc-featured-cat">{{ pagedNews[0].category }}</span>
+              <div class="nc-featured-tags" v-if="pagedNews[0].category">
+                <span class="nc-keyword-tag nc-keyword-tag--featured">
+                  <UIcon name="i-lucide-hash" class="size-3" />
+                  {{ pagedNews[0].category }}
+                </span>
+              </div>
               <span class="nc-featured-link">
                 阅读 <UIcon name="i-lucide-arrow-right" class="size-3.5" />
               </span>
@@ -157,19 +166,26 @@
           :class="{ 'nc-card--link': !!item.url }"
           @click="openNews(item)"
         >
+          <div class="nc-card-accent-bar"></div>
           <div class="nc-card-date-stamp">
             <span class="nc-stamp-mo">{{ formatMonth(item.date) }}</span>
             <span class="nc-stamp-day">{{ formatDay(item.date) }}</span>
             <span v-if="getRelativeLabel(item.date)" class="nc-stamp-rel">{{ getRelativeLabel(item.date) }}</span>
           </div>
           <div class="nc-card-body">
+            <div class="nc-card-header">
+              <span class="nc-source-dot" :style="{ backgroundColor: getSourceDotColor(item.source) }"></span>
+              <span class="nc-card-source">{{ item.source }}</span>
+            </div>
             <h3 class="nc-card-title">{{ item.title }}</h3>
-            <div class="nc-card-meta">
-              <span class="nc-card-source" :style="{ color: sourceTextColors[item.source] || 'var(--text-muted)' }">
-                {{ item.source }}
-              </span>
+            <div class="nc-card-footer">
+              <div class="nc-card-tags" v-if="item.category">
+                <span class="nc-keyword-tag">
+                  <UIcon name="i-lucide-tag" class="size-3" />
+                  {{ item.category }}
+                </span>
+              </div>
               <span class="nc-card-time">{{ item.time }}</span>
-              <span class="nc-card-cat">{{ item.category }}</span>
             </div>
           </div>
           <div class="nc-card-jump">
@@ -389,6 +405,18 @@ const activeFilters = computed(() => {
 
 /* ── 方法 ── */
 function getSourceColor(s: string): string { return sourceBadgeColors[s] || 'neutral' }
+
+const sourceDotColorMap: Record<string, string> = {
+  '证券时报': '#f59e0b', '经济日报': '#22c55e', '财经周报': '#f59e0b',
+  '中国证券报': '#f59e0b', '电子工程专辑': '#71717a', '金融时报': '#6366f1',
+  '21世纪经济报道': '#ef4444', '银行家': '#6366f1', '贸易观察': '#2563eb',
+  '科技日报': '#0891b2', '健康报': '#ec4899', '能源杂志': '#f59e0b',
+  '中国制造': '#71717a', '通信世界': '#0891b2', '环境经济': '#22c55e',
+}
+
+function getSourceDotColor(s: string): string {
+  return sourceDotColorMap[s] || 'var(--primary)'
+}
 
 function toggleKeyword(kw: string) {
   if (selectedKeywords.value.has(kw)) {
@@ -806,6 +834,20 @@ usePageInit(initNewsCenterPage)
   overflow: hidden;
 }
 
+/* 顶部渐变装饰条 */
+.nc-card-accent-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.nc-card:hover .nc-card-accent-bar {
+  opacity: 1;
+}
+
 .nc-card:hover {
   box-shadow: 0 8px 28px color-mix(in srgb, var(--primary) 10%, rgba(0,0,0,0.08));
   border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
@@ -816,6 +858,7 @@ usePageInit(initNewsCenterPage)
   cursor: pointer;
 }
 
+/* ── 置顶卡片 ── */
 .nc-card-featured {
   grid-column: 1 / -1;
   padding: 0;
@@ -824,12 +867,16 @@ usePageInit(initNewsCenterPage)
   min-height: 140px;
 }
 
+.nc-card-featured .nc-card-accent-bar {
+  opacity: 1;
+  height: 4px;
+}
+
 .nc-card-featured-inner {
   flex: 1;
   padding: 24px 28px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 12px;
   position: relative;
   z-index: 1;
@@ -840,6 +887,45 @@ usePageInit(initNewsCenterPage)
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* 来源徽章 */
+.nc-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all 0.15s ease;
+}
+
+.nc-source-badge--primary {
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.nc-source-badge--success {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+}
+.nc-source-badge--warning {
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+}
+.nc-source-badge--error {
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.nc-source-badge--neutral {
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 25%, transparent);
 }
 
 .nc-featured-date { font-size: 13px; color: var(--text); font-weight: 500; }
@@ -855,9 +941,41 @@ usePageInit(initNewsCenterPage)
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
-.nc-featured-cat { font-size: 12px; color: var(--text-muted); }
+/* 关键词标签 */
+.nc-featured-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.nc-keyword-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  transition: all 0.15s ease;
+}
+
+.nc-keyword-tag--featured {
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+.nc-keyword-tag:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
 
 .nc-featured-link {
   display: inline-flex;
@@ -868,6 +986,7 @@ usePageInit(initNewsCenterPage)
   opacity: 0;
   transform: translateX(-6px);
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .nc-card-featured:hover .nc-featured-link { opacity: 1; transform: translateX(0); }
@@ -883,6 +1002,7 @@ usePageInit(initNewsCenterPage)
 
 .nc-featured-svg { width: 100px; height: 100px; }
 
+/* ── 普通卡片 ── */
 .nc-card-date-stamp {
   display: flex;
   flex-direction: column;
@@ -916,6 +1036,33 @@ usePageInit(initNewsCenterPage)
 }
 
 .nc-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+
+/* 卡片头部 - 来源 */
+.nc-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nc-source-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--primary) 40%, transparent);
+  transition: box-shadow 0.15s ease;
+}
+
+.nc-card:hover .nc-source-dot {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+.nc-card-source {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: 0.01em;
+}
 
 .nc-card-jump {
   display: flex;
@@ -952,14 +1099,23 @@ usePageInit(initNewsCenterPage)
 
 .nc-card:hover .nc-card-title { color: var(--primary); }
 
-.nc-card-meta {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+/* 卡片底部 - 标签 + 时间 */
+.nc-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 11px;
 }
 
-.nc-card-source { font-weight: 600; }
-.nc-card-time { color: var(--text-muted); }
-.nc-card-cat { color: var(--text-muted); font-size: 11px; }
+.nc-card-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.nc-card-time { color: var(--text-muted); flex-shrink: 0; }
 
 /* ═══════════════════════════════════════
    Empty

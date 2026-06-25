@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿<template>
   <div class="chain-page">
     <header class="chain-top">
       <div class="chain-top-title">
@@ -6,25 +6,21 @@
           <UIcon name="i-lucide-git-branch" class="size-5" />
         </div>
         <div>
-<!--          <h1>{{ chainTitle }}</h1>-->
-          <h1>产业链</h1>
-<!--          <p>上 · 中 · 下游关键环节</p>-->
+          <h1>半导体</h1>
         </div>
       </div>
-      <div v-if="chainPhases.some(p => p.key !== 'all')" class="chain-tabs">
+      <div v-if="chainList.length > 1" class="chain-tabs">
         <button class="chain-tab" :class="{ on: !phaseFilter }" @click="phaseFilter = ''">
           全部<span>{{ totalProductTypes }}</span>
         </button>
         <button
-          v-for="p in chainPhases.filter(p => p.key !== 'all')"
-          :key="p.key"
+          v-for="c in chainList"
+          :key="c.key"
           class="chain-tab"
-          :class="{ on: phaseFilter === p.key }"
-          :style="{ '--tc': p.color }"
-          @click="phaseFilter = phaseFilter === p.key ? '' : p.key"
+          :class="{ on: currentChainKey === c.key }"
+          @click="switchChain(c.key)"
         >
-          <UIcon :name="p.icon" class="size-3.5" />
-          {{ p.name }}<span>{{ p.children.length }}</span>
+          {{ c.name }}<span>{{ getChainTotalCount(c) }}</span>
         </button>
       </div>
       <div class="chain-view-toggle">
@@ -180,6 +176,7 @@
               >
                 <div class="chain-other-card-head">
                   <span class="coc-name">{{ other.name }}</span>
+                  <span class="coc-count">{{ getOtherTotalCount(other) }} 家企业</span>
                 </div>
                 <div class="chain-other-card-body">
                   <template v-for="(sub, si) in getOtherSubList(other)" :key="sub.product_type_id || sub.sencond_industry_id || sub.name || JSON.stringify(sub)">
@@ -326,7 +323,7 @@
               </button>
             </div>
             <div class="chain-modal-body">
-              <div class="chain-other-card-body" style="padding: 12px;">
+              <div class="chain-other-modal-grid">
                 <div
                   v-for="sub in otherSubModalList"
                   :key="sub.product_type_id || sub.sencond_industry_id || sub.name || JSON.stringify(sub)"
@@ -461,6 +458,15 @@ const selectedPhase = computed(() => {
 const totalProductTypes = computed(() =>
   chainPhases.value.reduce((sum, p) => sum + p.children.reduce((s, i) => s + i.children.length, 0), 0)
 )
+
+function getChainTotalCount(chain: ChainItem): number {
+  const phases = buildChain(chain.raw)
+  return phases.reduce((sum, p) => sum + p.totalCount, 0)
+}
+
+function getOtherTotalCount(other: any): number {
+  return buildChain(other.raw).reduce((sum, p) => sum + p.totalCount, 0)
+}
 
 // 园区 / 企业性质分布（产品维度，当前弹窗已移除展示，保留类型供底部全局图表使用）
 
@@ -776,33 +782,6 @@ function buildChainMindMapData() {
   const borderColor = chartAxisColor.value
   const surfaceAlt = chartSurfaceAltColor.value
   const surface = chartSurfaceColor.value
-  const NATIVE_COLOR = '#10b981'
-  const ATTRACT_COLOR = '#3b82f6'
-
-  const mkSourceNode = (
-    src: SourceInfo,
-    productTypeId: number,
-    secondIndustryId: number,
-    productName: string,
-  ) => {
-    const isNative = src.sourceName.includes('本土')
-    const c = isNative ? NATIVE_COLOR : ATTRACT_COLOR
-    return {
-      data: {
-        text: `${src.sourceName}\u2002${src.num}家`,
-        nodeType: 'source',
-        productTypeId,
-        secondIndustryId,
-        sourceId: src.sourceId,
-        sourceName: src.sourceName,
-        productName,
-        fillColor: `${c}18`,
-        borderColor: c,
-        color: c,
-      },
-      children: [],
-    }
-  }
 
   const mkProductNode = (product: ProductType, secondIndustryId: number) => ({
     data: {
@@ -816,13 +795,11 @@ function buildChainMindMapData() {
       color: textColor,
       expand: false,
     },
-    children: product.companyInfo
-      .filter(s => s.num > 0)
-      .map(src => mkSourceNode(src, product.productTypeId, secondIndustryId, product.name)),
+    children: [],
   })
 
   return {
-    data: { text: '产业链', expand: true, nodeType: 'root' },
+    data: { text: '半导体', expand: true, nodeType: 'root' },
     children: chainList.value.map(chain => {
       const phases = buildChain(chain.raw)
       const isCurrent = chain.key === currentChainKey.value
@@ -870,19 +847,6 @@ function handleChainMindMapNodeClick(node: any) {
     const productName = node?.getData?.('productName') || ''
     if (!productTypeId) return
     openOtherCompanyList(productTypeId, secondIndustryId, productName, {})
-  } else if (nodeType === 'source') {
-    const productTypeId = node?.getData?.('productTypeId')
-    const secondIndustryId = node?.getData?.('secondIndustryId')
-    const sourceId = node?.getData?.('sourceId')
-    const sourceName = node?.getData?.('sourceName') || ''
-    const productName = node?.getData?.('productName') || ''
-    if (!productTypeId || !sourceId) return
-    openOtherCompanyList(
-      productTypeId,
-      secondIndustryId,
-      productName ? `${productName} · ${sourceName}` : sourceName,
-      { company_source: sourceId },
-    )
   }
 }
 
@@ -918,7 +882,7 @@ async function initChainMindMap() {
       import('simple-mind-map/src/plugins/Drag.js'),
     ])
 
-    ;(MindMap as any).extendNodeDataNoStylePropList(['productTypeId', 'value', 'secondIndustryId', 'sourceId', 'sourceName', 'productName', 'nodeType'])
+    ;(MindMap as any).extendNodeDataNoStylePropList(['productTypeId', 'value', 'secondIndustryId', 'productName', 'nodeType'])
     chainMindMapInstance = new (MindMap as any)({
       el,
       data: mindData,
@@ -1683,6 +1647,23 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   white-space: nowrap;
 }
 
+.coc-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  flex-shrink: 0;
+}
+
+.chain-other-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
 .cosc-main {
   display: flex;
   flex-direction: column;
@@ -2043,6 +2024,7 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   .chain-node-col:last-child { border-bottom: none; }
   .chain-charts { grid-template-columns: 1fr; }
   .chain-tree-chart { height: 420px; }
+  .chain-other-modal-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 520px) {
