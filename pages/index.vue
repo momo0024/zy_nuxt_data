@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿<template>
   <div class="chain-page">
     <header class="chain-top">
       <div class="chain-top-title">

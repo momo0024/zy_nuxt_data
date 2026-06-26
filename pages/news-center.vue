@@ -436,7 +436,7 @@ function mapApiItem(item: any): NewsItem {
     source: item.source || '',
     date,
     time,
-    category: item.category || item.matched_keyword || '',
+    category: item.category || item.keyword_hits?.[0]?.keyword || '',
     url: item.url || '',
   }
 }
@@ -462,7 +462,7 @@ async function fetchNews(opts?: { includeSummary?: boolean }) {
     const keywordParts: string[] = []
     if (appliedFilters.keyword.trim()) keywordParts.push(appliedFilters.keyword.trim())
     if (keywordParts.length) query.keyword = keywordParts.join(' ')
-    if (selectedKeywords.value.size) query.matched_keywords = [...selectedKeywords.value].join(' ')
+    if (selectedKeywords.value.size) query.keywords = [...selectedKeywords.value].join(' ')
 
     const res = await newsRequest.get('/news/list', { params: query })
     if (res.data?.code === 0) {

@@ -83,6 +83,13 @@ export async function fetchCompanies(page = 1, pageSize = 20): Promise<CompanyLi
   return res.data as unknown as CompanyListResponse
 }
 
+export async function fetchCompaniesByPark(parkId: number, page = 1, pageSize = 500): Promise<CompanyListResponse> {
+  const res = await request.get<CompanyListResponse['data']>('/company', {
+    params: { park_id: parkId, page, page_size: pageSize },
+  })
+  return res.data as unknown as CompanyListResponse
+}
+
 /** 按信用代码从 /company 接口查询单个企业（含新字段） */
 export async function fetchCompanyByCode(code: string): Promise<CompanyRecord | null> {
   const res = await request.get<CompanyListResponse['data']>('/company', {
