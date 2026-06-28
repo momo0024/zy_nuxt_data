@@ -137,10 +137,14 @@
             </div>
             <h2 class="nc-featured-title">{{ pagedNews[0].title }}</h2>
             <div class="nc-featured-footer">
-              <div class="nc-featured-tags" v-if="pagedNews[0].category">
-                <span class="nc-keyword-tag nc-keyword-tag--featured">
+              <div class="nc-featured-tags" v-if="pagedNews[0].matchedKeywords.length">
+                <span
+                  v-for="kw in pagedNews[0].matchedKeywords"
+                  :key="kw"
+                  class="nc-keyword-tag nc-keyword-tag--featured"
+                >
                   <UIcon name="i-lucide-hash" class="size-3" />
-                  {{ pagedNews[0].category }}
+                  {{ kw }}
                 </span>
               </div>
               <span class="nc-featured-link">
@@ -179,10 +183,14 @@
             </div>
             <h3 class="nc-card-title">{{ item.title }}</h3>
             <div class="nc-card-footer">
-              <div class="nc-card-tags" v-if="item.category">
-                <span class="nc-keyword-tag">
+              <div class="nc-card-tags" v-if="item.matchedKeywords.length">
+                <span
+                  v-for="kw in item.matchedKeywords"
+                  :key="kw"
+                  class="nc-keyword-tag"
+                >
                   <UIcon name="i-lucide-tag" class="size-3" />
-                  {{ item.category }}
+                  {{ kw }}
                 </span>
               </div>
               <span class="nc-card-time">{{ item.time }}</span>
@@ -239,6 +247,7 @@ interface NewsItem {
   date: string
   time: string
   category: string
+  matchedKeywords: string[]
   url: string
 }
 
@@ -428,6 +437,19 @@ function toggleKeyword(kw: string) {
   fetchNews()
 }
 
+function mapMatchedKeywords(keywordHits: Array<{ keyword?: string }> | undefined): string[] {
+  if (!Array.isArray(keywordHits)) return []
+  const seen = new Set<string>()
+  const keywords: string[] = []
+  for (const hit of keywordHits) {
+    const kw = hit.keyword?.trim()
+    if (!kw || seen.has(kw)) continue
+    seen.add(kw)
+    keywords.push(kw)
+  }
+  return keywords
+}
+
 function mapApiItem(item: any): NewsItem {
   const { date, time } = parseLocalDateParts(item.publish_time || '')
   return {
@@ -436,7 +458,8 @@ function mapApiItem(item: any): NewsItem {
     source: item.source || '',
     date,
     time,
-    category: item.category || item.keyword_hits?.[0]?.keyword || '',
+    category: item.category || '',
+    matchedKeywords: mapMatchedKeywords(item.keyword_hits),
     url: item.url || '',
   }
 }
