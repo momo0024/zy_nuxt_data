@@ -9,20 +9,6 @@
           <h1>半导体</h1>
         </div>
       </div>
-      <div v-if="chainList.length > 1" class="chain-tabs">
-        <button class="chain-tab" :class="{ on: !phaseFilter }" @click="phaseFilter = ''">
-          全部<span>{{ totalProductTypes }}</span>
-        </button>
-        <button
-          v-for="c in chainList"
-          :key="c.key"
-          class="chain-tab"
-          :class="{ on: currentChainKey === c.key }"
-          @click="switchChain(c.key)"
-        >
-          {{ c.name }}<span>{{ getChainTotalCount(c) }}</span>
-        </button>
-      </div>
       <div class="chain-view-toggle">
         <button
           class="chain-view-btn"
@@ -56,15 +42,24 @@
         <!-- 产业链结构 -->
         <section v-if="viewMode === 'structure'" class="chain-structure-v2">
 
+          <div class="chain-other-header">
+            <span class="coh-line" />
+            <span class="coh-title">
+              <UIcon name="i-lucide-cpu" class="size-4" />
+              集成电路
+            </span>
+            <span class="coh-line" />
+          </div>
+
           <!-- ① 双行平行四边形鱼形箭头：上行 \ 方向，下行 / 方向，合成鱼身 -->
           <div class="chain-arrow-banner">
             <!-- 上行：阶段（\ 方向平行四边形） -->
             <div class="chain-arrow-row chain-arrow-top">
               <div
-                v-for="(phase, pi) in visiblePhases"
+                v-for="(phase, pi) in chainPhases"
                 :key="phase.key"
                 class="chain-par chain-par-phase"
-                :class="{ 'par-first': pi === 0, 'par-last': pi === visiblePhases.length - 1 }"
+                :class="{ 'par-first': pi === 0, 'par-last': pi === chainPhases.length - 1 }"
                 :style="{ '--tc': phase.color, '--f': Math.max(phase.children.length, 1) }"
               >
                 <div class="chain-par-in">
@@ -76,14 +71,14 @@
             </div>
             <!-- 下行：子模块（\ 方向平行四边形，与上行镜像） -->
             <div class="chain-arrow-row chain-arrow-bot">
-              <template v-for="(phase, pi) in visiblePhases" :key="phase.key">
+              <template v-for="(phase, pi) in chainPhases" :key="phase.key">
                 <div
                   v-for="(ind, ii) in phase.children"
                   :key="ind.secondIndustryId"
                   class="chain-par chain-par-sub"
                   :class="{
                     'par-first': pi === 0 && ii === 0,
-                    'par-last': pi === visiblePhases.length - 1 && ii === phase.children.length - 1
+                    'par-last': pi === chainPhases.length - 1 && ii === phase.children.length - 1
                   }"
                   :style="{ '--tc': phase.color }"
                 >
@@ -97,7 +92,7 @@
                   class="chain-par chain-par-sub"
                   :class="{
                     'par-first': pi === 0,
-                    'par-last': pi === visiblePhases.length - 1
+                    'par-last': pi === chainPhases.length - 1
                   }"
                   :style="{ '--tc': phase.color, '--f': 1 }"
                 >
@@ -109,7 +104,7 @@
 
           <!-- ② 节点卡片区域（每子模块一列，含"本土培育/招商引资"来源按钮） -->
           <div ref="chainNodesBoardRef" class="chain-nodes-board">
-            <template v-for="phase in visiblePhases" :key="phase.key">
+            <template v-for="phase in chainPhases" :key="phase.key">
               <div
                 v-for="industry in phase.children"
                 :key="industry.secondIndustryId"
@@ -159,24 +154,24 @@
           </div>
 
           <!-- ③ 其他产业链（tab 卡片形式，点击切换） -->
-          <template v-if="chainList.filter(c => c.key !== currentChainKey).length > 0">
+          <template v-if="otherChains.length > 0">
             <div class="chain-other-header">
               <span class="coh-line" />
               <span class="coh-title">
                 <UIcon name="i-lucide-layers" class="size-4" />
-                其他产业领域
+                其它领域
               </span>
               <span class="coh-line" />
             </div>
             <div class="chain-other-grid">
               <div
-                v-for="(other, oi) in chainList.filter(c => c.key !== currentChainKey)"
+                v-for="other in otherChains"
                 :key="other.key"
                 class="chain-other-card"
               >
                 <div class="chain-other-card-head">
                   <span class="coc-name">{{ other.name }}</span>
-                  <span class="coc-count">{{ getOtherTotalCount(other) }} 家企业</span>
+                  <span class="coc-count">{{ getOtherTotalCount(other) }}</span>
                 </div>
                 <div class="chain-other-card-body">
                   <template v-for="(sub, si) in getOtherSubList(other)" :key="sub.product_type_id || sub.sencond_industry_id || sub.name || JSON.stringify(sub)">
@@ -308,7 +303,7 @@
       </Transition>
     </Teleport>
 
-    <!-- 其他产业领域子项弹窗 -->
+    <!-- 其它领域子项弹窗 -->
     <Teleport to="body">
       <Transition name="chain-modal">
         <div v-if="otherSubModalVisible" class="chain-modal-overlay" @click.self="closeOtherSubModal">
@@ -423,6 +418,7 @@ type CompanyItem = { company_name: string; company_credit_code: string }
 type ChainItem = { key: string; name: string; raw: any }
 
 const PHASE_KEYS = ['up', 'middle', 'midlle', 'down']
+const IC_CHAIN_KEY = '1'
 
 const otherCardColors = ['#c2780a', '#2d7a4f', '#1a7a72', '#9a7b0a', '#8b4513', '#5c4d7a', '#3d6b8e', '#6b5344']
 
@@ -434,19 +430,14 @@ const phaseMeta: Record<string, { name: string; color: string; icon: string; ord
 }
 
 const loading = ref(false)
-const chainTitle = ref('集成电路产业链')
 const chainList = ref<ChainItem[]>([])
-const currentChainKey = ref('1')
 const chainPhases = ref<ChainPhase[]>([])
-const phaseFilter = ref('')
 const viewMode = ref<'structure' | 'tree'>('structure')
 const selectedProduct = ref<ProductType | null>(null)
 const selectedSecondIndustry = ref<SecondIndustry | null>(null)
 const expandedIndustries = ref(new Set<number>())
 
-const visiblePhases = computed(() =>
-  phaseFilter.value ? chainPhases.value.filter(p => p.key === phaseFilter.value) : chainPhases.value
-)
+const otherChains = computed(() => chainList.value.filter(c => c.key !== IC_CHAIN_KEY))
 
 const selectedPhase = computed(() => {
   if (!selectedProduct.value || !selectedSecondIndustry.value) return null
@@ -455,16 +446,7 @@ const selectedPhase = computed(() => {
   ) || null
 })
 
-const totalProductTypes = computed(() =>
-  chainPhases.value.reduce((sum, p) => sum + p.children.reduce((s, i) => s + i.children.length, 0), 0)
-)
-
-function getChainTotalCount(chain: ChainItem): number {
-  const phases = buildChain(chain.raw)
-  return phases.reduce((sum, p) => sum + p.totalCount, 0)
-}
-
-function getOtherTotalCount(other: any): number {
+function getOtherTotalCount(other: ChainItem): number {
   return buildChain(other.raw).reduce((sum, p) => sum + p.totalCount, 0)
 }
 
@@ -478,7 +460,7 @@ const companyTotal = ref(0)
 const companyFilter = ref<Record<string, any>>({})
 const companyModalTitle = ref('')
 
-// 其他产业领域子项弹窗
+// 其它领域子项弹窗
 const otherSubModalVisible = ref(false)
 const otherSubModalTitle = ref('')
 const otherSubModalList = ref<any[]>([])
@@ -573,10 +555,8 @@ async function fetchChainData() {
       chainList.value = Object.entries(all)
         .filter(([, v]) => v && typeof v === 'object')
         .map(([k, v]) => ({ key: k, name: v.name || `产业链${k}`, raw: v }))
-      const target = chainList.value.find(c => c.key === '1') || chainList.value[0]
+      const target = chainList.value.find(c => c.key === IC_CHAIN_KEY) || chainList.value[0]
       if (target) {
-        currentChainKey.value = target.key
-        chainTitle.value = target.name
         chainPhases.value = buildChain(target.raw)
         selectedProduct.value = null
       }
@@ -586,17 +566,6 @@ async function fetchChainData() {
   } finally {
     loading.value = false
   }
-}
-
-function switchChain(key: string) {
-  const target = chainList.value.find(c => c.key === key)
-  if (!target || currentChainKey.value === key) return
-  currentChainKey.value = key
-  chainTitle.value = target.name
-  chainPhases.value = buildChain(target.raw)
-  phaseFilter.value = ''
-  selectedProduct.value = null
-  expandedIndustries.value = new Set()
 }
 
 async function fetchGlobalCharts() {
@@ -777,7 +746,7 @@ let chainMindMapInstance: any = null
 let chainMindMapViewApplied = false
 
 function buildChainMindMapData() {
-  if (!chainList.value.length) return null
+  if (!chainPhases.value.length) return null
   const textColor = chartTextColor.value
   const borderColor = chartAxisColor.value
   const surfaceAlt = chartSurfaceAltColor.value
@@ -799,43 +768,28 @@ function buildChainMindMapData() {
   })
 
   return {
-    data: { text: '半导体', expand: true, nodeType: 'root' },
-    children: chainList.value.map(chain => {
-      const phases = buildChain(chain.raw)
-      const isCurrent = chain.key === currentChainKey.value
-      const chainColor = isCurrent ? '#6366f1' : '#64748b'
-      return {
+    data: { text: '集成电路', expand: true, nodeType: 'root' },
+    children: chainPhases.value.map(phase => ({
+      data: {
+        text: phase.name,
+        nodeType: 'phase',
+        fillColor: `${phase.color}1f`,
+        borderColor: phase.color,
+        color: phase.color,
+        expand: true,
+      },
+      children: phase.children.map(industry => ({
         data: {
-          text: chain.name,
-          nodeType: 'chain',
-          fillColor: `${chainColor}1f`,
-          borderColor: chainColor,
-          color: chainColor,
-          expand: isCurrent,
+          text: industry.name,
+          nodeType: 'industry',
+          fillColor: surfaceAlt,
+          borderColor,
+          color: textColor,
+          expand: true,
         },
-        children: phases.map(phase => ({
-          data: {
-            text: phase.name,
-            nodeType: 'phase',
-            fillColor: `${phase.color}1f`,
-            borderColor: phase.color,
-            color: phase.color,
-            expand: isCurrent,
-          },
-          children: phase.children.map(industry => ({
-            data: {
-              text: industry.name,
-              nodeType: 'industry',
-              fillColor: surfaceAlt,
-              borderColor,
-              color: textColor,
-              expand: isCurrent,
-            },
-            children: industry.children.map(p => mkProductNode(p, industry.secondIndustryId)),
-          })),
-        })),
-      }
-    }),
+        children: industry.children.map(p => mkProductNode(p, industry.secondIndustryId)),
+      })),
+    })),
   }
 }
 
@@ -1099,7 +1053,7 @@ function alignNodeCols() {
   cols.forEach(col => { col.style.bottom = '0' })
 }
 
-watch([visiblePhases, viewMode], () => {
+watch([chainPhases, viewMode], () => {
   if (viewMode.value === 'structure') {
     nextTick(() => {
       requestAnimationFrame(alignNodeCols)
@@ -1132,7 +1086,7 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 22px 28px 18px;
+  padding: 0px 22px 10px;
   flex-wrap: wrap;
   background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), var(--surface));
   border-bottom: 1px solid var(--border);
@@ -1564,12 +1518,12 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   box-shadow: 0 1px 4px color-mix(in srgb, var(--tc) 12%, transparent);
 }
 
-/* ── 其他产业领域 ── */
+/* ── 其它领域 ── */
 .chain-other-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 32px 0 16px;
+  margin: 16px 0;
 }
 
 .coh-line {
@@ -1594,8 +1548,20 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
 
 .chain-other-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+}
+
+@media (max-width: 1400px) {
+  .chain-other-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 1024px) {
+  .chain-other-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .chain-other-grid { grid-template-columns: 1fr; }
 }
 
 .chain-other-card {

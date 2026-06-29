@@ -28,6 +28,9 @@ export interface CompanyRecord {
   contact_info: string
   honrs: string
   hornor_num: number
+  val_org_type: string
+  remark?: string | null
+  above_scale?: number | null
   company_score: number
   latest_financing_date: string
   authorized_patents_count: number

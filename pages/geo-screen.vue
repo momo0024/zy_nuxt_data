@@ -200,7 +200,7 @@
                   </div>
                   <div class="cp-strength-row">
                     <span v-if="c.company_score" class="cp-strength-dot cp-strength-dot-score" :title="'公司得分: ' + c.company_score">{{ c.company_score }}分</span>
-                    <span v-if="c.hornor_num" class="cp-strength-dot cp-strength-dot-honor" :title="'荣誉: ' + c.hornor_num">{{ c.hornor_num }}项荣誉</span>
+                    <span v-if="c.val_org_type && c.val_org_type !== '-'" class="cp-strength-dot cp-strength-dot-org" :title="'企业类别: ' + c.val_org_type">{{ c.val_org_type }}</span>
                     <span v-if="c.authorized_patents_count" class="cp-strength-dot cp-strength-dot-patent" :title="'授权专利: ' + c.authorized_patents_count">{{ c.authorized_patents_count }}专利</span>
                     <span v-if="c.company_financing_round && c.company_financing_round !== '-'" class="cp-strength-dot cp-strength-dot-finance">{{ c.company_financing_round }}</span>
                     <span v-if="c.company_scale && c.company_scale !== '-'" class="cp-strength-dot cp-strength-dot-scale">{{ c.company_scale }}</span>
@@ -275,9 +275,14 @@
                     <div class="cd-strength-card-num">{{ detailCompany.company_score }}</div>
                     <div class="cd-strength-card-lbl">公司得分</div>
                   </div>
-                  <div v-if="detailCompany.hornor_num" class="cd-strength-card cd-strength-honor">
-                    <div class="cd-strength-card-num">{{ detailCompany.hornor_num }}</div>
-                    <div class="cd-strength-card-lbl">荣誉数量</div>
+                  <div
+                    v-if="(detailCompany.above_scale || detailCompany.above_scale === 0) || (detailCompany.remark && detailCompany.remark !== '-')"
+                    class="cd-strength-card cd-strength-scale"
+                  >
+                    <div class="cd-strength-card-num">
+                      {{ detailCompany.above_scale ?? '-' }}<span v-if="detailCompany.above_scale || detailCompany.above_scale === 0" class="cd-strength-card-unit">亿元</span>
+                    </div>
+                    <div class="cd-strength-card-lbl cd-strength-card-lbl-dynamic">{{ detailCompany.remark || '-' }}</div>
                   </div>
                   <div v-if="detailCompany.authorized_patents_count" class="cd-strength-card cd-strength-patent">
                     <div class="cd-strength-card-num">{{ detailCompany.authorized_patents_count }}</div>
@@ -316,6 +321,11 @@
                     <UIcon name="i-lucide-shield" class="size-3.5" />
                     <span class="cd-strength-meta-label">企业性质</span>
                     <span class="cd-strength-meta-value">{{ detailCompany.company_nature }}</span>
+                  </div>
+                  <div v-if="detailCompany.val_org_type && detailCompany.val_org_type !== '-'" class="cd-strength-meta-item">
+                    <UIcon name="i-lucide-layers" class="size-3.5" />
+                    <span class="cd-strength-meta-label">企业类别</span>
+                    <span class="cd-strength-meta-value">{{ detailCompany.val_org_type }}</span>
                   </div>
                 </div>
               </div>
@@ -396,11 +406,6 @@
                   <UIcon name="i-lucide-map-pin" class="size-3.5 opacity-40 flex-shrink-0" />
                   <span class="cd-info-key">地址</span>
                   <span class="cd-info-val">{{ detailCompany.company_work_add || detailCompany.conpany_district || '-' }}</span>
-                </div>
-                <div v-if="detailCompany.honors && detailCompany.honors !== '-'" class="cd-info-row cd-honors-row">
-                  <UIcon name="i-lucide-award" class="size-3.5 opacity-40 flex-shrink-0" />
-                  <span class="cd-info-key">荣誉</span>
-                  <span class="cd-info-val">{{ detailCompany.honors }}</span>
                 </div>
               </div>
             </div>
@@ -738,7 +743,7 @@ function closeDetail() {
 }
 
 function hasStrengthData(c: CompanyRecord): boolean {
-  return !!(c.company_score || c.hornor_num || c.authorized_patents_count || c.authorized_invention_patents_count || c.national_standards_count || c.participated_standards_count || (c.company_financing_round && c.company_financing_round !== '-') || (c.latest_financing_date && c.latest_financing_date !== '-') || (c.company_scale && c.company_scale !== '-') || (c.company_nature && c.company_nature !== '-'))
+  return !!(c.company_score || (c.above_scale || c.above_scale === 0) || (c.remark && c.remark !== '-') || c.authorized_patents_count || c.authorized_invention_patents_count || c.national_standards_count || c.participated_standards_count || (c.company_financing_round && c.company_financing_round !== '-') || (c.latest_financing_date && c.latest_financing_date !== '-') || (c.company_scale && c.company_scale !== '-') || (c.company_nature && c.company_nature !== '-') || (c.val_org_type && c.val_org_type !== '-'))
 }
 
 </script>
@@ -1403,14 +1408,16 @@ function hasStrengthData(c: CompanyRecord): boolean {
 }
 .cp-tag {
   font-size: 10px;
+  font-weight: 500;
   padding: 0 6px;
-  height: 16px;
+  height: 17px;
   display: inline-flex;
   align-items: center;
-  background: var(--surface-alt);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  background: color-mix(in srgb, var(--text-muted) 6%, var(--surface));
+  color: color-mix(in srgb, var(--text) 70%, var(--text-muted));
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, var(--border));
+  border-radius: 3px;
+  line-height: 1;
 }
 .cp-empty {
   display: flex;
@@ -1581,11 +1588,6 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .cd-info-row:last-child { border-bottom: none; }
 .cd-info-key { color: var(--text-muted); min-width: 28px; flex-shrink: 0; }
 .cd-info-val { color: var(--text); flex: 1; }
-.cd-honors-row .cd-info-val {
-  color: #b45309;
-  font-weight: 500;
-  line-height: 1.5;
-}
 
 /* ── 核心指标卡片 ─────────────────────────────── */
 .cd-strength-section {
@@ -1675,8 +1677,21 @@ function hasStrengthData(c: CompanyRecord): boolean {
   font-size: 11px;
   text-transform: uppercase;
 }
-.cd-strength-honor .cd-strength-card-num { color: var(--warning); }
-.cd-strength-honor { border-color: color-mix(in srgb, var(--warning) 20%, transparent); }
+.cd-strength-scale .cd-strength-card-num { color: #0d9488; }
+.cd-strength-scale { border-color: color-mix(in srgb, #0d9488 20%, transparent); }
+.cd-strength-card-unit {
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 2px;
+}
+.cd-strength-card-lbl-dynamic {
+  white-space: normal;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 .cd-strength-patent .cd-strength-card-num { color: var(--success); }
 .cd-strength-patent { border-color: color-mix(in srgb, var(--success) 20%, transparent); }
 .cd-strength-invention .cd-strength-card-num { color: var(--accent); }
@@ -1779,7 +1794,12 @@ function hasStrengthData(c: CompanyRecord): boolean {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
   50% { transform: translate(6px, -6px) rotate(6deg); }
 }
-.cp-strength-dot-honor { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
+.cp-strength-dot-org {
+  background: color-mix(in srgb, var(--warning) 24%, var(--surface));
+  color: color-mix(in srgb, var(--warning) 75%, var(--text-strong));
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  font-weight: 600;
+}
 .cp-strength-dot-patent { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
 .cp-strength-dot-finance { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 .cp-strength-dot-scale { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
@@ -1911,11 +1931,12 @@ function hasStrengthData(c: CompanyRecord): boolean {
 }
 .cp-type-tag {
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: color-mix(in srgb, var(--primary) 75%, var(--text-strong));
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
 }
 
 /* ── 过渡动画 ──────────────────────────────────────────── */
