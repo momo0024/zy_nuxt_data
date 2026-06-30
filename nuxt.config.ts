@@ -118,6 +118,7 @@ export default defineNuxtConfig({
         if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('node_modules/nitropack')) return
         warn(warning)
       },
+      external: ['tslib'],
     },
   }
 })
