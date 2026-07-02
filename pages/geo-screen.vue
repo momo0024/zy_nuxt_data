@@ -38,18 +38,6 @@
             </Transition>
           </div>
 
-          <div class="gs-btn-group">
-            <button class="gs-tool-btn" title="缩小" @click="zoomOut">
-              <UIcon name="i-lucide-minus" class="size-3.5" />
-            </button>
-            <button class="gs-tool-btn" title="放大" @click="zoomIn">
-              <UIcon name="i-lucide-plus" class="size-3.5" />
-            </button>
-            <button class="gs-tool-btn" title="重置视图" @click="resetView">
-              <UIcon name="i-lucide-rotate-ccw" class="size-3.5" />
-            </button>
-          </div>
-
           <button class="gs-tool-btn gs-fullscreen-btn" :title="isFullscreen ? '退出全屏' : '全屏'" @click="toggleFullscreen">
             <UIcon :name="isFullscreen ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'" class="size-3.5" />
           </button>
@@ -74,27 +62,45 @@
               <div class="gs-stat-lbl">上市公司</div>
             </div>
             <div class="gs-stat-sep" />
-            <div class="gs-stat gs-stat-project">
-              <div class="gs-stat-num">{{ majorCount }}</div>
-              <div class="gs-stat-lbl">重大项目</div>
-            </div>
+            <button
+              type="button"
+              class="gs-stat gs-stat-clickable gs-stat-native"
+              :class="{ 'gs-stat-active': sourceFilter === '本土培育' }"
+              @click="filterBySource('本土培育')"
+            >
+              <div class="gs-stat-num">{{ nativeCount }}</div>
+              <div class="gs-stat-lbl">本土培育</div>
+            </button>
+            <div class="gs-stat-sep" />
+            <button
+              type="button"
+              class="gs-stat gs-stat-clickable gs-stat-attract"
+              :class="{ 'gs-stat-active': sourceFilter === '招商引资' }"
+              @click="filterBySource('招商引资')"
+            >
+              <div class="gs-stat-num">{{ attractCount }}</div>
+              <div class="gs-stat-lbl">招商引资</div>
+            </button>
           </div>
 
           <!-- 图例 (左下) -->
           <div class="gs-legend">
-            <span class="gs-legend-title">区域高亮</span>
+            <span class="gs-legend-title">企业标点</span>
             <div class="gs-legend-items">
               <div class="gs-legend-item">
-                <span class="gs-legend-swatch gs-swatch-china" />
-                <span>悬停省界</span>
+                <span class="gs-legend-dot gs-dot-listed" />
+                <span>上市公司</span>
               </div>
               <div class="gs-legend-item">
-                <span class="gs-legend-swatch gs-swatch-city" />
-                <span>武汉市界</span>
+                <span class="gs-legend-dot gs-dot-unlisted" />
+                <span>非上市公司</span>
               </div>
+            </div>
+            <span class="gs-legend-title gs-legend-title-gap">可点击区域</span>
+            <div class="gs-legend-items">
               <div class="gs-legend-item">
                 <span class="gs-legend-swatch gs-swatch-zone" />
-                <span>高新区</span>
+                <span>高新区园区</span>
               </div>
             </div>
 
@@ -141,7 +147,7 @@
               <span class="cp-title">{{ panelTitle }}</span>
               <span class="cp-count">{{ panelCompanyCount }} 家</span>
               <button
-                v-if="bubbleCompanies || selectedRegion"
+                v-if="bubbleCompanies || selectedRegion || sourceFilter"
                 type="button"
                 class="cp-reset-btn"
                 title="重置为全部企业"
@@ -192,7 +198,6 @@
                   <div class="cp-name">
                     {{ c.company_name }}
                     <span v-if="c.company_traded === 1" class="cp-listed-tag">上市</span>
-                    <span v-if="c.import_project === 1" class="cp-project-tag">重大项目</span>
                   </div>
                   <div class="cp-meta">
                     <span v-if="c.product_type && c.product_type !== '-'" class="cp-tag">{{ c.product_type }}</span>
@@ -201,7 +206,7 @@
                   <div class="cp-strength-row">
                     <span v-if="c.company_score" class="cp-strength-dot cp-strength-dot-score" :title="'公司得分: ' + c.company_score">{{ c.company_score }}分</span>
                     <span v-if="c.val_org_type && c.val_org_type !== '-'" class="cp-strength-dot cp-strength-dot-org" :title="'企业类别: ' + c.val_org_type">{{ c.val_org_type }}</span>
-                    <span v-if="c.authorized_patents_count" class="cp-strength-dot cp-strength-dot-patent" :title="'授权专利: ' + c.authorized_patents_count">{{ c.authorized_patents_count }}专利</span>
+                    <span v-if="c.tag_name" class="cp-strength-dot" :class="c.tag_name === '本土培育' ? 'cp-strength-dot-native' : 'cp-strength-dot-attract'" :title="c.tag_name">{{ c.tag_name }}</span>
                     <span v-if="c.company_financing_round && c.company_financing_round !== '-'" class="cp-strength-dot cp-strength-dot-finance">{{ c.company_financing_round }}</span>
                     <span v-if="c.company_scale && c.company_scale !== '-'" class="cp-strength-dot cp-strength-dot-scale">{{ c.company_scale }}</span>
                   </div>
@@ -215,7 +220,7 @@
                 <span v-else-if="allCompanies.length === 0">企业数据加载失败，请刷新页面重试</span>
                 <span v-else>暂无匹配企业</span>
                 <button
-                  v-if="companySearch.trim() || selectedRegion || (bubbleCompanies && bubbleCompanies.length)"
+                  v-if="companySearch.trim() || selectedRegion || sourceFilter || (bubbleCompanies && bubbleCompanies.length)"
                   class="cp-reset-btn"
                   @click="resetPanel"
                 >
@@ -256,7 +261,7 @@
                 </div>
                 <div class="cd-sub">
                   <span v-if="detailCompany.company_traded === 1" class="cd-type-badge type-listed">上市公司</span>
-                  <span v-if="detailCompany.import_project === 1" class="cd-type-badge type-project">⚡重大项目</span>
+                  <span v-if="detailCompany.tag_name" class="cd-type-badge" :class="detailCompany.tag_name === '本土培育' ? 'type-native' : 'type-attract'">{{ detailCompany.tag_name }}</span>
                 </div>
               </div>
             </div>
@@ -419,7 +424,7 @@
 
 <script setup lang="ts">
 import type { CompanyRecord } from '~/types/company'
-import { fetchCompanies, fetchCompaniesByPark, isListedCompany } from '~/types/company'
+import { fetchCompanies, fetchCompaniesByPark } from '~/types/company'
 import {
   getIndustryColor,
   useGeoAmapMap,
@@ -436,9 +441,6 @@ const {
   cityList,
   initMap,
   destroyMap,
-  zoomIn,
-  zoomOut,
-  resetView,
   setQuickView,
   flyToCity,
   flyToZone,
@@ -449,6 +451,7 @@ const {
   isInZone,
   showAllMapCompanies,
   setParkMapCompanies,
+  setHighlightedCompanies,
 } = useGeoAmapMap()
 
 const settingsStore = useSettingsStore()
@@ -472,6 +475,7 @@ const mapInitialized = ref(false)
 const scopeExpanded = ref(false)
 const selectedAreaView = ref<string>('zone')
 const showAreaDropdown = ref(false)
+const sourceFilter = ref<string | null>(null)
 
 const areaOptions = computed(() => {
   const base = [
@@ -494,7 +498,8 @@ const scopeNeedExpand = computed(() => {
 })
 
 const listedCount = computed(() => allCompanies.value.filter(c => c.company_traded === 1).length)
-const majorCount = computed(() => allCompanies.value.filter(c => c.import_project === 1).length)
+const nativeCount = computed(() => allCompanies.value.filter(c => c.tag_name === '本土培育').length)
+const attractCount = computed(() => allCompanies.value.filter(c => c.tag_name === '招商引资').length)
 
 function handleAreaChange(val: string) {
   selectedAreaView.value = val
@@ -520,6 +525,7 @@ function closeMenus() {
 
 const panelTitle = computed(() => {
   if (bubbleLabel.value) return bubbleLabel.value
+  if (sourceFilter.value) return `${sourceFilter.value}企业`
   const r = selectedRegion.value
   if (r?.type === 'park') return `${r.name} · 企业`
   if (r?.type === 'city') return `${r.name} · 企业`
@@ -555,8 +561,11 @@ const filteredCompanies = computed(() => {
       || (c.conpany_district || '').toLowerCase().includes(q),
     )
   }
-  // 区域模式
+  // 来源筛选模式
   let list = allCompanies.value
+  if (sourceFilter.value) {
+    list = list.filter(c => c.tag_name === sourceFilter.value)
+  }
   const region = selectedRegion.value
   const q = companySearch.value.trim().toLowerCase()
   // 搜索时不过滤区域，显示全部企业；未搜索时按当前区域过滤
@@ -582,7 +591,7 @@ const filteredCompanies = computed(() => {
 })
 
 const panelCompanyCount = computed(() => {
-  if (bubbleCompanies.value?.length || selectedRegion.value) {
+  if (bubbleCompanies.value?.length || selectedRegion.value || sourceFilter.value) {
     return filteredCompanies.value.length
   }
   return companyTotal.value
@@ -675,6 +684,15 @@ watch(panelOpen, () => {
   nextTick(() => invalidateSize())
 })
 
+watch([companySearch, filteredCompanies], () => {
+  const q = companySearch.value.trim()
+  if (!q) {
+    setHighlightedCompanies([])
+    return
+  }
+  setHighlightedCompanies(filteredCompanies.value.map(c => c.id))
+})
+
 function onPanelLayoutDone() {
   invalidateSize()
   requestAnimationFrame(() => invalidateSize())
@@ -692,6 +710,7 @@ function onFsChange() {
 
 function onRegionSelect(payload: RegionSelectPayload) {
   selectedRegion.value = payload
+  sourceFilter.value = null
   if (payload.type === 'zone') selectedAreaView.value = 'zone'
   else if (payload.type === 'park') selectedAreaView.value = 'zone'
   else if (payload.name === '武汉市') selectedAreaView.value = 'wuhan'
@@ -714,7 +733,24 @@ function onBubbleClick(companies: CompanyRecord[], label: string) {
   bubbleCompanies.value = companies
   bubbleLabel.value = label
   selectedRegion.value = null
+  sourceFilter.value = null
   parkCompanies.value = null
+  panelOpen.value = true
+  companySearch.value = ''
+  nextTick(() => invalidateSize())
+}
+
+function filterBySource(tagName: string) {
+  if (sourceFilter.value === tagName) {
+    resetPanel()
+    return
+  }
+  sourceFilter.value = tagName
+  bubbleCompanies.value = null
+  bubbleLabel.value = ''
+  selectedRegion.value = null
+  parkCompanies.value = null
+  showAllMapCompanies()
   panelOpen.value = true
   companySearch.value = ''
   nextTick(() => invalidateSize())
@@ -724,10 +760,13 @@ function resetPanel() {
   bubbleCompanies.value = null
   bubbleLabel.value = ''
   selectedRegion.value = null
+  sourceFilter.value = null
   parkCompanies.value = null
-  showAllMapCompanies()
-  selectedAreaView.value = 'zone'
   companySearch.value = ''
+  highlightedCompanyId.value = null
+  selectedAreaView.value = 'zone'
+  setHighlightedCompanies([])
+  flyToZone()
   nextTick(() => invalidateSize())
 }
 
@@ -827,15 +866,7 @@ function hasStrengthData(c: CompanyRecord): boolean {
   gap: 8px;
 }
 
-/* ── 视图层级指示器 ──────────────────────────────────────── */
-/* ── 按钮组 ────────────────────────────────────────────── */
-.gs-btn-group {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
+/* ── 按钮 ────────────────────────────────────────────── */
 .gs-tool-btn {
   display: flex;
   align-items: center;
@@ -851,9 +882,6 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .gs-tool-btn:hover {
   background: var(--surface-alt);
   color: var(--primary);
-}
-.gs-btn-group .gs-tool-btn + .gs-tool-btn {
-  border-left: 1px solid var(--border);
 }
 .gs-fullscreen-btn {
   border: 1px solid var(--border);
@@ -1052,12 +1080,29 @@ function hasStrengthData(c: CompanyRecord): boolean {
   height: 22px;
   background: var(--border);
 }
-.gs-stat-project .gs-stat-num {
-  color: var(--warning);
+.gs-stat-clickable {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease;
 }
-.gs-stat-project .gs-stat-lbl {
-  color: var(--warning);
+.gs-stat-clickable:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+.gs-stat-active {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.gs-stat-native .gs-stat-num {
+  color: #10b981;
+}
+.gs-stat-attract .gs-stat-num {
+  color: #7c3aed;
+}
+.gs-stat-native.gs-stat-active .gs-stat-lbl,
+.gs-stat-attract.gs-stat-active .gs-stat-lbl {
   font-weight: 600;
+  color: var(--text-strong);
 }
 
 /* ── 图例 ──────────────────────────────────────────────── */
@@ -1079,6 +1124,9 @@ function hasStrengthData(c: CompanyRecord): boolean {
   color: var(--text-muted);
   margin-bottom: 3px;
 }
+.gs-legend-title-gap {
+  margin-top: 6px;
+}
 .gs-legend-items {
   display: flex;
   flex-direction: column;
@@ -1097,6 +1145,20 @@ function hasStrengthData(c: CompanyRecord): boolean {
   height: 8px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+.gs-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+}
+.gs-dot-listed {
+  background: #ef4444;
+}
+.gs-dot-unlisted {
+  background: #10b981;
 }
 .gs-swatch-china {
   background: transparent;
@@ -1350,62 +1412,8 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .type-private { background: rgba(34, 197, 94, 0.15);  color: #4ade80; }
 .type-foreign { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 .type-listed  { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
-.type-project {
-  background: linear-gradient(135deg, #dc2626 0%, #ea580c 30%, #f59e0b 70%, #fbbf24 100%);
-  color: #fff;
-  font-weight: 800;
-  font-size: 13px;
-  padding: 4px 12px 4px 8px;
-  border-radius: 6px;
-  box-shadow:
-    0 0 18px rgba(245, 158, 11, 0.6),
-    0 0 36px rgba(239, 68, 68, 0.3),
-    inset 0 1px 0 rgba(255,255,255,0.3);
-  border: 2px solid rgba(255, 220, 100, 0.7);
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  position: relative;
-  overflow: hidden;
-  animation: project-pulse 2s ease-in-out infinite;
-  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%);
-}
-.type-project::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    45deg,
-    transparent 30%,
-    rgba(255,255,255,0.1) 35%,
-    rgba(255,255,255,0.3) 40%,
-    rgba(255,255,255,0.4) 45%,
-    rgba(255,255,255,0.3) 50%,
-    rgba(255,255,255,0.1) 55%,
-    transparent 60%
-  );
-  animation: project-shine 2s ease-in-out infinite;
-}
-.type-project::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 8px;
-  height: 100%;
-  background: rgba(255,255,255,0.35);
-  clip-path: polygon(100% 0, 100% 100%, 0 50%);
-}
-@keyframes project-shine {
-  0% { transform: translateX(-100%) translateY(-100%); }
-  100% { transform: translateX(100%) translateY(100%); }
-}
-@keyframes project-pulse {
-  0%, 100% { box-shadow: 0 0 18px rgba(245, 158, 11, 0.6), 0 0 36px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255,255,255,0.3); }
-  50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.85), 0 0 50px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255,255,255,0.4); }
-}
+.type-native  { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.type-attract { background: rgba(124, 58, 237, 0.15); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.35); }
 .cp-tag {
   font-size: 10px;
   font-weight: 500;
@@ -1800,7 +1808,17 @@ function hasStrengthData(c: CompanyRecord): boolean {
   border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
   font-weight: 600;
 }
-.cp-strength-dot-patent { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+.cp-strength-dot-native {
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #10b981;
+  border: 1px solid color-mix(in srgb, #10b981 28%, transparent);
+}
+.cp-strength-dot-attract {
+  background: color-mix(in srgb, #7c3aed 14%, transparent);
+  color: #7c3aed;
+  border: 1px solid color-mix(in srgb, #7c3aed 40%, transparent);
+  font-weight: 600;
+}
 .cp-strength-dot-finance { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 .cp-strength-dot-scale { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
 
@@ -1901,33 +1919,6 @@ function hasStrengthData(c: CompanyRecord): boolean {
   border-radius: 3px;
   margin-left: 4px;
   vertical-align: middle;
-}
-.cp-project-tag {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 0 7px;
-  height: 19px;
-  background: linear-gradient(135deg, #ea580c, #f59e0b);
-  color: #fff;
-  border-radius: 4px;
-  margin-left: 4px;
-  vertical-align: middle;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.55), 0 0 20px rgba(234, 88, 12, 0.2);
-  line-height: 19px;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.15);
-  position: relative;
-}
-.cp-project-tag::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 5px;
-  height: 100%;
-  background: rgba(255,255,255,0.3);
-  clip-path: polygon(100% 0, 100% 100%, 0 50%);
 }
 .cp-type-tag {
   font-size: 10px;

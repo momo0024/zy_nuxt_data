@@ -9,6 +9,23 @@
           <h1>半导体</h1>
         </div>
       </div>
+      <div class="chain-search-wrap">
+        <UIcon name="i-lucide-search" class="chain-search-icon size-3.5" />
+        <input
+          v-model="companySearchQuery"
+          class="chain-search-input"
+          placeholder="搜索企业名称 / 信用代码"
+        />
+        <button
+          v-if="companySearchQuery"
+          type="button"
+          class="chain-search-clear"
+          title="清除搜索"
+          @click="companySearchQuery = ''"
+        >
+          <UIcon name="i-lucide-x" class="size-3.5" />
+        </button>
+      </div>
       <div class="chain-view-toggle">
         <button
           class="chain-view-btn"
@@ -116,7 +133,10 @@
                   v-for="product in industry.children.slice(0, 3)"
                   :key="product.productTypeId"
                   class="chain-product-node"
-                  :class="{ on: selectedProduct?.productTypeId === product.productTypeId }"
+                  :class="{
+                    on: selectedProduct?.productTypeId === product.productTypeId,
+                    'search-hit': isProductHighlighted(product.productTypeId),
+                  }"
                 >
                   <div class="cpn-name" :title="product.name">{{ product.name }}</div>
                   <div class="cpn-sources">
@@ -125,6 +145,7 @@
                       :key="src.sourceId"
                       type="button"
                       class="cpn-src-btn"
+                      :class="{ 'search-hit': isSourceHighlighted(product.productTypeId, src.sourceId) }"
                       :data-src-type="src.sourceName.includes('本土') ? 'native' : src.sourceName.includes('招商') ? 'attract' : 'other'"
                       @click="selectProduct(product); openCompanyList({ company_source: src.sourceId })"
                     >
@@ -175,7 +196,7 @@
                 </div>
                 <div class="chain-other-card-body">
                   <template v-for="(sub, si) in getOtherSubList(other)" :key="sub.product_type_id || sub.sencond_industry_id || sub.name || JSON.stringify(sub)">
-                    <div v-if="si < 3" class="chain-other-sub-card">
+                    <div v-if="si < 3" class="chain-other-sub-card" :class="{ 'search-hit': isProductHighlighted(sub.product_type_id || 0) }">
                       <div class="cosc-main">
                         <span class="cosc-name">{{ sub.name }}</span>
                         <div v-if="sub.company_info" class="cosc-sources">
@@ -186,7 +207,8 @@
                                 class="cosc-src-btn"
                                 :class="{
                                   'csc-native': sid === 'native' || (info.source_name && info.source_name.includes('本土')),
-                                  'csc-attract': sid === 'attract' || (info.source_name && info.source_name.includes('招商'))
+                                  'csc-attract': sid === 'attract' || (info.source_name && info.source_name.includes('招商')),
+                                  'search-hit': isSourceHighlighted(sub.product_type_id || 0, sid),
                                 }"
                                 @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: sid })"
                               >
@@ -201,7 +223,8 @@
                                 class="cosc-src-btn"
                                 :class="{
                                   'csc-native': info.sourceId === 'native' || (info.sourceName && info.sourceName.includes('本土')),
-                                  'csc-attract': info.sourceId === 'attract' || (info.sourceName && info.sourceName.includes('招商'))
+                                  'csc-attract': info.sourceId === 'attract' || (info.sourceName && info.sourceName.includes('招商')),
+                                  'search-hit': isSourceHighlighted(sub.product_type_id || 0, info.sourceId),
                                 }"
                                 @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: info.sourceId })"
                               >
@@ -323,6 +346,7 @@
                   v-for="sub in otherSubModalList"
                   :key="sub.product_type_id || sub.sencond_industry_id || sub.name || JSON.stringify(sub)"
                   class="chain-other-sub-card"
+                  :class="{ 'search-hit': isProductHighlighted(sub.product_type_id || 0) }"
                 >
                   <div class="cosc-main">
                     <span class="cosc-name">{{ sub.name }}</span>
@@ -334,7 +358,8 @@
                             class="cosc-src-btn"
                             :class="{
                               'csc-native': sid === 'native' || (info.source_name && info.source_name.includes('本土')),
-                              'csc-attract': sid === 'attract' || (info.source_name && info.source_name.includes('招商'))
+                              'csc-attract': sid === 'attract' || (info.source_name && info.source_name.includes('招商')),
+                              'search-hit': isSourceHighlighted(sub.product_type_id || 0, sid),
                             }"
                             @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: sid })"
                           >
@@ -344,13 +369,14 @@
                       </template>
                       <template v-else>
                         <template v-for="info in sub.company_info" :key="info.sourceId || info.source_name || JSON.stringify(info)">
-                          <span
-                            v-if="info && (info.num || info.num === 0)"
-                            class="cosc-src-btn"
-                            :class="{
-                              'csc-native': info.sourceId === 'native' || (info.source_name && info.source_name.includes('本土')),
-                              'csc-attract': info.sourceId === 'attract' || (info.source_name && info.source_name.includes('招商'))
-                            }"
+                              <span
+                                v-if="info && (info.num || info.num === 0)"
+                                class="cosc-src-btn"
+                                :class="{
+                                  'csc-native': info.sourceId === 'native' || (info.sourceName && info.sourceName.includes('本土')),
+                                  'csc-attract': info.sourceId === 'attract' || (info.sourceName && info.sourceName.includes('招商')),
+                                  'search-hit': isSourceHighlighted(sub.product_type_id || 0, info.sourceId),
+                                }"
                             @click.stop="openOtherCompanyList(sub.product_type_id || 0, sub._secondIndustryId || null, sub.name, { company_source: info.sourceId })"
                           >
                             {{ info.source_name || info.sourceId }}<span class="cosc-src-num">{{ info.num }}</span>
@@ -371,8 +397,10 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
+import { nextTick, onMounted, onUnmounted, onBeforeUnmount, watch } from 'vue'
 import { request } from '~/utils/request'
+import { fetchCompanies } from '~/types/company'
+import type { CompanyRecord } from '~/types/company'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { BarChart } from 'echarts/charts'
@@ -464,6 +492,115 @@ const companyModalTitle = ref('')
 const otherSubModalVisible = ref(false)
 const otherSubModalTitle = ref('')
 const otherSubModalList = ref<any[]>([])
+
+// 企业搜索
+const companySearchQuery = ref('')
+const allCompaniesForSearch = ref<CompanyRecord[]>([])
+const companyProductIndex = ref<Map<string, number[]>>(new Map())
+
+const highlightedSearchHits = computed(() => {
+  const sourceKeys = new Set<string>()
+  const productIds = new Set<number>()
+  const q = companySearchQuery.value.trim().toLowerCase()
+  if (!q) return { sourceKeys, productIds }
+
+  for (const c of allCompaniesForSearch.value) {
+    if (
+      !c.company_name.toLowerCase().includes(q)
+      && !(c.company_credit_code || '').toLowerCase().includes(q)
+    ) continue
+
+    const pids = companyProductIndex.value.get(c.company_credit_code) || []
+    const sources = new Set<string>()
+    if (c.company_source) sources.add(String(c.company_source))
+    if (c.tag_name === '本土培育') {
+      sources.add('native')
+      sources.add('17')
+    }
+    if (c.tag_name === '招商引资') {
+      sources.add('attract')
+      sources.add('18')
+    }
+
+    for (const pid of pids) {
+      productIds.add(pid)
+      for (const src of sources) sourceKeys.add(`${pid}:${src}`)
+    }
+  }
+  return { sourceKeys, productIds }
+})
+
+function isProductHighlighted(productTypeId: number) {
+  return productTypeId > 0 && highlightedSearchHits.value.productIds.has(productTypeId)
+}
+
+function isSourceHighlighted(productTypeId: number, sourceId: string | number) {
+  if (!isProductHighlighted(productTypeId)) return false
+  return highlightedSearchHits.value.sourceKeys.has(`${productTypeId}:${String(sourceId)}`)
+}
+
+function collectAllProductTypes(): { productTypeId: number, name: string }[] {
+  const result: { productTypeId: number, name: string }[] = []
+  for (const phase of chainPhases.value) {
+    for (const ind of phase.children) {
+      for (const p of ind.children) {
+        result.push({ productTypeId: p.productTypeId, name: p.name })
+      }
+    }
+  }
+  for (const other of otherChains.value) {
+    for (const sub of getOtherSubList(other)) {
+      if (sub.product_type_id) {
+        result.push({ productTypeId: sub.product_type_id, name: sub.name })
+      }
+    }
+  }
+  return result
+}
+
+async function loadAllCompaniesForSearch() {
+  try {
+    const res = await fetchCompanies(1, 500)
+    if (res.code === 0 && res.data) {
+      allCompaniesForSearch.value = res.data.list
+    }
+  }
+  catch (e) {
+    console.error('[chain] 加载企业数据失败', e)
+  }
+}
+
+async function buildCompanyProductIndex() {
+  const unique = new Map<number, string>()
+  for (const p of collectAllProductTypes()) {
+    if (p.productTypeId) unique.set(p.productTypeId, p.name)
+  }
+  const index = new Map<string, number[]>()
+  await Promise.all([...unique.entries()].map(async ([productTypeId]) => {
+    try {
+      const res = await request.get(`/company/SearchInfo?product_type=${productTypeId}`)
+      const data = res.data?.data
+      const list = Array.isArray(data) ? data : (data?.list || [])
+      for (const item of list) {
+        const code = item.company_credit_code
+        if (!code) continue
+        const existing = index.get(code) || []
+        if (!existing.includes(productTypeId)) {
+          existing.push(productTypeId)
+          index.set(code, existing)
+        }
+      }
+    }
+    catch (e) {
+      console.error(`[chain] 构建企业索引失败 product_type=${productTypeId}`, e)
+    }
+  }))
+  companyProductIndex.value = index
+}
+
+async function initCompanySearchData() {
+  await Promise.all([loadAllCompaniesForSearch(), buildCompanyProductIndex()])
+}
 
 // 底部图表
 const globalParkList = ref<ParkItem[]>([])
@@ -560,6 +697,7 @@ async function fetchChainData() {
         chainPhases.value = buildChain(target.raw)
         selectedProduct.value = null
       }
+      initCompanySearchData()
     }
   } catch (e) {
     console.error('获取产业链数据失败:', e)
@@ -976,6 +1114,14 @@ usePageInit(() => {
   fetchGlobalCharts()
 })
 
+watch(highlightedSearchHits, ({ productIds }) => {
+  if (!productIds.size || viewMode.value !== 'structure') return
+  nextTick(() => {
+    const el = document.querySelector('.chain-product-node.search-hit, .chain-other-sub-card.search-hit')
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  })
+})
+
 /* ── 卡片列与平行四边形底边对齐 ── */
 const chainNodesBoardRef = ref<HTMLElement | null>(null)
 
@@ -1120,6 +1266,60 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   font-weight: 800;
   color: var(--text-strong);
   letter-spacing: 0.02em;
+}
+
+.chain-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+.chain-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.chain-search-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 32px 0 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-strong);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.chain-search-input:focus {
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.chain-search-input::placeholder {
+  color: var(--text-muted);
+}
+.chain-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.chain-search-clear:hover {
+  background: var(--surface-alt);
+  color: var(--text-strong);
 }
 
 .chain-tabs {
@@ -1388,6 +1588,21 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--tc) 20%, transparent), 0 2px 8px color-mix(in srgb, var(--tc) 12%, transparent);
 }
 
+.chain-product-node.search-hit {
+  border-color: color-mix(in srgb, #f59e0b 65%, var(--border));
+  border-left-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 10%, var(--surface));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, #f59e0b 28%, transparent),
+    0 4px 14px color-mix(in srgb, #f59e0b 18%, transparent);
+  animation: chain-search-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes chain-search-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, #f59e0b 28%, transparent), 0 4px 14px color-mix(in srgb, #f59e0b 18%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, #f59e0b 40%, transparent), 0 6px 18px color-mix(in srgb, #f59e0b 28%, transparent); }
+}
+
 .cpn-name {
   font-size: 11px;
   font-weight: 600;
@@ -1472,6 +1687,14 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
 .cpn-src-btn[data-src-type="attract"]:hover {
   border-color: color-mix(in srgb, var(--src) 65%, var(--border));
   background: color-mix(in srgb, var(--src) 14%, var(--surface-alt));
+}
+
+.cpn-src-btn.search-hit {
+  border-color: color-mix(in srgb, #f59e0b 70%, var(--border)) !important;
+  background: color-mix(in srgb, #f59e0b 18%, var(--surface-alt)) !important;
+  color: color-mix(in srgb, #f59e0b 80%, var(--text-strong)) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #f59e0b 30%, transparent);
+  animation: chain-search-pulse 1.6s ease-in-out infinite;
 }
 
 .cpn-src-label { font-size: 9px; }
@@ -1614,6 +1837,15 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
+.chain-other-sub-card.search-hit {
+  border-color: color-mix(in srgb, #f59e0b 65%, var(--border));
+  background: color-mix(in srgb, #f59e0b 10%, var(--surface));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, #f59e0b 28%, transparent),
+    0 4px 14px color-mix(in srgb, #f59e0b 18%, transparent);
+  animation: chain-search-pulse 1.6s ease-in-out infinite;
+}
+
 .coc-name {
   flex: 1;
   font-size: 14px;
@@ -1730,6 +1962,14 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
 .cosc-src-btn.csc-attract:hover {
   border-color: color-mix(in srgb, var(--src) 65%, var(--border));
   background: color-mix(in srgb, var(--src) 14%, var(--surface-alt));
+}
+
+.cosc-src-btn.search-hit {
+  border-color: color-mix(in srgb, #f59e0b 70%, var(--border)) !important;
+  background: color-mix(in srgb, #f59e0b 18%, var(--surface-alt)) !important;
+  color: color-mix(in srgb, #f59e0b 80%, var(--text-strong)) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #f59e0b 30%, transparent);
+  animation: chain-search-pulse 1.6s ease-in-out infinite;
 }
 
 .cosc-src-num {

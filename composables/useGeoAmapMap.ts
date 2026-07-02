@@ -96,9 +96,18 @@ const FOCUSED_CITY_STYLE = {
 function getCityStyle(
   feature: GeoJSON.Feature | undefined,
   hovered = false,
-  _focusMode: BlurFocusMode = 'wuhan',
+  focusMode: BlurFocusMode = 'wuhan',
   focusedAdcode?: number | null,
 ) {
+  if (focusMode === 'zone') {
+    return {
+      strokeColor: '#94a3b8',
+      strokeWeight: hovered ? 1.5 : 1,
+      strokeOpacity: hovered ? 0.35 : 0.18,
+      fillOpacity: 0,
+      fillColor: 'transparent',
+    }
+  }
   if (hovered) return { ...HOVER_CITY_OUTLINE }
   if (focusedAdcode != null && feature?.properties?.adcode === focusedAdcode) {
     return { ...FOCUSED_CITY_STYLE }
@@ -125,8 +134,18 @@ function getCityStyle(
 function getProvinceStyle(
   _feature: GeoJSON.Feature | undefined,
   hovered = false,
-  _focusMode: BlurFocusMode = 'wuhan',
+  focusMode: BlurFocusMode = 'wuhan',
 ) {
+  if (focusMode === 'zone') {
+    return {
+      strokeColor: '#94a3b8',
+      strokeWeight: 1,
+      strokeOpacity: hovered ? 0.28 : 0.12,
+      strokeStyle: 'dashed',
+      fillOpacity: 0,
+      fillColor: 'transparent',
+    }
+  }
   if (hovered) return { ...HOVER_OUTLINE }
   return {
     strokeColor: '#94a3b8',
@@ -191,6 +210,7 @@ function getParkStyle(
 ) {
   const color = getParkColor(parkId, fallbackIndex)
   const dimmed = focusedParkId != null && parkId !== focusedParkId
+  const focused = focusedParkId != null && parkId === focusedParkId
   if (hovered) {
     return {
       strokeColor: color,
@@ -200,13 +220,22 @@ function getParkStyle(
       fillColor: color,
     }
   }
+  if (focused) {
+    return {
+      strokeColor: color,
+      strokeWeight: 3.5,
+      strokeOpacity: 1,
+      fillOpacity: 0.32,
+      fillColor: color,
+    }
+  }
   if (dimmed) {
     return {
       strokeColor: color,
-      strokeWeight: 2,
-      strokeOpacity: 0.28,
-      fillOpacity: 0,
-      fillColor: 'transparent',
+      strokeWeight: 1.5,
+      strokeOpacity: 0.12,
+      fillOpacity: 0.03,
+      fillColor: color,
     }
   }
   return {
@@ -336,23 +365,26 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function companyLabelHtml(color: string, name: string, isProject = false) {
+function companyLabelHtml(color: string, name: string, highlighted = false) {
   const displayName = name.length > 12 ? `${name.slice(0, 12)}...` : name
-  const badge = isProject ? '<span class="gs-company-badge">重</span>' : ''
-  return `<div class="gs-company-wrap${isProject ? ' gs-company-wrap-project' : ''}">
-    <div class="gs-company-label">${badge}${escapeHtml(displayName)}</div>
+  return `<div class="gs-company-wrap${highlighted ? ' gs-company-highlight' : ''}">
+    <div class="gs-company-label">${escapeHtml(displayName)}</div>
     <div class="gs-company-dot" style="background:${color}"></div>
   </div>`
 }
 
-function companyDotHtml(color: string) {
-  return `<div class="gs-company-wrap gs-company-wrap-dot-only">
+function companyDotHtml(color: string, highlighted = false) {
+  return `<div class="gs-company-wrap gs-company-wrap-dot-only${highlighted ? ' gs-company-highlight' : ''}">
     <div class="gs-company-dot" style="background:${color}"></div>
   </div>`
 }
 
-function clusterBubbleHtml(count: number) {
-  return `<div class="gs-cluster-bubble">${count}</div>`
+function clusterBubbleHtml(count: number, highlighted = false) {
+  return `<div class="gs-cluster-bubble${highlighted ? ' gs-cluster-bubble-highlight' : ''}">${count}</div>`
+}
+
+function isCompanyHighlighted(c: CompanyRecord, highlightedIds: Set<string>) {
+  return highlightedIds.has(c.id) || highlightedIds.has(c.company_credit_code)
 }
 
 function loadAmap(key: string, securityCode: string) {
@@ -392,19 +424,10 @@ export function useGeoAmapMap() {
   const quickView = ref<'zone' | 'wuhan' | null>(null)
   const showCompanyLabels = ref(true)
 
-  function getMaskFillColor(): string {
-    if (typeof document === 'undefined') return 'rgba(0,0,0,0.42)'
-    const sysTheme = document.documentElement.getAttribute('data-theme') || 'light'
-    const darkThemes = ['dark', 'purple']
-    if (darkThemes.includes(sysTheme)) {
-      return 'rgba(0,0,0,0.42)'
-    }
-    return 'rgba(230,232,240,0.55)'
-  }
-
   let AMap: AMapLike | null = null
   let map: any = null
   let latestCompanies: CompanyRecord[] = []
+  let highlightedCompanyIds = new Set<string>()
   let baseCompanies: CompanyRecord[] = []
   let focusedParkId: number | null = null
   let hoveringCompanyMarker = false
@@ -417,9 +440,64 @@ export function useGeoAmapMap() {
   let otherProvinceFeatures: GeoJSON.Feature[] = []
   let hubeiFeatureStored: GeoJSON.Feature | null = null
   let wuhanFeatureStored: GeoJSON.Feature | null = null
-  let blurFocusMode: BlurFocusMode = 'wuhan'
+  let blurFocusMode: BlurFocusMode = 'zone'
   let focusedCityAdcode: number | null = null
   let hoveredRegion: string | null = null
+  let zoneBoundaryGeometry: GeoJSON.Geometry | null = null
+  let zoneBoundaryRings: number[][][] = []
+  let hubeiOuterRingsStored: number[][][] = []
+
+  function getMaskAlpha(): number {
+    if (blurFocusMode === 'zone') {
+      if (focusedParkId != null) return 0.82
+      return 0.78
+    }
+    if (focusedParkId != null) return 0.74
+    return 0.55
+  }
+
+  function getMaskFillColor(): string {
+    if (typeof document === 'undefined') return 'rgba(0,0,0,0.42)'
+    const sysTheme = document.documentElement.getAttribute('data-theme') || 'light'
+    const darkThemes = ['dark', 'purple']
+    const alpha = getMaskAlpha()
+    if (darkThemes.includes(sysTheme)) {
+      return `rgba(0,0,0,${alpha})`
+    }
+    return `rgba(230,232,240,${alpha})`
+  }
+
+  function applyMaskForFocus() {
+    rebuildMask()
+  }
+
+  function rebuildMask() {
+    if (!map || !AMap) return
+    const worldRing: [number, number][] = [
+      [-180, -90], [180, -90], [180, 90], [-180, 90],
+    ]
+    const holes = blurFocusMode === 'zone' && zoneBoundaryRings.length
+      ? zoneBoundaryRings
+      : hubeiOuterRingsStored
+    if (!holes.length) return
+
+    clearOverlayList(maskPolygons)
+    try {
+      const maskPolygon = new AMap.Polygon({
+        path: [worldRing, ...holes],
+        fillColor: getMaskFillColor(),
+        fillOpacity: 1,
+        strokeColor: 'transparent',
+        strokeWeight: 0,
+        zIndex: 425,
+        bubble: false,
+        cursor: 'default',
+      })
+      maskPolygon.setMap(map)
+      maskPolygons.push(maskPolygon)
+    }
+    catch { /* fallback: mask not supported */ }
+  }
 
   const zonePolygons: any[] = []
   const parkPolygonsById = new Map<number, any[]>()
@@ -563,6 +641,9 @@ export function useGeoAmapMap() {
   }
 
   function isInZone(latlng: { lat: number, lng: number }) {
+    if (zoneBoundaryGeometry) {
+      return pointInGeoJSON(latlng.lng, latlng.lat, zoneBoundaryGeometry)
+    }
     const lng = latlng.lng
     const lat = latlng.lat
     return zoneFeatures.some((f) => {
@@ -581,18 +662,8 @@ export function useGeoAmapMap() {
     return !!(wuhanFeatureStored?.geometry && pointInGeoJSON(latlng.lng, latlng.lat, wuhanFeatureStored.geometry))
   }
 
-  function findHoverTarget(latlng: { lat: number, lng: number }): HoverTarget | null {
-    const parkHit = findFeatureAt(latlng, zoneFeatures, zoneBboxCache)
-    if (parkHit) return { kind: 'park', feature: parkHit }
-
-    const cityHit = findFeatureAt(latlng, cityFeatures, cityBboxCache)
-    if (cityHit) return { kind: 'city', feature: cityHit }
-
-    if (hubeiFeatureStored?.geometry && pointInGeoJSON(latlng.lng, latlng.lat, hubeiFeatureStored.geometry)) {
-      return { kind: 'province', feature: hubeiFeatureStored }
-    }
-
-    return null
+  function findParkTarget(latlng: { lat: number, lng: number }): GeoJSON.Feature | null {
+    return findFeatureAt(latlng, zoneFeatures, zoneBboxCache)
   }
 
   function applyFocusVisuals() {
@@ -607,6 +678,7 @@ export function useGeoAmapMap() {
     })
 
     applyParkStyles()
+    applyMaskForFocus()
   }
 
   function setParkHover(feature: GeoJSON.Feature, latlng: { lng: number, lat: number }) {
@@ -699,30 +771,21 @@ export function useGeoAmapMap() {
   }
 
   function handleRegionClick(latlng: { lng: number, lat: number }) {
-    const target = findHoverTarget({ lng: latlng.lng, lat: latlng.lat })
-    if (target?.kind === 'park') {
-      const parkId = target.feature.properties?.park_id as number | undefined
-      const name = (target.feature.properties?.park_name || target.feature.properties?.name) as string | undefined
+    const parkHit = findParkTarget(latlng)
+    if (parkHit) {
+      const parkId = parkHit.properties?.park_id as number | undefined
+      const name = (parkHit.properties?.park_name || parkHit.properties?.name) as string | undefined
       if (parkId && name) {
         focusPark(parkId, name)
         return
       }
+      showAllMapCompanies()
+      focusZone()
+      return
     }
-    if (target?.kind === 'city') {
-      const cityHit = target.feature
-      const adcode = cityHit.properties?.adcode as number
-      const name = cityHit.properties?.name as string
-      if (!adcode || !name) return
-      if (name === HIGHLIGHT_CITY) {
-        quickView.value = 'wuhan'
-        setBlurFocus('wuhan', adcode)
-      }
-      else {
-        quickView.value = null
-        setBlurFocus('city', adcode)
-      }
-      fitOverlays(cityPolygonsByAdcode.get(adcode) ?? [], name === HIGHLIGHT_CITY ? WUHAN_FIT_MAX_ZOOM : 9)
-      onRegionSelect?.({ type: 'city', name, adcode })
+    if (isInZone(latlng)) {
+      showAllMapCompanies()
+      focusZone()
     }
   }
 
@@ -777,11 +840,12 @@ export function useGeoAmapMap() {
   }
 
   function createClusterMarker(cell: { lat: number, lng: number, count: number, companies: CompanyRecord[] }) {
+    const hasHighlight = cell.companies.some(c => isCompanyHighlighted(c, highlightedCompanyIds))
     const marker = new AMap.Marker({
       position: [cell.lng, cell.lat],
-      content: clusterBubbleHtml(cell.count),
+      content: clusterBubbleHtml(cell.count, hasHighlight),
       offset: new AMap.Pixel(-11, -11),
-      zIndex: 670,
+      zIndex: hasHighlight ? 690 : 670,
     })
     marker.on('click', () => {
       const districtName = cell.companies[0]?.conpany_district || cell.companies[0]?.company_city || '\u9644\u8fd1'
@@ -796,16 +860,16 @@ export function useGeoAmapMap() {
     const lng = c.company_longitude
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
 
-    const color = c.company_traded === 1 ? '#ef4444' : c.import_project === 1 ? '#7c3aed' : '#10b981'
-    const isProject = c.import_project === 1
+    const color = c.company_traded === 1 ? '#ef4444' : '#10b981'
+    const highlighted = isCompanyHighlighted(c, highlightedCompanyIds)
     const content = showCompanyLabels.value
-      ? companyLabelHtml(color, c.company_name, isProject)
-      : companyDotHtml(color)
+      ? companyLabelHtml(color, c.company_name, highlighted)
+      : companyDotHtml(color, highlighted)
     const marker = new AMap.Marker({
       position: [lng, lat],
       content,
       offset: new AMap.Pixel(showCompanyLabels.value ? -66 : -8, showCompanyLabels.value ? -36 : -8),
-      zIndex: isProject ? 680 : 650,
+      zIndex: highlighted ? 700 : 650,
     })
 
     marker.on('mouseover', () => {
@@ -876,29 +940,21 @@ export function useGeoAmapMap() {
       const lng = e.lnglat.getLng()
       const lat = e.lnglat.getLat()
 
-      const target = findHoverTarget({ lng, lat })
-      const targetKey = target
-        ? target.kind === 'park'
-          ? `park-${target.feature.properties?.park_id}`
-          : target.kind === 'city'
-            ? `city-${target.feature.properties?.adcode}`
-            : `province-${target.feature.properties?.name}`
+      const parkHit = findParkTarget({ lng, lat })
+      const targetKey = parkHit
+        ? `park-${parkHit.properties?.park_id}`
         : null
 
       if (targetKey === lastHoverTarget) {
-        if (target?.kind === 'park') {
-          const name = target.feature.properties?.park_name as string
+        if (parkHit) {
+          const name = parkHit.properties?.park_name as string
           if (name) showRegionTooltip(name, lng, lat)
         }
-        else if (target?.kind === 'city') showRegionTooltip(target.feature.properties?.name, lng, lat)
-        else if (target?.kind === 'province') showRegionTooltip(target.feature.properties?.name, lng, lat)
         return
       }
       lastHoverTarget = targetKey
 
-      if (target?.kind === 'park') setParkHover(target.feature, { lng, lat })
-      else if (target?.kind === 'city') setCityHover(target.feature, { lng, lat })
-      else if (target?.kind === 'province') setProvinceHover(target.feature, { lng, lat })
+      if (parkHit) setParkHover(parkHit, { lng, lat })
       else { clearRegionHover(); lastHoverTarget = null }
     })
 
@@ -954,10 +1010,11 @@ map.on('zoomend', () => {
 
     AMap = await loadAmap(config.public.amapKey, config.public.amapSecurityCode)
 
-    const [region, parkAreas, hubeiCities, parkListRes] = await Promise.all([
+    const [region, parkAreas, hubeiCities, zoneBoundary, parkListRes] = await Promise.all([
       $fetch<any>('/geo/region_gcj02.json'),
       $fetch<GeoJSON.FeatureCollection>('/geo/park_areas_gcj02.json'),
       $fetch<any>('/geo/hubei-cities_gcj02.json'),
+      $fetch<GeoJSON.FeatureCollection>('/geo/高新区范围_gcj02.json'),
       $fetch<{ code: number, data?: ParkInfo[] }>(`${config.public.apiBase}/company/park/`),
     ])
 
@@ -988,10 +1045,10 @@ map.on('zoomend', () => {
       zoom: WUHAN_ZOOM,
       mapStyle: 'amap://styles/normal',
       viewMode: '2D',
-      showLabel: true,
+      showLabel: false,
       showBuildingBlock: false,
       isHotspot: false,
-      features: ['bg', 'road', 'point'],
+      features: ['bg'],
       zooms: [7, 18],
       resizeEnable: true,
       doubleClickZoom: false,
@@ -1007,9 +1064,15 @@ map.on('zoomend', () => {
     wuhanFeatureStored = cityFeatures.find(f => f.properties?.name === HIGHLIGHT_CITY) ?? null
     otherProvinceFeatures = (region.features as GeoJSON.Feature[]).filter(f => f.properties?.name !== HIGHLIGHT_PROVINCE)
 
+    const zoneBoundaryFeature = zoneBoundary.features?.[0]
+    if (zoneBoundaryFeature?.geometry) {
+      zoneBoundaryGeometry = zoneBoundaryFeature.geometry
+      zoneBoundaryRings = outerRingsFromGeometry(zoneBoundaryFeature.geometry)
+    }
+
     provincePolygonsByName.clear()
 
-    const hubeiOuterRings = hubeiFeatureStored
+    hubeiOuterRingsStored = hubeiFeatureStored
       ? outerRingsFromGeometry(hubeiFeatureStored.geometry)
       : []
 
@@ -1022,34 +1085,13 @@ map.on('zoomend', () => {
         })
         polygons.forEach((polygon) => {
           polygon.setMap(map)
-          polygon.on('click', (e: any) => {
-            if (hoveringCompanyMarker) return
-            handleRegionClick({ lng: e.lnglat.getLng(), lat: e.lnglat.getLat() })
-          })
         })
         provincePolygonsByName.set(name, polygons)
       }
     }
 
-    if (hubeiOuterRings.length > 0 && AMap) {
-      const worldRing: [number, number][] = [
-        [-180, -90], [180, -90], [180, 90], [-180, 90],
-      ]
-      try {
-        const maskPolygon = new AMap.Polygon({
-          path: [worldRing, ...hubeiOuterRings],
-          fillColor: getMaskFillColor(),
-          fillOpacity: 1,
-          strokeColor: 'transparent',
-          strokeWeight: 0,
-          zIndex: 425,
-          bubble: false,
-          cursor: 'default',
-        })
-        maskPolygon.setMap(map)
-        maskPolygons.push(maskPolygon)
-      }
-      catch { /* fallback: mask not supported */ }
+    if (hubeiOuterRingsStored.length > 0) {
+      rebuildMask()
     }
 
     cityPolygonsByAdcode.clear()
@@ -1062,27 +1104,6 @@ map.on('zoomend', () => {
       })
       polygons.forEach((polygon) => {
         polygon.setMap(map)
-        polygon.on('click', (e: any) => {
-          if (hoveringCompanyMarker) return
-          const lng = e.lnglat.getLng()
-          const lat = e.lnglat.getLat()
-          if (blurFocusMode !== 'zone' && isInZone({ lng, lat })) {
-            focusZone()
-            return
-          }
-          const name = feature.properties?.name as string
-          if (!name) return
-          if (name === HIGHLIGHT_CITY) {
-            quickView.value = 'wuhan'
-            setBlurFocus('wuhan', adcode)
-          }
-          else {
-            quickView.value = null
-            setBlurFocus('city', adcode)
-          }
-          fitOverlays(polygons, name === HIGHLIGHT_CITY ? WUHAN_FIT_MAX_ZOOM : 9)
-          onRegionSelect?.({ type: 'city', name, adcode })
-        })
       })
       cityPolygonsByAdcode.set(adcode, polygons)
     })
@@ -1158,8 +1179,11 @@ map.on('zoomend', () => {
     otherProvinceFeatures = []
     hubeiFeatureStored = null
     wuhanFeatureStored = null
-    blurFocusMode = 'wuhan'
+    blurFocusMode = 'zone'
     focusedCityAdcode = null
+    zoneBoundaryGeometry = null
+    zoneBoundaryRings = []
+    hubeiOuterRingsStored = []
     hoveringCompanyMarker = false
     mapReady.value = false
   }
@@ -1168,7 +1192,7 @@ map.on('zoomend', () => {
   function zoomOut() { map?.zoomOut?.() }
 
   function resetView() {
-    flyToWuhan()
+    flyToZone()
   }
 
   function setQuickView(view: 'zone' | 'wuhan' | { city: { adcode: number, name: string } }) {
@@ -1190,10 +1214,13 @@ map.on('zoomend', () => {
     refreshMarkers(latestCompanies)
   }
 
+  function setHighlightedCompanies(ids: string[]) {
+    highlightedCompanyIds = new Set(ids)
+    refreshMarkers(latestCompanies)
+  }
+
   function updateMaskColor() {
-    if (!maskPolygons.length) return
-    const color = getMaskFillColor()
-    maskPolygons.forEach(p => p.setOptions({ fillColor: color }))
+    applyMaskForFocus()
   }
 
   return {
@@ -1217,5 +1244,6 @@ map.on('zoomend', () => {
     isInZone,
     showAllMapCompanies,
     setParkMapCompanies,
+    setHighlightedCompanies,
   }
 }

@@ -23,6 +23,8 @@ export interface CompanyRecord {
   product_type: string
   chain_name: string
   import_project: number
+  company_source: number
+  tag_name: string
   product: string
   honors: string
   contact_info: string
