@@ -410,7 +410,7 @@ function loadAmap(key: string, securityCode: string) {
     }
 
     const script = document.createElement('script')
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}&callback=${callbackName}`
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}&plugin=AMap.DistrictSearch,AMap.LabelsLayer,AMap.LabelMarker&callback=${callbackName}`
     script.async = true
     script.onerror = () => {
       delete (window as any)[callbackName]
@@ -456,11 +456,11 @@ export function useGeoAmapMap() {
 
   function getMaskAlpha(): number {
     if (blurFocusMode === 'zone') {
-      if (focusedParkId != null) return 0.82
-      return 0.78
+      if (focusedParkId != null) return 0.62
+      return 0.48
     }
-    if (focusedParkId != null) return 0.74
-    return 0.55
+    if (focusedParkId != null) return 0.58
+    return 0.42
   }
 
   function getMaskFillColor(): string {
@@ -476,6 +476,66 @@ export function useGeoAmapMap() {
 
   function applyMaskForFocus() {
     rebuildMask()
+  }
+
+  function clearDistrictCityLabels() {
+    if (districtCityLabelsLayer && map) {
+      try { map.remove(districtCityLabelsLayer) }
+      catch { /* ignore */ }
+    }
+    districtCityLabelsLayer = null
+  }
+
+  /** 高德官方简易行政区标注：DistrictSearch + LabelsLayer */
+  function setupDistrictCityLabels() {
+    if (!map || !AMap?.DistrictSearch || !AMap.LabelsLayer || !AMap.LabelMarker) return
+    clearDistrictCityLabels()
+
+    const search = new AMap.DistrictSearch({
+      level: 'province',
+      subdistrict: 1,
+      extensions: 'base',
+    })
+
+    search.search('湖北省', (status: string, result: any) => {
+      if (status !== 'complete' || !map || !AMap) return
+      const cities = result?.districtList?.[0]?.districtList
+      if (!Array.isArray(cities) || !cities.length) return
+
+      const layer = new AMap.LabelsLayer({
+        zIndex: 460,
+        collision: true,
+        animation: false,
+      })
+
+      for (const city of cities) {
+        const name = city?.name as string | undefined
+        const center = city?.center
+        if (!name || !center) continue
+        const lng = typeof center.lng === 'number' ? center.lng : center[0]
+        const lat = typeof center.lat === 'number' ? center.lat : center[1]
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue
+
+        const isWuhan = name === HIGHLIGHT_CITY
+        layer.add(new AMap.LabelMarker({
+          position: [lng, lat],
+          text: {
+            content: name,
+            direction: 'center',
+            style: {
+              fontSize: isWuhan ? 13 : 12,
+              fontWeight: isWuhan ? '700' : '600',
+              fillColor: isWuhan ? '#0e7490' : '#334155',
+              strokeColor: '#ffffff',
+              strokeWidth: 2,
+            },
+          },
+        }))
+      }
+
+      map.add(layer)
+      districtCityLabelsLayer = layer
+    })
   }
 
   function rebuildMask() {
@@ -515,6 +575,7 @@ export function useGeoAmapMap() {
   let markerOverlays: any[] = []
   let clusterOverlays: any[] = []
   let maskPolygons: any[] = []
+  let districtCityLabelsLayer: any = null
   let regionHoverText: any = null
   let companyHoverText: any = null
 
@@ -1065,10 +1126,10 @@ map.on('zoomend', () => {
       zoom: WUHAN_ZOOM,
       mapStyle: 'amap://styles/normal',
       viewMode: '2D',
-      showLabel: false,
+      showLabel: true,
       showBuildingBlock: false,
       isHotspot: false,
-      features: ['bg'],
+      features: ['bg', 'point'],
       zooms: [7, 18],
       resizeEnable: true,
       doubleClickZoom: false,
@@ -1164,6 +1225,14 @@ map.on('zoomend', () => {
     })
 
     setupMapEvents()
+    const onMapReady = () => {
+      map?.setFeatures?.(['bg', 'point'])
+      setupDistrictCityLabels()
+    }
+    map.on('complete', onMapReady)
+    requestAnimationFrame(() => {
+      if (!districtCityLabelsLayer) onMapReady()
+    })
     baseCompanies = companies
     refreshMarkers(companies)
     setBlurFocus('zone')
@@ -1180,6 +1249,7 @@ map.on('zoomend', () => {
     clearOverlayList(markerOverlays)
     clearOverlayList(clusterOverlays)
     clearOverlayList(maskPolygons)
+    clearDistrictCityLabels()
     clearOverlayList(zonePolygons)
     parkPolygonsById.clear()
     unmappedParkPolygons.clear()
