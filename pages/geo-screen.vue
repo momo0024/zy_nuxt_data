@@ -217,6 +217,7 @@
                 <UIcon name="i-lucide-building-x" class="size-10 opacity-20" />
                 <span v-if="isLoadingCompanies || isLoadingParkCompanies">企业数据加载中…</span>
                 <span v-else-if="companySearch.trim()">未找到匹配 "{{ companySearch.trim() }}" 的企业</span>
+                <span v-else-if="selectedRegion?.type === 'park'">该园区暂无企业数据</span>
                 <span v-else-if="allCompanies.length === 0">企业数据加载失败，请刷新页面重试</span>
                 <span v-else>暂无匹配企业</span>
                 <button
@@ -548,11 +549,12 @@ const filteredCompanies = computed(() => {
       || (c.conpany_district || '').toLowerCase().includes(q),
     )
   }
-  // 园区模式：展示接口按 park_id 拉取的企业
-  if (selectedRegion.value?.type === 'park' && parkCompanies.value) {
+  // 园区模式：仅展示接口按 park_id 返回的企业
+  if (selectedRegion.value?.type === 'park') {
     const q = companySearch.value.trim().toLowerCase()
-    if (!q) return parkCompanies.value
-    return parkCompanies.value.filter(c =>
+    const list = parkCompanies.value ?? []
+    if (!q) return list
+    return list.filter(c =>
       c.company_name.toLowerCase().includes(q)
       || (c.company_credit_code || '').toLowerCase().includes(q)
       || (c.product_type || '').toLowerCase().includes(q)
@@ -599,7 +601,12 @@ const panelCompanyCount = computed(() => {
 
 async function loadParkCompanies(parkId: number) {
   isLoadingParkCompanies.value = true
-  parkCompanies.value = null
+  parkCompanies.value = []
+  setParkMapCompanies([])
+  if (!parkId) {
+    isLoadingParkCompanies.value = false
+    return
+  }
   try {
     const res = await fetchCompaniesByPark(parkId, 1, pageSize)
     if (res.code === 0 && res.data) {

@@ -207,10 +207,16 @@ function getParkStyle(
   hovered = false,
   focusedParkId: number | null = null,
   fallbackIndex = 0,
+  focusedUnmappedIndex: number | null = null,
 ) {
   const color = getParkColor(parkId, fallbackIndex)
-  const dimmed = focusedParkId != null && parkId !== focusedParkId
-  const focused = focusedParkId != null && parkId === focusedParkId
+  const isFocused = (focusedParkId != null && parkId === focusedParkId)
+    || (focusedUnmappedIndex != null && parkId == null && fallbackIndex === focusedUnmappedIndex)
+  const dimmed = focusedParkId != null
+    ? parkId !== focusedParkId
+    : focusedUnmappedIndex != null
+      ? !(parkId == null && fallbackIndex === focusedUnmappedIndex)
+      : false
   if (hovered) {
     return {
       strokeColor: color,
@@ -220,7 +226,7 @@ function getParkStyle(
       fillColor: color,
     }
   }
-  if (focused) {
+  if (isFocused) {
     return {
       strokeColor: color,
       strokeWeight: 3.5,
@@ -430,6 +436,7 @@ export function useGeoAmapMap() {
   let highlightedCompanyIds = new Set<string>()
   let baseCompanies: CompanyRecord[] = []
   let focusedParkId: number | null = null
+  let focusedUnmappedParkIndex: number | null = null
   let hoveringCompanyMarker = false
 
   let zoneFeatures: GeoJSON.Feature[] = []
@@ -551,10 +558,11 @@ export function useGeoAmapMap() {
   function applyParkStyles() {
     parkPolygonsById.forEach((polygons, parkId) => {
       const hovered = hoveredRegion === `park-${parkId}`
-      setPolygonsStyle(polygons, getParkStyle(parkId, hovered, focusedParkId))
+      setPolygonsStyle(polygons, getParkStyle(parkId, hovered, focusedParkId, 0, focusedUnmappedParkIndex))
     })
     unmappedParkPolygons.forEach((polygons, index) => {
-      setPolygonsStyle(polygons, getParkStyle(null, false, focusedParkId, index))
+      const hovered = hoveredRegion === `park-unmapped-${index}`
+      setPolygonsStyle(polygons, getParkStyle(null, hovered, focusedParkId, index, focusedUnmappedParkIndex))
     })
   }
 
@@ -681,11 +689,11 @@ export function useGeoAmapMap() {
     applyMaskForFocus()
   }
 
-  function setParkHover(feature: GeoJSON.Feature, latlng: { lng: number, lat: number }) {
+  function setParkHover(feature: GeoJSON.Feature, latlng: { lng: number, lat: number }, featureIndex?: number) {
     const parkId = feature.properties?.park_id as number | undefined
     const name = (feature.properties?.park_name || feature.properties?.name) as string | undefined
-    if (!parkId || !name) return
-    const regionKey = `park-${parkId}`
+    if (!name) return
+    const regionKey = parkId ? `park-${parkId}` : `park-unmapped-${featureIndex ?? zoneFeatures.indexOf(feature)}`
     if (hoveredRegion === regionKey) {
       showRegionTooltip(name, latlng.lng, latlng.lat)
       return
@@ -696,24 +704,34 @@ export function useGeoAmapMap() {
     showRegionTooltip(name, latlng.lng, latlng.lat)
   }
 
-  function focusPark(parkId: number, name: string) {
-    focusedParkId = parkId
+  function focusPark(parkId: number | null, name: string, unmappedIndex?: number) {
+    const validParkId = parkId && parkId > 0 ? parkId : null
+    focusedParkId = validParkId
+    focusedUnmappedParkIndex = validParkId ? null : (unmappedIndex ?? null)
     quickView.value = 'zone'
     setBlurFocus('zone')
-    const overlays = getParkPolygons(parkId)
-    if (overlays.length) fitOverlays(overlays, 14)
-    refreshMarkers(filterCompaniesInPark(baseCompanies, parkId, zoneFeatures))
-    onRegionSelect?.({ type: 'park', park_id: parkId, name })
+    if (validParkId) {
+      const overlays = getParkPolygons(validParkId)
+      if (overlays.length) fitOverlays(overlays, 14)
+    }
+    else if (unmappedIndex != null) {
+      const overlays = unmappedParkPolygons.get(unmappedIndex) ?? []
+      if (overlays.length) fitOverlays(overlays, 14)
+    }
+    applyParkStyles()
+    refreshMarkers([])
+    onRegionSelect?.({ type: 'park', park_id: validParkId ?? 0, name })
   }
 
   function showAllMapCompanies() {
     focusedParkId = null
+    focusedUnmappedParkIndex = null
     applyParkStyles()
     refreshMarkers(baseCompanies)
   }
 
   function setParkMapCompanies(companies: CompanyRecord[]) {
-    if (focusedParkId == null) return
+    if (focusedParkId == null && focusedUnmappedParkIndex == null) return
     refreshMarkers(companies)
   }
 
@@ -775,13 +793,11 @@ export function useGeoAmapMap() {
     if (parkHit) {
       const parkId = parkHit.properties?.park_id as number | undefined
       const name = (parkHit.properties?.park_name || parkHit.properties?.name) as string | undefined
-      if (parkId && name) {
-        focusPark(parkId, name)
+      if (name) {
+        const featureIndex = zoneFeatures.indexOf(parkHit)
+        focusPark(parkId && parkId > 0 ? parkId : null, name, parkId && parkId > 0 ? undefined : featureIndex)
         return
       }
-      showAllMapCompanies()
-      focusZone()
-      return
     }
     if (isInZone(latlng)) {
       showAllMapCompanies()
@@ -796,6 +812,7 @@ export function useGeoAmapMap() {
 
   function flyToZone() {
     focusedParkId = null
+    focusedUnmappedParkIndex = null
     quickView.value = 'zone'
     setBlurFocus('zone')
     fitOverlays(zonePolygons, 13)
@@ -941,20 +958,23 @@ export function useGeoAmapMap() {
       const lat = e.lnglat.getLat()
 
       const parkHit = findParkTarget({ lng, lat })
+      const parkFeatureIndex = parkHit ? zoneFeatures.indexOf(parkHit) : -1
       const targetKey = parkHit
-        ? `park-${parkHit.properties?.park_id}`
+        ? (parkHit.properties?.park_id
+            ? `park-${parkHit.properties?.park_id}`
+            : `park-unmapped-${parkFeatureIndex}`)
         : null
 
       if (targetKey === lastHoverTarget) {
         if (parkHit) {
-          const name = parkHit.properties?.park_name as string
+          const name = (parkHit.properties?.park_name || parkHit.properties?.name) as string
           if (name) showRegionTooltip(name, lng, lat)
         }
         return
       }
       lastHoverTarget = targetKey
 
-      if (parkHit) setParkHover(parkHit, { lng, lat })
+      if (parkHit) setParkHover(parkHit, { lng, lat }, parkFeatureIndex)
       else { clearRegionHover(); lastHoverTarget = null }
     })
 
@@ -1121,13 +1141,13 @@ map.on('zoomend', () => {
         polygon.setMap(map)
         polygon.on('click', () => {
           if (hoveringCompanyMarker) return
-          if (parkId) {
-            const name = feature.properties?.park_name as string
+          const name = (feature.properties?.park_name || feature.properties?.name) as string
+          if (!name) return
+          if (parkId && parkId > 0) {
             focusPark(parkId, name)
             return
           }
-          showAllMapCompanies()
-          focusZone()
+          focusPark(null, name, featureIndex)
         })
         zonePolygons.push(polygon)
         if (parkId) {
@@ -1173,6 +1193,7 @@ map.on('zoomend', () => {
     latestCompanies = []
     baseCompanies = []
     focusedParkId = null
+    focusedUnmappedParkIndex = null
     zoneFeatures = []
     cityFeatures = []
     cityList.value = []

@@ -533,13 +533,13 @@
             </h2>
             <template v-if="shareholderData?.latest?.data?.length || shareholderData?.members?.data?.length">
               <!-- 股东结构思维导图 -->
-              <div v-if="shareholderTreeOption" class="cd-sub-section">
+              <div v-if="hasShareholderMindMap" class="cd-sub-section">
                 <h3 class="cd-sub-title">股东结构</h3>
                 <ClientOnly>
-                  <VChart
-                    :option="shareholderTreeOption"
-                    class="cd-tree-chart"
-                    autoresize
+                  <div
+                    ref="shareholderMindMapRef"
+                    class="cd-shareholder-mindmap"
+                    :style="{ height: `${shareholderMindMapHeight}px` }"
                   />
                 </ClientOnly>
               </div>
@@ -1272,6 +1272,11 @@ import {
   registerRelatedMindMapNodeProps,
   type RelatedFieldItem,
 } from '~/utils/related-mind-map'
+import {
+  buildShareholderMindMapTree,
+  estimateShareholderMindMapHeight,
+  registerShareholderMindMapNodeProps,
+} from '~/utils/shareholder-mind-map'
 import { buildRelationGraphJsonData } from '~/utils/relation-graph'
 
 definePageMeta({ middleware: 'auth', layout: 'blank', keepalive: true })
@@ -1381,6 +1386,9 @@ const layoutPage = ref(1)
 const financePage = ref(1)
 const controlPage = ref(1)
 const shareholderIndirectPage = ref(1)
+const shareholderMindMapRef = ref<HTMLElement | null>(null)
+let shareholderMindMapInstance: any = null
+let shareholderMindMapInitialViewApplied = false
 const relatedMindMapRef = ref<HTMLElement | null>(null)
 let relatedMindMapInstance: any = null
 let relatedMindMapInitialViewApplied = false
@@ -1392,6 +1400,17 @@ const selectedRelatedEntity = ref<{
 } | null>(null)
 const relatedMindMapHeight = computed(() =>
   estimateRelatedMindMapHeight(peopleData.value?.relatedEntities?.data?.length ?? 0),
+)
+const hasShareholderMindMap = computed(() => {
+  const latest = shareholderData.value?.latest
+  const members = shareholderData.value?.members
+  return !!(latest?.data?.length || members?.data?.length)
+})
+const shareholderMindMapHeight = computed(() =>
+  estimateShareholderMindMapHeight(
+    shareholderData.value?.latest?.data?.length ?? 0,
+    shareholderData.value?.members?.data?.length ?? 0,
+  ),
 )
 
 // 弹窗表格字段（展示所有字段）
@@ -1706,6 +1725,10 @@ watch([() => peopleData.value?.relatedEntities, relatedMindMapRef], () => {
   nextTick(() => initRelatedMindMap())
 }, { deep: true })
 
+watch([() => shareholderData.value?.latest, () => shareholderData.value?.members, shareholderMindMapRef], () => {
+  nextTick(() => initShareholderMindMap())
+}, { deep: true })
+
 watch(relatedMindMapHeight, () => {
   nextTick(() => {
     if (!relatedMindMapInstance) return
@@ -1718,8 +1741,23 @@ watch(relatedMindMapHeight, () => {
   })
 })
 
+watch(shareholderMindMapHeight, () => {
+  nextTick(() => {
+    if (!shareholderMindMapInstance) return
+    try {
+      shareholderMindMapInstance.getElRectInfo()
+      shareholderMindMapInstance.resize()
+    } catch {
+      // ignore
+    }
+  })
+})
+
 onMounted(() => {
-  nextTick(() => initRelatedMindMap())
+  nextTick(() => {
+    initRelatedMindMap()
+    initShareholderMindMap()
+  })
 })
 
 const registerDisplayMap: Record<string, { label: string; icon: string }> = {
@@ -1783,97 +1821,83 @@ const shareholderChartOption = computed(() => {
   }
 })
 
-// 股东结构思维导图（树图）
-const shareholderTreeOption = computed(() => {
+// 股东结构思维导图
+function buildShareholderMindMapData() {
   const latest = shareholderData.value?.latest
   const members = shareholderData.value?.members
   if (!latest?.data?.length && !members?.data?.length) return null
-
   const companyName = company.value?.company_name || '企业'
-  const children: any[] = []
+  return buildShareholderMindMapTree(latest, members, companyName)
+}
 
-  // 股东子节点
-  if (latest?.data?.length) {
-    const columns = latest.column
-    const ratioIdx = columns.findIndex((c: string) => c.includes('持股比例') || c.includes('持股'))
-    const shareholderChildren = latest.data.map((row: string[]) => {
-      const fullName = row[0] || '-'
-      const name = fullName.length > 14 ? fullName.slice(0, 14) + '…' : fullName
-      const ratio = ratioIdx >= 0 ? parseFloat(row[ratioIdx]) || 0 : 0
-      return { name: `${name}${ratio > 0 ? ` ${ratio}%` : ''}`, fullName, value: ratio }
-    })
-    children.push({ name: '股东', children: shareholderChildren, symbolSize: 12, itemStyle: { color: '#8b5cf6', borderColor: '#8b5cf6', borderWidth: 2 } })
+async function initShareholderMindMap() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (!shareholderMindMapRef.value) return
+  const mindData = buildShareholderMindMapData()
+  if (!mindData) {
+    if (shareholderMindMapInstance) {
+      shareholderMindMapInstance.destroy()
+      shareholderMindMapInstance = null
+    }
+    shareholderMindMapInitialViewApplied = false
+    return
   }
 
-  // 主要成员子节点
-  if (members?.data?.length) {
-    const memberChildren = members.data.map((row: string[]) => {
-      return { name: `${row[0] || '-'} (${row[1] || '-'})`, value: 1 }
-    })
-    children.push({ name: '主要成员', children: memberChildren, symbolSize: 12, itemStyle: { color: '#06b6d4', borderColor: '#06b6d4', borderWidth: 2 } })
+  if (shareholderMindMapInstance) {
+    shareholderMindMapInstance.destroy()
+    shareholderMindMapInstance = null
+  }
+  shareholderMindMapInitialViewApplied = false
+
+  const el = shareholderMindMapRef.value
+  const rect = el.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    requestAnimationFrame(() => initShareholderMindMap())
+    return
   }
 
-  if (children.length === 0) return null
+  try {
+    const [{ default: MindMap }, { default: Drag }] = await Promise.all([
+      import('simple-mind-map'),
+      import('simple-mind-map/src/plugins/Drag.js'),
+    ])
 
-  return {
-    tooltip: { trigger: 'item' as const, triggerOn: 'mousemove', formatter: (params: any) => {
-      const fullName = params.data?.fullName || params.data?.name || ''
-      const value = params.data?.value
-      if (value > 1) return `${fullName}<br/>持股比例: ${value}%`
-      return fullName
-    } },
-    series: [{
-      type: 'tree' as const,
-      data: [{
-        name: companyName,
-        children,
-        symbolSize: 20,
-        itemStyle: { color: '#4f46e5', borderColor: '#4f46e5', borderWidth: 2, shadowBlur: 8, shadowColor: 'rgba(79,70,229,0.3)' },
-        label: { position: 'right' as const, align: 'left', fontSize: 13, fontWeight: 'bold', color: '#1e1b4b', backgroundColor: 'rgba(255,255,255,0.95)', padding: [4, 10], borderRadius: 6, distance: 10 },
-      }],
-      top: '10%', left: '10%', bottom: '5%', right: '18%',
-      symbolSize: 8,
-      orient: 'LR' as const,
-      roam: true,
-      label: {
-        position: 'left' as const,
-        verticalAlign: 'middle',
-        align: 'right',
-        fontSize: 11,
-        fontWeight: '500',
-        color: '#334155',
-        backgroundColor: 'rgba(255,255,255,0.85)',
-        padding: [2, 6],
-        borderRadius: 3,
-        distance: 5,
+    registerShareholderMindMapNodeProps(MindMap)
+
+    shareholderMindMapInstance = new MindMap({
+      el: shareholderMindMapRef.value,
+      data: mindData,
+      layout: 'logicalStructure',
+      readonly: true,
+      fit: false,
+      fitPadding: 28,
+      alwaysShowExpandBtn: true,
+      notShowExpandBtn: false,
+      isShowExpandNum: true,
+      scaleRatio: 0.1,
+      minZoomRatio: 20,
+      maxZoomRatio: 300,
+      mousewheelAction: 'zoom',
+      mouseScaleCenterUseMousePosition: false,
+      initRootNodePosition: ['left', 'center'],
+      themeConfig: {
+        lineStyle: 'curve',
+        root: { fontSize: 18, paddingX: 20, paddingY: 10 },
+        second: { marginX: 110, marginY: 28, fontSize: 16, paddingX: 16, paddingY: 8 },
+        node: { marginX: 80, marginY: 14, fontSize: 14, paddingX: 14, paddingY: 6 },
       },
-      leaves: {
-        label: {
-          position: 'right' as const,
-          verticalAlign: 'middle',
-          align: 'left',
-          fontSize: 10,
-          fontWeight: '400',
-          color: '#64748b',
-          backgroundColor: 'transparent',
-          padding: [1, 2],
-          distance: 4,
-        },
-      },
-      emphasis: { focus: 'descendant' as const, itemStyle: { color: '#4338ca', borderColor: '#4338ca', borderWidth: 3 } },
-      expandAndCollapse: true,
-      initialTreeDepth: 2,
-      animationDuration: 550,
-      animationDurationUpdate: 750,
-      lineStyle: { color: '#c7d2fe', width: 1.5, curveness: 0 },
-      itemStyle: { color: '#6366f1', borderColor: '#6366f1', borderWidth: 2 },
-      edgeShape: 'polyline' as const,
-      edgeForkPosition: '63%',
-      layerPadding: 160,
-      nodePadding: 30,
-    }],
+      customHandleLine: createRelatedLineLabelHandler(),
+    })
+    shareholderMindMapInstance.addPlugin(Drag)
+    shareholderMindMapInstance.on('node_tree_render_end', () => {
+      if (shareholderMindMapInitialViewApplied) return
+      shareholderMindMapInitialViewApplied = true
+      applyRelatedMindMapDefaultView(shareholderMindMapInstance)
+    })
+  } catch (e) {
+    console.error('股东结构思维导图初始化失败:', e)
   }
-})
+}
 
 // 径向关系图（主要成员 / 控制关系共用）
 type RadialGraphItem = { name: string; subtitle: string }
@@ -2665,6 +2689,10 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('scroll', onContentScroll)
   cancelAnimationFrame(scrollRaf)
+  if (shareholderMindMapInstance) {
+    shareholderMindMapInstance.destroy()
+    shareholderMindMapInstance = null
+  }
   if (relatedMindMapInstance) {
     relatedMindMapInstance.destroy()
     relatedMindMapInstance = null
@@ -3342,12 +3370,20 @@ function getIndustryBg(industry: string): string {
   width: 100%;
   height: 220px;
 }
-.cd-tree-chart {
+.cd-shareholder-mindmap {
   width: 100%;
-  height: 500px;
-  background-color: rgba(139, 92, 246, 0.05);
+  min-height: 520px;
+  background: rgba(139, 92, 246, 0.05);
   border-radius: 12px;
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+  cursor: grab;
 }
+
+.cd-shareholder-mindmap :deep(.smm-expand-btn) {
+  cursor: pointer;
+}
+
 .cd-member-graph {
   width: 100%;
   height: 500px;
@@ -3815,8 +3851,8 @@ function getIndustryBg(industry: string): string {
   .cd-member-graph {
     height: 340px;
   }
-  .cd-tree-chart {
-    height: 320px;
+  .cd-shareholder-mindmap {
+    min-height: 320px;
   }
 }
 
