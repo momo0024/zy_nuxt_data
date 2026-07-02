@@ -101,6 +101,9 @@
 
         function boot() {
 
+          var path = window.location.pathname.replace(/\/$/, '') || '/'
+          if (path === '/meeting-monitor') return
+
           var c = content(), t = color(), k = cacheKey(c, t), dataUrl
 
           try { dataUrl = sessionStorage.getItem(k) } catch (e) {}

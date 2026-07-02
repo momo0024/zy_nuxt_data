@@ -3,10 +3,18 @@ const TILE_W = 300
 const TILE_H = 200
 const WM_Z_INDEX = 2147483647
 
+const WATERMARK_EXCLUDED_PATHS = new Set(['/meeting-monitor'])
+
 let currentDataUrl = ''
 let guardStarted = false
 let guardPaused = false
+let watermarkDisabled = false
 let bodyObserver: MutationObserver | null = null
+
+export function isWatermarkExcludedRoute(path: string): boolean {
+  const normalized = path.replace(/\/$/, '') || '/'
+  return WATERMARK_EXCLUDED_PATHS.has(normalized)
+}
 
 export function getThemeWatermarkColor(): string {
   if (typeof document === 'undefined') return 'rgba(0, 0, 0, 0.16)'
@@ -98,8 +106,14 @@ function isWatermarkIntact(el: HTMLElement): boolean {
   return true
 }
 
+export function removeWatermark() {
+  watermarkDisabled = true
+  currentDataUrl = ''
+  document.getElementById(WM_ID)?.remove()
+}
+
 function repairWatermark() {
-  if (guardPaused || !currentDataUrl || typeof document === 'undefined') return
+  if (guardPaused || watermarkDisabled || !currentDataUrl || typeof document === 'undefined') return
   const el = document.getElementById(WM_ID) as HTMLElement | null
   if (!el || !isWatermarkIntact(el)) {
     guardPaused = true
@@ -148,6 +162,12 @@ export function applyWatermarkOverlay(dataUrl: string) {
 
 /** 同步渲染水印，优先读 sessionStorage 缓存 */
 export function renderWatermark(content?: string) {
+  if (typeof window !== 'undefined' && isWatermarkExcludedRoute(window.location.pathname)) {
+    removeWatermark()
+    return
+  }
+
+  watermarkDisabled = false
   const text = content ?? getWatermarkContent()
   const color = getThemeWatermarkColor()
   let dataUrl = getCachedDataUrl(text, color)
