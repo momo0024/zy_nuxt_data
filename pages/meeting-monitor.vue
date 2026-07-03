@@ -5,7 +5,7 @@
         <span class="mm-brand-icon">M</span>
         <div>
           <h1 class="mm-title">会议 / 论坛监测</h1>
-          <p class="mm-subtitle">AI · 智能制造 相关活动资讯</p>
+          <p class="mm-subtitle">AI · 智能制造 · 先进封装 相关活动资讯</p>
         </div>
       </div>
     </header>
@@ -68,13 +68,27 @@
         </li>
       </ul>
 
-      <div v-if="pagination.total_pages > 1" class="mm-pagination">
-        <UPagination
-          v-model:page="currentPage"
-          :items-per-page="pageSize"
-          :total="pagination.total"
-          :show-edges="true"
-        />
+      <div v-if="!loading && pagination.total > 0" class="mm-list-footer">
+        <span class="mm-total">
+          共 {{ pagination.total }} 条
+          <template v-if="totalPages > 1"> · 第 {{ currentPage }}/{{ totalPages }} 页</template>
+        </span>
+        <div class="mm-pagination">
+          <USelectMenu
+            v-model="pageSize"
+            :items="pageSizeOptions"
+            value-key="value"
+            size="xs"
+            class="mm-page-size"
+            @update:model-value="onPageSizeChange"
+          />
+          <UPagination
+            v-model:page="currentPage"
+            :items-per-page="pageSize"
+            :total="pagination.total"
+            :show-edges="true"
+          />
+        </div>
       </div>
     </main>
   </div>
@@ -112,9 +126,21 @@ const appliedDateRange = ref<DateRangeValue>({ start: todayStr, end: todayStr })
 
 const items = ref<MeetingItem[]>([])
 const loading = ref(false)
+const pageReady = ref(false)
 const currentPage = ref(1)
-const pageSize = ref(30)
-const pagination = ref({ page: 1, page_size: 30, total: 0, total_pages: 0 })
+const pageSize = ref(20)
+const pageSizeOptions = [
+  { label: '20 条/页', value: 20 },
+  { label: '30 条/页', value: 30 },
+  { label: '50 条/页', value: 50 },
+]
+const pagination = ref({ page: 1, page_size: 20, total: 0, total_pages: 0 })
+
+const totalPages = computed(() => {
+  const total = pagination.value.total
+  if (!total) return 1
+  return Math.max(1, Math.ceil(total / pageSize.value))
+})
 
 const hasDateFilter = computed(() =>
   appliedDateRange.value.start !== todayStr
@@ -166,7 +192,16 @@ async function fetchItems() {
     if (res.data?.code === 0) {
       const data = res.data.data
       items.value = (data.items || []).map(mapItem)
-      pagination.value = data.pagination || pagination.value
+      const pg = data.pagination
+      if (pg) {
+        pagination.value = {
+          page: Number(pg.page) || currentPage.value,
+          page_size: Number(pg.page_size) || pageSize.value,
+          total: Number(pg.total) || 0,
+          total_pages: Number(pg.total_pages) || 0,
+        }
+        if (pg.page_size) pageSize.value = Number(pg.page_size)
+      }
     }
   } catch (e) {
     console.error('获取会议列表失败:', e)
@@ -188,9 +223,19 @@ function handleReset() {
   fetchItems()
 }
 
-watch(currentPage, () => fetchItems())
+function onPageSizeChange() {
+  currentPage.value = 1
+  fetchItems()
+}
 
-onMounted(() => fetchItems())
+watch(currentPage, () => {
+  if (pageReady.value) fetchItems()
+})
+
+onMounted(async () => {
+  await fetchItems()
+  pageReady.value = true
+})
 </script>
 
 <style scoped>
@@ -397,7 +442,28 @@ onMounted(() => fetchItems())
 .mm-pagination {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mm-list-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   margin-top: 28px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.mm-total {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.mm-page-size {
+  min-width: 108px;
 }
 
 @media (max-width: 768px) {
