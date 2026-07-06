@@ -791,6 +791,18 @@ export function useGeoAmapMap() {
     refreshMarkers(baseCompanies)
   }
 
+  function showFilteredCompanies(companies: CompanyRecord[], options?: { flyToZone?: boolean }) {
+    focusedParkId = null
+    focusedUnmappedParkIndex = null
+    quickView.value = 'zone'
+    setBlurFocus('zone')
+    if (options?.flyToZone !== false) {
+      fitOverlays(zonePolygons, 13)
+    }
+    applyParkStyles()
+    refreshMarkers(companies)
+  }
+
   function setParkMapCompanies(companies: CompanyRecord[]) {
     if (focusedParkId == null && focusedUnmappedParkIndex == null) return
     refreshMarkers(companies)
@@ -1334,6 +1346,7 @@ map.on('zoomend', () => {
     invalidateSize,
     isInZone,
     showAllMapCompanies,
+    showFilteredCompanies,
     setParkMapCompanies,
     setHighlightedCompanies,
   }

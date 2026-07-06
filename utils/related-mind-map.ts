@@ -54,6 +54,49 @@ function buildEntityRelationSummary(
 export const RELATED_MIND_MAP_DEFAULT_ZOOM = 1.55
 export const RELATED_MIND_MAP_FIT_PADDING = 28
 
+/** 企业详情思维导图：直角横线 + 箭头，不用曲线 */
+export const MIND_MAP_STRAIGHT_ARROW_LINE_THEME = {
+  lineStyle: 'straight' as const,
+  lineRadius: 0,
+  showLineMarker: true,
+}
+
+/** 企业详情思维导图：自上而下树形结构 */
+export const COMPANY_DETAIL_MIND_MAP_LAYOUT = 'organizationStructure' as const
+
+export const COMPANY_DETAIL_MIND_MAP_THEME = {
+  ...MIND_MAP_STRAIGHT_ARROW_LINE_THEME,
+  root: { fontSize: 18, paddingX: 20, paddingY: 10 },
+  second: { marginX: 48, marginY: 40, fontSize: 16, paddingX: 16, paddingY: 8 },
+  node: { marginX: 40, marginY: 20, fontSize: 14, paddingX: 14, paddingY: 6 },
+}
+
+export function getCompanyDetailMindMapOptions(
+  el: HTMLElement,
+  data: unknown,
+  customHandleLine?: (styleCtx: unknown, line: unknown) => void,
+) {
+  return {
+    el,
+    data,
+    layout: COMPANY_DETAIL_MIND_MAP_LAYOUT,
+    readonly: true,
+    fit: false,
+    fitPadding: RELATED_MIND_MAP_FIT_PADDING,
+    alwaysShowExpandBtn: true,
+    notShowExpandBtn: false,
+    isShowExpandNum: true,
+    scaleRatio: 0.1,
+    minZoomRatio: 20,
+    maxZoomRatio: 300,
+    mousewheelAction: 'zoom' as const,
+    mouseScaleCenterUseMousePosition: false,
+    initRootNodePosition: ['center', 'top'] as [string, string],
+    themeConfig: COMPANY_DETAIL_MIND_MAP_THEME,
+    customHandleLine,
+  }
+}
+
 export function applyRelatedMindMapDefaultView(instance: {
   view?: { fit: (a?: unknown, b?: boolean, c?: number) => void; scale: number; setScale: (s: number, cx?: number, cy?: number) => void }
   width?: number

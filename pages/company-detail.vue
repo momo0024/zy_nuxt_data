@@ -537,10 +537,34 @@
                 <h3 class="cd-sub-title">股东结构</h3>
                 <ClientOnly>
                   <div
-                    ref="shareholderMindMapRef"
-                    class="cd-shareholder-mindmap"
-                    :style="{ height: `${shareholderMindMapHeight}px` }"
-                  />
+                    class="cd-mindmap-anchor"
+                    :style="mindMapFullscreen === 'shareholder' ? { height: `${shareholderMindMapHeight}px` } : undefined"
+                  >
+                    <Teleport to="body" :disabled="mindMapFullscreen !== 'shareholder'">
+                      <div
+                        class="cd-mindmap-panel"
+                        :class="{ 'cd-mindmap-panel--expanded': mindMapFullscreen === 'shareholder' }"
+                      >
+                        <button
+                          type="button"
+                          class="cd-mindmap-fs-btn"
+                          :title="mindMapFullscreen === 'shareholder' ? '退出全屏' : '全屏'"
+                          @click="toggleMindMapFullscreen('shareholder')"
+                        >
+                          <UIcon
+                            :name="mindMapFullscreen === 'shareholder' ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
+                            class="size-4"
+                          />
+                        </button>
+                        <div
+                          ref="shareholderMindMapRef"
+                          class="cd-shareholder-mindmap"
+                          :class="{ 'cd-mindmap-canvas--fs': mindMapFullscreen === 'shareholder' }"
+                          :style="mindMapFullscreen === 'shareholder' ? undefined : { height: `${shareholderMindMapHeight}px` }"
+                        />
+                      </div>
+                    </Teleport>
+                  </div>
                 </ClientOnly>
               </div>
               <!-- 最新股份 - 饼图单独一行 -->
@@ -1044,10 +1068,34 @@
               <p class="cd-related-hint">彩色节点为关联类型，连线与节点副标题为关系详情；点击 +/- 收起展开，点击二级节点名称查看完整详情</p>
               <ClientOnly>
                 <div
-                  ref="relatedMindMapRef"
-                  class="cd-related-mindmap"
-                  :style="{ height: `${relatedMindMapHeight}px` }"
-                />
+                  class="cd-mindmap-anchor"
+                  :style="mindMapFullscreen === 'related' ? { height: `${relatedMindMapHeight}px` } : undefined"
+                >
+                  <Teleport to="body" :disabled="mindMapFullscreen !== 'related'">
+                    <div
+                      class="cd-mindmap-panel"
+                      :class="{ 'cd-mindmap-panel--expanded': mindMapFullscreen === 'related' }"
+                    >
+                      <button
+                        type="button"
+                        class="cd-mindmap-fs-btn"
+                        :title="mindMapFullscreen === 'related' ? '退出全屏' : '全屏'"
+                        @click="toggleMindMapFullscreen('related')"
+                      >
+                        <UIcon
+                          :name="mindMapFullscreen === 'related' ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
+                          class="size-4"
+                        />
+                      </button>
+                      <div
+                        ref="relatedMindMapRef"
+                        class="cd-related-mindmap"
+                        :class="{ 'cd-mindmap-canvas--fs': mindMapFullscreen === 'related' }"
+                        :style="mindMapFullscreen === 'related' ? undefined : { height: `${relatedMindMapHeight}px` }"
+                      />
+                    </div>
+                  </Teleport>
+                </div>
               </ClientOnly>
             </template>
             <div v-else-if="!sectionLoading.people" class="cd-empty">
@@ -1269,6 +1317,7 @@ import {
   buildRelatedRowFields,
   createRelatedLineLabelHandler,
   estimateRelatedMindMapHeight,
+  getCompanyDetailMindMapOptions,
   registerRelatedMindMapNodeProps,
   type RelatedFieldItem,
 } from '~/utils/related-mind-map'
@@ -1389,9 +1438,13 @@ const shareholderIndirectPage = ref(1)
 const shareholderMindMapRef = ref<HTMLElement | null>(null)
 let shareholderMindMapInstance: any = null
 let shareholderMindMapInitialViewApplied = false
+let shareholderMindMapInitSeq = 0
 const relatedMindMapRef = ref<HTMLElement | null>(null)
 let relatedMindMapInstance: any = null
 let relatedMindMapInitialViewApplied = false
+let relatedMindMapInitSeq = 0
+type MindMapFullscreenKey = 'shareholder' | 'related'
+const mindMapFullscreen = ref<MindMapFullscreenKey | null>(null)
 const relatedEntityModalOpen = ref(false)
 const selectedRelatedEntity = ref<{
   title: string
@@ -1721,15 +1774,16 @@ watch(companyId, () => {
   relatedEntityModalOpen.value = false
 })
 
-watch([() => peopleData.value?.relatedEntities, relatedMindMapRef], () => {
+watch(() => peopleData.value?.relatedEntities, () => {
   nextTick(() => initRelatedMindMap())
-}, { deep: true })
+}, { deep: true, immediate: true })
 
-watch([() => shareholderData.value?.latest, () => shareholderData.value?.members, shareholderMindMapRef], () => {
+watch([() => shareholderData.value?.latest, () => shareholderData.value?.members], () => {
   nextTick(() => initShareholderMindMap())
-}, { deep: true })
+}, { deep: true, immediate: true })
 
 watch(relatedMindMapHeight, () => {
+  if (mindMapFullscreen.value === 'related') return
   nextTick(() => {
     if (!relatedMindMapInstance) return
     try {
@@ -1742,6 +1796,7 @@ watch(relatedMindMapHeight, () => {
 })
 
 watch(shareholderMindMapHeight, () => {
+  if (mindMapFullscreen.value === 'shareholder') return
   nextTick(() => {
     if (!shareholderMindMapInstance) return
     try {
@@ -1750,13 +1805,6 @@ watch(shareholderMindMapHeight, () => {
     } catch {
       // ignore
     }
-  })
-})
-
-onMounted(() => {
-  nextTick(() => {
-    initRelatedMindMap()
-    initShareholderMindMap()
   })
 })
 
@@ -1822,6 +1870,98 @@ const shareholderChartOption = computed(() => {
 })
 
 // 股东结构思维导图
+function destroyMindMapInstance(instance: any, container: HTMLElement | null) {
+  if (instance) {
+    try {
+      instance.destroy()
+    }
+    catch {
+      // ignore
+    }
+  }
+  if (container) {
+    container.replaceChildren()
+  }
+}
+
+// 全屏切换时容器会被 Teleport 挪动到 body 且尺寸大幅变化，
+// simple-mind-map 的 resize() 依赖旧的内部状态，挪动容器后经常失效导致画布不可见，
+// 这里改为彻底销毁并重新创建实例（复用 init 函数自带的“尺寸为 0 时重试”逻辑），确保任何情况下都能正确渲染。
+function reinitMindMapAfterFullscreenChange(key: MindMapFullscreenKey) {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (key === 'shareholder') initShareholderMindMap()
+        else initRelatedMindMap()
+      })
+    })
+  })
+}
+
+// initXxxMindMap 内部是异步的（动态 import + 等待渲染完成事件才会调用 fit），
+// await 它本身只能等到实例创建完，等不到 fit() 真正跑完，
+// 所以这里改成轮询「初始视图是否已应用」这个标记，等 fit() 真正完成后再解锁滚动，
+// 否则滚动一旦恢复，fit() 用到的坐标系又会和 rbox() 对不上，全屏切回来还是空白。
+function waitForMindMapReady(key: MindMapFullscreenKey, timeoutMs = 2000) {
+  return new Promise<void>((resolve) => {
+    const start = Date.now()
+    const check = () => {
+      const applied = key === 'shareholder' ? shareholderMindMapInitialViewApplied : relatedMindMapInitialViewApplied
+      if (applied || Date.now() - start > timeoutMs) {
+        resolve()
+        return
+      }
+      requestAnimationFrame(check)
+    }
+    requestAnimationFrame(check)
+  })
+}
+
+// simple-mind-map 内部用到的 svg.js rbox() 在没有传参时会把 window.pageYOffset（滚动距离）
+// 加进坐标里，而它自己算容器位置用的是不含滚动距离的 getBoundingClientRect()，
+// 两者一混算，只要打开全屏前页面有滚动（股东结构这些区块通常都在页面靠下的位置，必然有滚动），
+// fit() 算出来的位移就会偏出去几千像素，导致内容渲染了但是完全在可视区域外，看起来就是“全屏后空白”。
+// 这里用「锁定 body 到当前滚动位置」的经典弹窗做法，把 window.scrollY 钉在 0，
+// 同时用 body 的负 top 偏移让页面视觉上完全不动，全屏期间和刚退出重新渲染时坐标系都是一致的，也没有跳动。
+let mindMapFullscreenSavedScrollY = 0
+
+function lockBodyScrollForMindMapFullscreen() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return
+  mindMapFullscreenSavedScrollY = window.scrollY
+  const { style } = document.body
+  style.position = 'fixed'
+  style.top = `-${mindMapFullscreenSavedScrollY}px`
+  style.left = '0'
+  style.right = '0'
+  style.width = '100%'
+}
+
+function unlockBodyScrollForMindMapFullscreen() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return
+  const { style } = document.body
+  style.position = ''
+  style.top = ''
+  style.left = ''
+  style.right = ''
+  style.width = ''
+  window.scrollTo(0, mindMapFullscreenSavedScrollY)
+}
+
+async function toggleMindMapFullscreen(key: MindMapFullscreenKey) {
+  const entering = mindMapFullscreen.value !== key
+  if (entering) {
+    lockBodyScrollForMindMapFullscreen()
+  }
+  if (key === 'shareholder') shareholderMindMapInitialViewApplied = false
+  else relatedMindMapInitialViewApplied = false
+  mindMapFullscreen.value = entering ? key : null
+  reinitMindMapAfterFullscreenChange(key)
+  if (!entering) {
+    await waitForMindMapReady(key)
+    unlockBodyScrollForMindMapFullscreen()
+  }
+}
+
 function buildShareholderMindMapData() {
   const latest = shareholderData.value?.latest
   const members = shareholderData.value?.members
@@ -1832,24 +1972,21 @@ function buildShareholderMindMapData() {
 
 async function initShareholderMindMap() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
-  if (!shareholderMindMapRef.value) return
+  const seq = ++shareholderMindMapInitSeq
+  const el = shareholderMindMapRef.value
+  if (!el) return
   const mindData = buildShareholderMindMapData()
   if (!mindData) {
-    if (shareholderMindMapInstance) {
-      shareholderMindMapInstance.destroy()
-      shareholderMindMapInstance = null
-    }
+    destroyMindMapInstance(shareholderMindMapInstance, el)
+    shareholderMindMapInstance = null
     shareholderMindMapInitialViewApplied = false
     return
   }
 
-  if (shareholderMindMapInstance) {
-    shareholderMindMapInstance.destroy()
-    shareholderMindMapInstance = null
-  }
+  destroyMindMapInstance(shareholderMindMapInstance, el)
+  shareholderMindMapInstance = null
   shareholderMindMapInitialViewApplied = false
 
-  const el = shareholderMindMapRef.value
   const rect = el.getBoundingClientRect()
   if (rect.width === 0 || rect.height === 0) {
     requestAnimationFrame(() => initShareholderMindMap())
@@ -1861,33 +1998,22 @@ async function initShareholderMindMap() {
       import('simple-mind-map'),
       import('simple-mind-map/src/plugins/Drag.js'),
     ])
+    if (seq !== shareholderMindMapInitSeq) return
 
     registerShareholderMindMapNodeProps(MindMap)
 
     shareholderMindMapInstance = new MindMap({
-      el: shareholderMindMapRef.value,
-      data: mindData,
-      layout: 'logicalStructure',
-      readonly: true,
-      fit: false,
-      fitPadding: 28,
-      alwaysShowExpandBtn: true,
-      notShowExpandBtn: false,
-      isShowExpandNum: true,
-      scaleRatio: 0.1,
-      minZoomRatio: 20,
-      maxZoomRatio: 300,
-      mousewheelAction: 'zoom',
-      mouseScaleCenterUseMousePosition: false,
-      initRootNodePosition: ['left', 'center'],
-      themeConfig: {
-        lineStyle: 'curve',
-        root: { fontSize: 18, paddingX: 20, paddingY: 10 },
-        second: { marginX: 110, marginY: 28, fontSize: 16, paddingX: 16, paddingY: 8 },
-        node: { marginX: 80, marginY: 14, fontSize: 14, paddingX: 14, paddingY: 6 },
-      },
-      customHandleLine: createRelatedLineLabelHandler(),
+      ...getCompanyDetailMindMapOptions(
+        el,
+        mindData,
+        createRelatedLineLabelHandler(),
+      ),
     })
+    if (seq !== shareholderMindMapInitSeq) {
+      destroyMindMapInstance(shareholderMindMapInstance, el)
+      shareholderMindMapInstance = null
+      return
+    }
     shareholderMindMapInstance.addPlugin(Drag)
     shareholderMindMapInstance.on('node_tree_render_end', () => {
       if (shareholderMindMapInitialViewApplied) return
@@ -2161,25 +2287,21 @@ function buildRelatedMindMapData() {
 // 初始化关联企业/人员思维导图
 async function initRelatedMindMap() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
-  if (!relatedMindMapRef.value) return
+  const seq = ++relatedMindMapInitSeq
+  const el = relatedMindMapRef.value
+  if (!el) return
   const mindData = buildRelatedMindMapData()
   if (!mindData) {
-    if (relatedMindMapInstance) {
-      relatedMindMapInstance.destroy()
-      relatedMindMapInstance = null
-    }
+    destroyMindMapInstance(relatedMindMapInstance, el)
+    relatedMindMapInstance = null
     relatedMindMapInitialViewApplied = false
     return
   }
 
-  if (relatedMindMapInstance) {
-    relatedMindMapInstance.destroy()
-    relatedMindMapInstance = null
-  }
+  destroyMindMapInstance(relatedMindMapInstance, el)
+  relatedMindMapInstance = null
   relatedMindMapInitialViewApplied = false
 
-  // 确保容器已有尺寸，避免 simple-mind-map 报宽高为0的错误
-  const el = relatedMindMapRef.value
   const rect = el.getBoundingClientRect()
   if (rect.width === 0 || rect.height === 0) {
     requestAnimationFrame(() => initRelatedMindMap())
@@ -2191,33 +2313,22 @@ async function initRelatedMindMap() {
       import('simple-mind-map'),
       import('simple-mind-map/src/plugins/Drag.js'),
     ])
+    if (seq !== relatedMindMapInitSeq) return
 
     registerRelatedMindMapNodeProps(MindMap)
 
     relatedMindMapInstance = new MindMap({
-      el: relatedMindMapRef.value,
-      data: mindData,
-      layout: 'logicalStructure',
-      readonly: true,
-      fit: false,
-      fitPadding: 28,
-      alwaysShowExpandBtn: true,
-      notShowExpandBtn: false,
-      isShowExpandNum: true,
-      scaleRatio: 0.1,
-      minZoomRatio: 20,
-      maxZoomRatio: 300,
-      mousewheelAction: 'zoom',
-      mouseScaleCenterUseMousePosition: false,
-      initRootNodePosition: ['left', 'center'],
-      themeConfig: {
-        lineStyle: 'curve',
-        root: { fontSize: 18, paddingX: 20, paddingY: 10 },
-        second: { marginX: 110, marginY: 28, fontSize: 16, paddingX: 16, paddingY: 8 },
-        node: { marginX: 80, marginY: 14, fontSize: 14, paddingX: 14, paddingY: 6 },
-      },
-      customHandleLine: createRelatedLineLabelHandler(),
+      ...getCompanyDetailMindMapOptions(
+        el,
+        mindData,
+        createRelatedLineLabelHandler(),
+      ),
     })
+    if (seq !== relatedMindMapInitSeq) {
+      destroyMindMapInstance(relatedMindMapInstance, el)
+      relatedMindMapInstance = null
+      return
+    }
     relatedMindMapInstance.addPlugin(Drag)
     relatedMindMapInstance.on('node_click', handleRelatedMindMapNodeClick)
     relatedMindMapInstance.on('node_tree_render_end', () => {
@@ -2687,16 +2798,14 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (mindMapFullscreen.value) unlockBodyScrollForMindMapFullscreen()
+  mindMapFullscreen.value = null
   window.removeEventListener('scroll', onContentScroll)
   cancelAnimationFrame(scrollRaf)
-  if (shareholderMindMapInstance) {
-    shareholderMindMapInstance.destroy()
-    shareholderMindMapInstance = null
-  }
-  if (relatedMindMapInstance) {
-    relatedMindMapInstance.destroy()
-    relatedMindMapInstance = null
-  }
+  destroyMindMapInstance(shareholderMindMapInstance, shareholderMindMapRef.value)
+  shareholderMindMapInstance = null
+  destroyMindMapInstance(relatedMindMapInstance, relatedMindMapRef.value)
+  relatedMindMapInstance = null
 })
 
 function getIndustryBg(industry: string): string {
@@ -3369,6 +3478,53 @@ function getIndustryBg(industry: string): string {
 .cd-chart-sm {
   width: 100%;
   height: 220px;
+}
+.cd-mindmap-anchor {
+  position: relative;
+  width: 100%;
+}
+.cd-mindmap-panel {
+  position: relative;
+  width: 100%;
+}
+.cd-mindmap-panel--expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--surface);
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.cd-mindmap-canvas--fs {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  height: auto !important;
+}
+.cd-mindmap-fs-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.cd-mindmap-fs-btn:hover {
+  background: var(--surface);
+  color: var(--text-strong);
+  border-color: var(--primary-border, var(--border));
 }
 .cd-shareholder-mindmap {
   width: 100%;
@@ -4882,5 +5038,23 @@ function getIndustryBg(industry: string): string {
 .rg-toolbar .rg-mb-button[title="Start Force Layout"],
 .rg-toolbar .rg-mb-button[title="Stop Force Layout"] {
   display: none !important;
+}
+
+/* 思维导图全屏层（Teleport 到 body，需全局样式保证可见） */
+.cd-mindmap-panel.cd-mindmap-panel--expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: var(--surface, #fff);
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.cd-mindmap-panel.cd-mindmap-panel--expanded .cd-mindmap-canvas--fs {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  height: auto !important;
 }
 </style>

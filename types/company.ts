@@ -110,6 +110,36 @@ export function isListedCompany(company: CompanyRecord): boolean {
   return company.company_traded === 1
 }
 
+export function matchCompanySearch(company: CompanyRecord, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return false
+  return (
+    company.company_name.toLowerCase().includes(q)
+    || (company.company_credit_code || '').toLowerCase().includes(q)
+    || (company.product_type || '').toLowerCase().includes(q)
+    || (company.chain_name || '').toLowerCase().includes(q)
+    || (company.product || '').toLowerCase().includes(q)
+    || (company.conpany_district || '').toLowerCase().includes(q)
+  )
+}
+
+export function filterCompaniesBySearch(
+  companies: CompanyRecord[],
+  query: string,
+  limit = 8,
+): CompanyRecord[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return []
+  const result: CompanyRecord[] = []
+  for (const c of companies) {
+    if (matchCompanySearch(c, q)) {
+      result.push(c)
+      if (result.length >= limit) break
+    }
+  }
+  return result
+}
+
 export function getCompanyDisplayName(company: CompanyRecord): string {
   return company.company_name || '未知企业'
 }

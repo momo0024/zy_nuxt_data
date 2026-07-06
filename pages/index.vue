@@ -10,21 +10,27 @@
         </div>
       </div>
       <div class="chain-search-wrap">
-        <UIcon name="i-lucide-search" class="chain-search-icon size-3.5" />
-        <input
-          v-model="companySearchQuery"
-          class="chain-search-input"
-          placeholder="搜索企业名称 / 信用代码"
-        />
-        <button
-          v-if="companySearchQuery"
-          type="button"
-          class="chain-search-clear"
-          title="清除搜索"
-          @click="companySearchQuery = ''"
+        <CompanySearchSuggest
+          :query="companySearchQuery"
+          :companies="allCompaniesForSearch"
+          @select="onSearchSuggestSelect"
         >
-          <UIcon name="i-lucide-x" class="size-3.5" />
-        </button>
+          <UIcon name="i-lucide-search" class="chain-search-icon size-3.5" />
+          <input
+            v-model="companySearchQuery"
+            class="chain-search-input"
+            placeholder="搜索企业名称 / 信用代码"
+          />
+          <button
+            v-if="companySearchQuery"
+            type="button"
+            class="chain-search-clear"
+            title="清除搜索"
+            @click="companySearchQuery = ''"
+          >
+            <UIcon name="i-lucide-x" class="size-3.5" />
+          </button>
+        </CompanySearchSuggest>
       </div>
       <div class="chain-view-toggle">
         <button
@@ -399,7 +405,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, onBeforeUnmount, watch } from 'vue'
 import { request } from '~/utils/request'
-import { fetchCompanies } from '~/types/company'
 import type { CompanyRecord } from '~/types/company'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
@@ -539,6 +544,10 @@ function isSourceHighlighted(productTypeId: number, sourceId: string | number) {
   return highlightedSearchHits.value.sourceKeys.has(`${productTypeId}:${String(sourceId)}`)
 }
 
+function onSearchSuggestSelect(company: CompanyRecord) {
+  companySearchQuery.value = company.company_name
+}
+
 function collectAllProductTypes(): { productTypeId: number, name: string }[] {
   const result: { productTypeId: number, name: string }[] = []
   for (const phase of chainPhases.value) {
@@ -558,24 +567,13 @@ function collectAllProductTypes(): { productTypeId: number, name: string }[] {
   return result
 }
 
-async function loadAllCompaniesForSearch() {
-  try {
-    const res = await fetchCompanies(1, 500)
-    if (res.code === 0 && res.data) {
-      allCompaniesForSearch.value = res.data.list
-    }
-  }
-  catch (e) {
-    console.error('[chain] 加载企业数据失败', e)
-  }
-}
-
 async function buildCompanyProductIndex() {
   const unique = new Map<number, string>()
   for (const p of collectAllProductTypes()) {
     if (p.productTypeId) unique.set(p.productTypeId, p.name)
   }
   const index = new Map<string, number[]>()
+  const companyMap = new Map<string, CompanyRecord>()
   await Promise.all([...unique.entries()].map(async ([productTypeId]) => {
     try {
       const res = await request.get(`/company/SearchInfo?product_type=${productTypeId}`)
@@ -589,6 +587,12 @@ async function buildCompanyProductIndex() {
           existing.push(productTypeId)
           index.set(code, existing)
         }
+        if (!companyMap.has(code)) {
+          companyMap.set(code, {
+            ...item,
+            id: code,
+          })
+        }
       }
     }
     catch (e) {
@@ -596,10 +600,11 @@ async function buildCompanyProductIndex() {
     }
   }))
   companyProductIndex.value = index
+  allCompaniesForSearch.value = [...companyMap.values()]
 }
 
 async function initCompanySearchData() {
-  await Promise.all([loadAllCompaniesForSearch(), buildCompanyProductIndex()])
+  await buildCompanyProductIndex()
 }
 
 // 底部图表

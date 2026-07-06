@@ -57,10 +57,15 @@
               <div class="gs-stat-lbl">企业总数</div>
             </div>
             <div class="gs-stat-sep" />
-            <div class="gs-stat">
+            <button
+              type="button"
+              class="gs-stat gs-stat-clickable gs-stat-listed"
+              :class="{ 'gs-stat-active': sourceFilter === '上市公司' }"
+              @click="filterBySource('上市公司')"
+            >
               <div class="gs-stat-num">{{ listedCount }}</div>
               <div class="gs-stat-lbl">上市公司</div>
-            </div>
+            </button>
             <div class="gs-stat-sep" />
             <button
               type="button"
@@ -167,20 +172,26 @@
             </div>
 
             <div class="cp-search-wrap">
-              <UIcon name="i-lucide-search" class="cp-search-icon size-3.5" />
-              <input
-                v-model="companySearch"
-                class="cp-search-input"
-                placeholder="搜索名称 / 信用代码 / 产品 / 区域…"
-              />
-              <button
-                v-if="companySearch"
-                class="cp-search-clear"
-                title="清除搜索"
-                @click="companySearch = ''"
+              <CompanySearchSuggest
+                :query="companySearch"
+                :companies="searchPoolCompanies"
+                @select="onSearchSuggestSelect"
               >
-                <UIcon name="i-lucide-x" class="size-3.5" />
-              </button>
+                <UIcon name="i-lucide-search" class="cp-search-icon size-3.5" />
+                <input
+                  v-model="companySearch"
+                  class="cp-search-input"
+                  placeholder="搜索名称 / 信用代码 / 产品 / 区域…"
+                />
+                <button
+                  v-if="companySearch"
+                  class="cp-search-clear"
+                  title="清除搜索"
+                  @click="companySearch = ''"
+                >
+                  <UIcon name="i-lucide-x" class="size-3.5" />
+                </button>
+              </CompanySearchSuggest>
             </div>
 
             <div class="cp-list">
@@ -451,6 +462,7 @@ const {
   invalidateSize,
   isInZone,
   showAllMapCompanies,
+  showFilteredCompanies,
   setParkMapCompanies,
   setHighlightedCompanies,
 } = useGeoAmapMap()
@@ -526,12 +538,27 @@ function closeMenus() {
 
 const panelTitle = computed(() => {
   if (bubbleLabel.value) return bubbleLabel.value
+  if (sourceFilter.value === '上市公司') return '上市公司'
   if (sourceFilter.value) return `${sourceFilter.value}企业`
   const r = selectedRegion.value
   if (r?.type === 'park') return `${r.name} · 企业`
   if (r?.type === 'city') return `${r.name} · 企业`
   if (r?.type === 'zone') return '高新区企业'
   return '企业列表'
+})
+
+const searchPoolCompanies = computed(() => {
+  const bubble = bubbleCompanies.value
+  if (bubble && bubble.length) return bubble
+  if (selectedRegion.value?.type === 'park') return parkCompanies.value ?? []
+  let list = allCompanies.value
+  if (sourceFilter.value === '上市公司') {
+    list = list.filter(c => c.company_traded === 1)
+  }
+  else if (sourceFilter.value) {
+    list = list.filter(c => c.tag_name === sourceFilter.value)
+  }
+  return list
 })
 
 const filteredCompanies = computed(() => {
@@ -565,7 +592,10 @@ const filteredCompanies = computed(() => {
   }
   // 来源筛选模式
   let list = allCompanies.value
-  if (sourceFilter.value) {
+  if (sourceFilter.value === '上市公司') {
+    list = list.filter(c => c.company_traded === 1)
+  }
+  else if (sourceFilter.value) {
     list = list.filter(c => c.tag_name === sourceFilter.value)
   }
   const region = selectedRegion.value
@@ -757,10 +787,20 @@ function filterBySource(tagName: string) {
   bubbleLabel.value = ''
   selectedRegion.value = null
   parkCompanies.value = null
-  showAllMapCompanies()
+  selectedAreaView.value = 'zone'
+  showFilteredCompanies(getSourceFilteredCompanies())
+  setHighlightedCompanies([])
   panelOpen.value = true
   companySearch.value = ''
   nextTick(() => invalidateSize())
+}
+
+function getSourceFilteredCompanies(): CompanyRecord[] {
+  if (!sourceFilter.value) return allCompanies.value
+  if (sourceFilter.value === '上市公司') {
+    return allCompanies.value.filter(c => c.company_traded === 1)
+  }
+  return allCompanies.value.filter(c => c.tag_name === sourceFilter.value)
 }
 
 function resetPanel() {
@@ -781,6 +821,11 @@ function openDetail(company: CompanyRecord) {
   detailCompany.value = company
   highlightedCompanyId.value = company.id
   scopeExpanded.value = false
+}
+
+function onSearchSuggestSelect(company: CompanyRecord) {
+  companySearch.value = company.company_name
+  highlightedCompanyId.value = company.id
 }
 
 function closeDetail() {
@@ -1103,10 +1148,14 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .gs-stat-native .gs-stat-num {
   color: #10b981;
 }
+.gs-stat-listed .gs-stat-num {
+  color: #ef4444;
+}
 .gs-stat-attract .gs-stat-num {
   color: #7c3aed;
 }
 .gs-stat-native.gs-stat-active .gs-stat-lbl,
+.gs-stat-listed.gs-stat-active .gs-stat-lbl,
 .gs-stat-attract.gs-stat-active .gs-stat-lbl {
   font-weight: 600;
   color: var(--text-strong);
@@ -1329,37 +1378,42 @@ function hasStrengthData(c: CompanyRecord): boolean {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
+.cp-search-wrap :deep(.css-wrap) {
+  position: relative;
+}
 .cp-search-icon {
   position: absolute;
-  left: 22px;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
   pointer-events: none;
+  z-index: 1;
 }
 .cp-search-input {
   width: 100%;
   height: 30px;
-  padding: 0 28px 0 30px;
+  padding: 0 32px 0 30px;
   font-size: 12px;
   border-radius: 8px !important;
 }
 .cp-search-clear {
   position: absolute;
-  right: 18px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
   border: none;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s;
+  z-index: 1;
 }
 .cp-search-clear:hover {
   background: var(--surface-alt);
