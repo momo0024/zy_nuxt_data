@@ -12,20 +12,40 @@
 
     <section class="mm-filters">
       <div class="mm-filter-row">
-        <DateRangePicker
-          v-model="dateRange"
-          placeholder="按入库日期筛选"
-          class="mm-date"
-        />
-        <UButton color="primary" icon="i-lucide-search" size="lg" @click="handleSearch">
+        <div class="mm-date-group">
+          <label class="mm-date-label">开始日期</label>
+          <DatePicker
+            v-model="startDate"
+            placeholder="开始日期"
+            class="mm-date"
+          />
+        </div>
+        <div class="mm-date-separator">至</div>
+        <div class="mm-date-group">
+          <label class="mm-date-label">结束日期</label>
+          <DatePicker
+            v-model="endDate"
+            placeholder="结束日期"
+            class="mm-date"
+          />
+        </div>
+        <UButton 
+          color="primary" 
+          icon="i-lucide-search" 
+          size="md" 
+          variant="solid"
+          class="mm-btn-search"
+          @click="handleSearch"
+        >
           查询
         </UButton>
         <UButton
           v-if="hasDateFilter"
           color="neutral"
-          variant="ghost"
+          variant="outline"
           icon="i-lucide-rotate-ccw"
-          size="lg"
+          size="md"
+          class="mm-btn-reset"
           @click="handleReset"
         >
           重置
@@ -96,7 +116,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import type { DateRangeValue } from '~/components/DateRangePicker.vue'
 import { newsRequest } from '~/utils/request'
 
 definePageMeta({ layout: 'blank' })
@@ -121,8 +140,10 @@ function getTodayStr(): string {
 }
 
 const todayStr = getTodayStr()
-const dateRange = ref<DateRangeValue>({ start: todayStr, end: todayStr })
-const appliedDateRange = ref<DateRangeValue>({ start: todayStr, end: todayStr })
+const startDate = ref<string>(todayStr)
+const endDate = ref<string>(todayStr)
+const appliedStartDate = ref<string>(todayStr)
+const appliedEndDate = ref<string>(todayStr)
 
 const items = ref<MeetingItem[]>([])
 const loading = ref(false)
@@ -143,8 +164,8 @@ const totalPages = computed(() => {
 })
 
 const hasDateFilter = computed(() =>
-  appliedDateRange.value.start !== todayStr
-  || appliedDateRange.value.end !== todayStr,
+  appliedStartDate.value !== todayStr
+  || appliedEndDate.value !== todayStr,
 )
 
 function mapItem(raw: Record<string, unknown>): MeetingItem {
@@ -185,8 +206,8 @@ async function fetchItems() {
       sort_by: 'created_at',
       sort_order: 'desc',
     }
-    if (appliedDateRange.value.start) params.start_date = appliedDateRange.value.start
-    if (appliedDateRange.value.end) params.end_date = appliedDateRange.value.end
+    if (appliedStartDate.value) params.start_date = appliedStartDate.value
+    if (appliedEndDate.value) params.end_date = appliedEndDate.value
 
     const res = await newsRequest.get('/meeting/list', { params })
     if (res.data?.code === 0) {
@@ -211,14 +232,17 @@ async function fetchItems() {
 }
 
 function handleSearch() {
-  appliedDateRange.value = { ...dateRange.value }
+  appliedStartDate.value = startDate.value
+  appliedEndDate.value = endDate.value
   currentPage.value = 1
   fetchItems()
 }
 
 function handleReset() {
-  dateRange.value = { start: todayStr, end: todayStr }
-  appliedDateRange.value = { start: todayStr, end: todayStr }
+  startDate.value = todayStr
+  endDate.value = todayStr
+  appliedStartDate.value = todayStr
+  appliedEndDate.value = todayStr
   currentPage.value = 1
   fetchItems()
 }
@@ -292,13 +316,59 @@ onMounted(async () => {
 .mm-filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.mm-date-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mm-date-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #475569;
+  white-space: nowrap;
 }
 
 .mm-date {
-  flex: 0 1 280px;
-  min-width: 220px;
+  width: 160px;
+}
+
+.mm-date-separator {
+  display: flex;
+  align-items: center;
+  padding-bottom: 2px;
+  color: #64748b;
+  font-size: 0.875rem;
+  height: 40px;
+}
+
+.mm-btn-search {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.025em;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  transition: all 0.2s ease;
+}
+
+.mm-btn-search:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  transform: translateY(-1px);
+}
+
+.mm-btn-reset {
+  font-weight: 500 !important;
+  transition: all 0.2s ease;
+}
+
+.mm-btn-reset:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
 }
 
 .mm-main {

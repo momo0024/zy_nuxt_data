@@ -72,7 +72,7 @@ const days = computed(() => {
       @click="isOpen = !isOpen"
     >
       <span class="text-[14px]" :class="selectedDate ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'">
-        {{ selectedDate ? format(selectedDate, 'yyyy年MM月dd日', { locale: zhCN }) : placeholder }}
+        {{ selectedDate ? format(selectedDate, 'yyyy-MM-dd') : placeholder }}
       </span>
       <div class="flex items-center gap-2">
         <span v-if="selectedDate" class="text-[var(--text-muted)] hover:text-[var(--danger)]" @click="clearDate">
@@ -93,7 +93,7 @@ const days = computed(() => {
           </svg>
         </button>
         <span class="text-sm font-medium text-[var(--text-strong)]">
-          {{ format(currentMonth, 'yyyy年MM月', { locale: zhCN }) }}
+          {{ format(currentMonth, 'yyyy-MM') }}
         </span>
         <button @click="nextMonth" class="p-1 hover:bg-[var(--surface-alt)] rounded-lg transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,5 +127,14 @@ const days = computed(() => {
 <style scoped>
 .date-picker {
   width: 100%;
+  min-width: 160px;
+}
+
+.date-input {
+  min-height: 40px;
+}
+
+.date-input span {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 </style>

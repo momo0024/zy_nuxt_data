@@ -4,7 +4,7 @@
     <div class="import-form-col">
       <div class="card form-card">
         <div class="form-card-title">
-          <UIcon name="i-heroicons-arrow-up-tray" class="size-5" />
+          <UIcon name="i-lucide-upload" class="size-5" />
           新文档导入
         </div>
 
@@ -112,7 +112,7 @@
               <div class="upload-hint">支持 PDF、DOCX、XLSX、TXT、MD、HTML</div>
             </template>
             <template v-else>
-              <UIcon name="i-heroicons-check-circle" class="upload-icon size-10" style="color: var(--success)" />
+              <UIcon name="i-lucide-circle-check" class="upload-icon size-10" style="color: var(--success)" />
               <div class="upload-text" style="color: var(--success)">{{ form.file.name }}</div>
               <div class="upload-hint">{{ (form.file.size / 1024).toFixed(0) }} KB · 点击更换</div>
             </template>
