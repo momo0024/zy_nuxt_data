@@ -32,7 +32,7 @@
                 :color="errors.category ? 'error' : undefined"
                 class="flex-1"
               />
-              <UButton variant="outline" size="sm" icon="i-heroicons-plus" @click="showAddCat = !showAddCat" />
+              <UButton variant="outline" size="sm" icon="i-lucide-plus" @click="showAddCat = !showAddCat" />
             </div>
             <div v-if="errors.category" class="error-msg">{{ errors.category }}</div>
             <!-- 新增自定义分类 -->
@@ -105,7 +105,7 @@
             @click="fileInputRef?.click()"
           >
             <template v-if="!form.file">
-              <UIcon name="i-heroicons-arrow-up-tray" class="upload-icon size-10" />
+              <UIcon name="i-lucide-upload" class="upload-icon size-10" />
               <div class="upload-text">
                 {{ dragActive ? '松开以添加文件' : '点击选择文件，或将文件拖拽到此处' }}
               </div>
@@ -129,7 +129,7 @@
 
         <!-- 提交 -->
         <div class="form-actions">
-          <UButton icon="i-heroicons-plus" :loading="submitting" @click="submitForm">
+          <UButton icon="i-lucide-plus" :loading="submitting" @click="submitForm">
             加入导入队列
           </UButton>
           <UButton variant="ghost" @click="resetForm">重置</UButton>
@@ -141,7 +141,7 @@
     <div class="import-help-col">
       <div class="card help-card">
         <div class="help-title">
-          <UIcon name="i-heroicons-information-circle" class="size-4" />
+          <UIcon name="i-lucide-info" class="size-4" />
           使用说明
         </div>
         <ul class="help-list">
@@ -178,7 +178,7 @@
       <div class="queue-toolbar">
         <UInput
           v-model="queueSearch"
-          icon="i-heroicons-magnifying-glass"
+          icon="i-lucide-search"
           placeholder="搜索任务..."
           size="sm"
           style="width: 200px"
