@@ -410,7 +410,7 @@ function loadAmap(key: string, securityCode: string) {
     }
 
     const script = document.createElement('script')
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}&callback=${callbackName}`
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}&plugin=AMap.DistrictSearch,AMap.LabelsLayer,AMap.LabelMarker&callback=${callbackName}`
     script.async = true
     script.onerror = () => {
       delete (window as any)[callbackName]
@@ -506,6 +506,115 @@ export function useGeoAmapMap() {
     catch { /* fallback: mask not supported */ }
   }
 
+  function clearDistrictCityLabels() {
+    if (districtCityLabelsLayer && map) {
+      try { map.remove(districtCityLabelsLayer) }
+      catch { /* ignore */ }
+    }
+    districtCityLabelsLayer = null
+  }
+
+  function getDistrictCityLabelTextStyle(name: string, adcode: number) {
+    const isFocused = focusedCityAdcode != null && adcode === focusedCityAdcode
+    const isWuhan = name === HIGHLIGHT_CITY
+    if (isFocused) {
+      return {
+        fontSize: 13,
+        fontWeight: '700' as const,
+        fillColor: '#b91c1c',
+        strokeColor: '#ffffff',
+        strokeWidth: 2,
+      }
+    }
+    if (isWuhan && blurFocusMode === 'wuhan') {
+      return {
+        fontSize: 13,
+        fontWeight: '700' as const,
+        fillColor: '#0e7490',
+        strokeColor: '#ffffff',
+        strokeWidth: 2,
+      }
+    }
+    return {
+      fontSize: 12,
+      fontWeight: '600' as const,
+      fillColor: '#334155',
+      strokeColor: '#ffffff',
+      strokeWidth: 2,
+    }
+  }
+
+  function renderDistrictCityLabels(
+    cities: Array<{ name: string, adcode: number, center: { lng: number, lat: number } }>,
+  ) {
+    if (!map || !AMap?.LabelsLayer || !AMap.LabelMarker) return
+    clearDistrictCityLabels()
+    if (!cities.length) return
+
+    const layer = new AMap.LabelsLayer({
+      zIndex: 460,
+      // 聚焦某一市时仍保留其他市名，避免碰撞隐藏
+      collision: false,
+      animation: false,
+    })
+
+    for (const city of cities) {
+      const { name, adcode, center } = city
+      layer.add(new AMap.LabelMarker({
+        position: [center.lng, center.lat],
+        text: {
+          content: name,
+          direction: 'center',
+          style: getDistrictCityLabelTextStyle(name, adcode),
+        },
+      }))
+    }
+
+    map.add(layer)
+    districtCityLabelsLayer = layer
+  }
+
+  /** 高德官方简易行政区标注：DistrictSearch + LabelsLayer（非自定义 DOM 文本） */
+  function setupDistrictCityLabels() {
+    if (!map || !AMap?.DistrictSearch) return
+    if (districtCitiesCache.length) {
+      renderDistrictCityLabels(districtCitiesCache)
+      return
+    }
+
+    const search = new AMap.DistrictSearch({
+      level: 'province',
+      subdistrict: 1,
+      extensions: 'base',
+    })
+
+    search.search('湖北省', (status: string, result: any) => {
+      if (status !== 'complete' || !map || !AMap) return
+      const raw = result?.districtList?.[0]?.districtList
+      if (!Array.isArray(raw) || !raw.length) return
+
+      const cities: typeof districtCitiesCache = []
+      for (const item of raw) {
+        const name = item?.name as string | undefined
+        const center = item?.center
+        const adcode = Number(item?.adcode)
+        if (!name || !Number.isFinite(adcode) || !center) continue
+        const lng = typeof center.lng === 'number' ? center.lng : center[0]
+        const lat = typeof center.lat === 'number' ? center.lat : center[1]
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue
+        cities.push({ name, adcode, center: { lng, lat } })
+      }
+      districtCitiesCache = cities
+      renderDistrictCityLabels(cities)
+    })
+  }
+
+  function ensureMapBaseLabels() {
+    if (!map) return
+    map.setStatus?.({ showLabel: true })
+    map.setFeatures?.(['bg', 'point'])
+  }
+
   const zonePolygons: any[] = []
   const parkPolygonsById = new Map<number, any[]>()
   const unmappedParkPolygons = new Map<number, any[]>()
@@ -515,6 +624,9 @@ export function useGeoAmapMap() {
   let markerOverlays: any[] = []
   let clusterOverlays: any[] = []
   let maskPolygons: any[] = []
+  let districtCityLabelsLayer: any = null
+  /** 湖北省各市行政区（DistrictSearch 缓存，供标注层复用） */
+  let districtCitiesCache: Array<{ name: string, adcode: number, center: { lng: number, lat: number } }> = []
   let regionHoverText: any = null
   let companyHoverText: any = null
 
@@ -687,6 +799,7 @@ export function useGeoAmapMap() {
 
     applyParkStyles()
     applyMaskForFocus()
+    setupDistrictCityLabels()
   }
 
   function setParkHover(feature: GeoJSON.Feature, latlng: { lng: number, lat: number }, featureIndex?: number) {
@@ -1176,8 +1289,13 @@ map.on('zoomend', () => {
     })
 
     setupMapEvents()
-    map.on('complete', () => {
-      map?.setFeatures?.(['bg', 'point'])
+    const onMapReady = () => {
+      ensureMapBaseLabels()
+      setupDistrictCityLabels()
+    }
+    map.on('complete', onMapReady)
+    requestAnimationFrame(() => {
+      if (!districtCityLabelsLayer) onMapReady()
     })
     baseCompanies = companies
     refreshMarkers(companies)
@@ -1195,6 +1313,8 @@ map.on('zoomend', () => {
     clearOverlayList(markerOverlays)
     clearOverlayList(clusterOverlays)
     clearOverlayList(maskPolygons)
+    clearDistrictCityLabels()
+    districtCitiesCache = []
     clearOverlayList(zonePolygons)
     parkPolygonsById.clear()
     unmappedParkPolygons.clear()
