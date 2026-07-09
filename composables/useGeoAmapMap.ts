@@ -410,7 +410,7 @@ function loadAmap(key: string, securityCode: string) {
     }
 
     const script = document.createElement('script')
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}&callback=${callbackName}`
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(key)}&plugin=AMap.LabelsLayer,AMap.LabelMarker&callback=${callbackName}`
     script.async = true
     script.onerror = () => {
       delete (window as any)[callbackName]
@@ -508,8 +508,42 @@ export function useGeoAmapMap() {
 
   function ensureMapBaseLabels() {
     if (!map) return
-    map.setStatus?.({ showLabel: true })
-    map.setFeatures?.(['bg', 'point'])
+    // 只保留背景图层，不开 point（避免底图 POI 与我们自绘的市名标注重叠）
+    map.setStatus?.({ showLabel: false })
+    map.setFeatures?.(['bg'])
+  }
+
+  let cityNameLabelsLayer: any = null
+
+  function renderCityNameLabels() {
+    if (!map || !AMap?.LabelsLayer || !AMap?.LabelMarker) return
+    if (cityNameLabelsLayer) {
+      try { map.remove(cityNameLabelsLayer) } catch { /* ignore */ }
+      cityNameLabelsLayer = null
+    }
+    if (!cityFeatures.length) return
+    const layer = new AMap.LabelsLayer({ zIndex: 460, collision: false, animation: false })
+    for (const feature of cityFeatures) {
+      const name = feature.properties?.name as string | undefined
+      const center = feature.properties?.center as [number, number] | undefined
+      if (!name || !Array.isArray(center) || center.length < 2) continue
+      layer.add(new AMap.LabelMarker({
+        position: [center[0], center[1]],
+        text: {
+          content: name,
+          direction: 'center',
+          style: {
+            fontSize: 12,
+            fontWeight: '600',
+            fillColor: '#334155',
+            strokeColor: '#ffffff',
+            strokeWidth: 2,
+          },
+        },
+      }))
+    }
+    map.add(layer)
+    cityNameLabelsLayer = layer
   }
 
   const zonePolygons: any[] = []
@@ -1083,10 +1117,10 @@ map.on('zoomend', () => {
       zoom: WUHAN_ZOOM,
       mapStyle: 'amap://styles/normal',
       viewMode: '2D',
-      showLabel: true,
+      showLabel: false,
       showBuildingBlock: false,
       isHotspot: false,
-      features: ['bg', 'point'],
+      features: ['bg'],
       zooms: [7, 18],
       resizeEnable: true,
       doubleClickZoom: false,
@@ -1184,9 +1218,11 @@ map.on('zoomend', () => {
     setupMapEvents()
     map.on('complete', () => {
       ensureMapBaseLabels()
+      renderCityNameLabels()
     })
     requestAnimationFrame(() => {
       ensureMapBaseLabels()
+      if (!cityNameLabelsLayer) renderCityNameLabels()
     })
     baseCompanies = companies
     refreshMarkers(companies)
@@ -1205,6 +1241,10 @@ map.on('zoomend', () => {
     clearOverlayList(clusterOverlays)
     clearOverlayList(maskPolygons)
     clearOverlayList(zonePolygons)
+    if (cityNameLabelsLayer) {
+      try { map?.remove(cityNameLabelsLayer) } catch { /* ignore */ }
+      cityNameLabelsLayer = null
+    }
     parkPolygonsById.clear()
     unmappedParkPolygons.clear()
     provincePolygonsByName.forEach(polygons => clearOverlayList(polygons))
