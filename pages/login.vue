@@ -1,34 +1,44 @@
 <template>
-  <div class="auth-page" data-layout="auth">
+  <div class="login-page" data-layout="auth">
     <!-- 左侧品牌区 -->
-    <div class="auth-left">
-      <div class="particles-bg" aria-hidden="true">
-        <div v-for="i in 18" :key="i" class="particle" :style="particleStyle(i)" />
-      </div>
-      <div class="auth-brand">
-        <div class="brand-logo">
-          <span class="logo-mark">智</span>
+    <div class="login-left">
+      <div class="login-grid-bg" aria-hidden="true" />
+      <div class="login-glow login-glow--1" aria-hidden="true" />
+      <div class="login-glow login-glow--2" aria-hidden="true" />
+
+      <div class="login-brand">
+        <div class="login-logo">
+          <UIcon name="i-lucide-building-2" class="size-7 text-white" />
         </div>
-        <h1 class="brand-title">智知云</h1>
-        <p class="brand-sub">企业知识中台</p>
-        <div class="brand-features">
-          <div v-for="f in features" :key="f" class="feature-item">
-            <span class="feature-dot" />
-            <span>{{ f }}</span>
+        <h1 class="login-brand-title">企业服务数据平台</h1>
+        <p class="login-brand-sub">Enterprise Data Service Platform</p>
+
+        <div class="login-features">
+          <div v-for="item in features" :key="item.title" class="login-feature">
+            <div class="login-feature-icon">
+              <UIcon :name="item.icon" class="size-4" />
+            </div>
+            <div>
+              <div class="login-feature-title">{{ item.title }}</div>
+              <div class="login-feature-desc">{{ item.desc }}</div>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div class="login-left-footer">
+        <span>园区企业 · 产业分析 · 数据服务</span>
       </div>
     </div>
 
     <!-- 右侧登录表单 -->
-    <div class="auth-right">
-      <form class="auth-form" @submit.prevent="handleLogin">
-        <div class="form-header">
-          <h2 class="form-title">欢迎回来</h2>
-          <p class="form-sub">登录您的智知云账户</p>
+    <div class="login-right">
+      <form class="login-form" @submit.prevent="handleLogin">
+        <div class="login-form-header">
+          <h2 class="login-form-title">账户登录</h2>
+          <p class="login-form-sub">登录后访问企业数据与服务模块</p>
         </div>
 
-        <!-- 错误提示 -->
         <Transition name="shake">
           <UAlert
             v-if="error"
@@ -39,9 +49,8 @@
           />
         </Transition>
 
-        <!-- 用户名 -->
-        <div class="form-field">
-          <label class="form-label">用户名</label>
+        <div class="login-field">
+          <label class="login-label">用户名</label>
           <UInput
             v-model="form.username"
             class="w-full"
@@ -54,9 +63,8 @@
           />
         </div>
 
-        <!-- 密码 -->
-        <div class="form-field">
-          <label class="form-label">密码</label>
+        <div class="login-field">
+          <label class="login-label">密码</label>
           <UInput
             v-model="form.password"
             class="w-full"
@@ -71,42 +79,19 @@
           />
         </div>
 
-        <!-- 登录按钮 -->
         <UButton
           type="submit"
-          class="w-full login-btn"
+          class="w-full login-submit"
           size="lg"
           :loading="loading"
         >
           登录
         </UButton>
 
-        <!-- 跳转注册 -->
-        <div class="form-switch">
-          还没有账号？
-          <NuxtLink to="/register" class="form-link">立即注册</NuxtLink>
-        </div>
-
-        <!-- 快速登录提示 -->
-        <div class="demo-accounts">
-          <div class="demo-title">演示账号（密码均为 123456）</div>
-          <div class="demo-list">
-            <UButton
-              v-for="a in demoAccounts"
-              :key="a.username"
-              color="neutral"
-              variant="outline"
-              class="demo-item"
-              @click="fillDemo(a)"
-            >
-              <span class="demo-avatar">{{ a.avatar }}</span>
-              <div>
-                <div class="demo-name">{{ a.name }}</div>
-                <div class="demo-role">{{ a.role }}</div>
-              </div>
-            </UButton>
-          </div>
-        </div>
+        <p class="login-notice">
+          <UIcon name="i-lucide-shield-check" class="size-3.5 inline-block align-text-bottom" />
+          本平台仅供授权用户使用，请妥善保管账户信息
+        </p>
       </form>
     </div>
   </div>
@@ -117,7 +102,6 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
-// @ts-ignore Nuxt macro
 definePageMeta({ layout: false })
 
 const authStore = useAuthStore()
@@ -129,23 +113,11 @@ const loading = ref(false)
 const showPassword = ref(false)
 
 const features = [
-  '多角色知识资产总览',
-  '语义检索与知识查询',
-  '数字人 AI 助手问答',
-  '智能文档解析入库'
+  { icon: 'i-lucide-map', title: '企业全景地图', desc: '可视化展示园区企业分布与区域边界' },
+  { icon: 'i-lucide-network', title: '产业供应链图谱', desc: '上中下游产业链结构与企业关联分析' },
+  { icon: 'i-lucide-newspaper', title: '新闻资讯聚合', desc: '创新平台动态与行业资讯智能检索' },
+  { icon: 'i-lucide-database', title: '企业数据管理', desc: '管理员专属的数据同步与运维入口' },
 ]
-
-const demoAccounts = [
-  { username: 'zhangyuan', name: '张媛', role: '知识管理员', avatar: 'ZY' },
-  { username: 'linan', name: '李楠', role: '投研分析师', avatar: 'LN' },
-  { username: 'sunlan', name: '孙岚', role: '运营经理', avatar: 'SL' }
-]
-
-function fillDemo(a: { username: string }) {
-  form.username = a.username
-  form.password = '123456'
-  error.value = ''
-}
 
 async function handleLogin() {
   if (!form.username.trim() || !form.password) return
@@ -160,108 +132,217 @@ async function handleLogin() {
     error.value = result.error || '登录失败'
   }
 }
-
-function particleStyle(i: number) {
-  const x = (i * 17 + 11) % 100
-  const y = (i * 23 + 7) % 100
-  const size = 2 + (i % 4)
-  const delay = (i * 0.3) % 3
-  const dur = 3 + (i % 4)
-  return { left: `${x}%`, top: `${y}%`, width: `${size}px`, height: `${size}px`, animationDelay: `${delay}s`, animationDuration: `${dur}s` }
-}
 </script>
 
 <style scoped>
-.auth-form {
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  background: var(--bg);
+}
+
+.login-left {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background: linear-gradient(160deg, #0f172a 0%, #1e3a5f 45%, #0c4a6e 100%);
+  color: #fff;
+  padding: 48px 40px;
+}
+
+.login-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 20%, transparent 100%);
+}
+
+.login-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.login-glow--1 {
+  width: 400px;
+  height: 400px;
+  background: rgba(37, 99, 235, 0.25);
+  top: -10%;
+  right: -5%;
+}
+
+.login-glow--2 {
+  width: 300px;
+  height: 300px;
+  background: rgba(6, 182, 212, 0.2);
+  bottom: 5%;
+  left: -5%;
+}
+
+.login-brand {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
   width: 100%;
-  max-width: 340px;
+}
+
+.login-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.35);
+}
+
+.login-brand-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.login-brand-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 40px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.login-features {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.form-header { text-align: center; }
+.login-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
 
-.form-title {
-  font-size: 26px;
+.login-feature-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.login-feature-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.login-feature-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+}
+
+.login-left-footer {
+  position: absolute;
+  bottom: 32px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  z-index: 1;
+}
+
+.login-right {
+  width: 440px;
+  min-width: 440px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+}
+
+.login-form {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.login-form-header {
+  margin-bottom: 4px;
+}
+
+.login-form-title {
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-strong);
   margin: 0 0 6px;
 }
 
-.form-sub { font-size: 13px; color: var(--text-muted); margin: 0; }
-
-.form-field { display: flex; flex-direction: column; gap: 6px; }
-
-.login-btn { height: 46px; font-size: 14px; font-weight: 600; border-radius: 999px !important; justify-content: center; letter-spacing: 0.04em; }
-
-.form-switch {
-  text-align: center;
+.login-form-sub {
   font-size: 13px;
   color: var(--text-muted);
+  margin: 0;
 }
 
-.form-link { color: var(--primary); text-decoration: none; font-weight: 600; }
-.form-link:hover { text-decoration: underline; }
-
-/* Demo accounts */
-.demo-accounts {
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
-}
-
-.demo-title { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; text-align: center; }
-
-.demo-list { display: flex; gap: 8px; }
-
-.demo-item {
-  flex: 1;
+.login-field {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  transition: all 0.15s;
-  text-align: left;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.demo-item:hover {
-  background: var(--primary-soft);
+.login-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
 }
 
-.demo-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display: flex;
-  align-items: center;
+.login-submit {
+  height: 46px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px !important;
   justify-content: center;
-  font-size: 9px;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
+  margin-top: 4px;
 }
 
-.demo-name { font-size: 11px; font-weight: 600; color: var(--text-strong); }
-.demo-role { font-size: 10px; color: var(--text-muted); }
-
-/* Brand */
-.auth-brand { position: relative; z-index: 1; text-align: center; padding: 40px; }
-.brand-logo {
-  width: 72px; height: 72px; border-radius: 20px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 24px;
-  box-shadow: 0 0 50px color-mix(in srgb, var(--primary) 50%, transparent);
+.login-notice {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.6;
 }
-.logo-mark { font-size: 32px; font-weight: 700; color: white; }
-.brand-title { font-size: 36px; font-weight: 700; color: var(--text-strong); margin: 0 0 8px; }
-.brand-sub { font-size: 16px; color: var(--text-muted); margin: 0 0 32px; }
-.brand-features { display: flex; flex-direction: column; gap: 10px; text-align: left; max-width: 240px; margin: 0 auto; }
-.feature-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text); }
-.feature-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); flex-shrink: 0; box-shadow: 0 0 8px var(--primary); }
-.particles-bg { position: absolute; inset: 0; }
-.particle { position: absolute; border-radius: 50%; background: var(--primary); opacity: 0.15; animation: particle-float 3s ease-in-out infinite; }
+
+@media (max-width: 900px) {
+  .login-left {
+    display: none;
+  }
+  .login-right {
+    width: 100%;
+    min-width: unset;
+    border-left: none;
+  }
+}
 </style>

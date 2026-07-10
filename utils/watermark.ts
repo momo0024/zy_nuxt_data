@@ -38,7 +38,7 @@ export function getThemeWatermarkColor(): string {
 }
 
 export function getWatermarkContent(): string {
-  if (typeof window === 'undefined') return '智知云'
+  if (typeof window === 'undefined') return '企业服务数据'
   try {
     const stored = localStorage.getItem('zhizhi_user')
     if (stored) {
@@ -46,7 +46,7 @@ export function getWatermarkContent(): string {
       if (user?.name) return user.name
     }
   } catch { /* ignore */ }
-  return '智知云'
+  return '企业服务数据'
 }
 
 function cacheKey(content: string, color: string) {

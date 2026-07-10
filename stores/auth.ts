@@ -16,13 +16,19 @@ interface User {
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const isLoggedIn = computed(() => !!user.value)
+  const isAdmin = computed(() => user.value?.role === 'admin')
 
   function loadFromStorage() {
     if (typeof window === 'undefined') return
     try {
       const stored = localStorage.getItem('zhizhi_user')
       if (stored) {
-        user.value = JSON.parse(stored)
+        const parsed = JSON.parse(stored) as User
+        const valid = MOCK_USERS.some(u => u.id === parsed.id && u.role === parsed.role)
+        user.value = valid ? parsed : null
+        if (!valid) {
+          localStorage.removeItem('zhizhi_user')
+        }
       }
     } catch {
       user.value = null
@@ -49,41 +55,11 @@ export const useAuthStore = defineStore('auth', () => {
     return { success: true }
   }
 
-  function register(name: string, username: string, password: string): { success: boolean; error?: string } {
-    // Check duplicates in mock + any registered users
-    const existing = MOCK_USERS.find(u => u.username === username)
-    const storedExtra = JSON.parse(localStorage.getItem('zhizhi_extra_users') || '[]')
-    const dupExtra = storedExtra.find((u: any) => u.username === username)
-    if (existing || dupExtra) {
-      return { success: false, error: '用户名已存在，请换一个' }
-    }
-    const newUser = {
-      id: `u${Date.now()}`,
-      username,
-      password,
-      name,
-      role: 'user',
-      roleName: '普通用户',
-      tenant: '智知云',
-      avatar: name.slice(0, 2).toUpperCase()
-    }
-    storedExtra.push(newUser)
-    localStorage.setItem('zhizhi_extra_users', JSON.stringify(storedExtra))
-
-    const loggedUser: User = {
-      ...newUser,
-      allowedCategories: ROLE_PERMISSIONS.user
-    }
-    user.value = loggedUser
-    localStorage.setItem('zhizhi_user', JSON.stringify(loggedUser))
-    return { success: true }
-  }
-
   function logout() {
     user.value = null
     localStorage.removeItem('zhizhi_user')
     clearPageInit()
   }
 
-  return { user, isLoggedIn, loadFromStorage, login, register, logout }
+  return { user, isLoggedIn, isAdmin, loadFromStorage, login, logout }
 })

@@ -59,15 +59,13 @@ type TabItem = {
 const route = useRoute()
 const router = useRouter()
 const settingsStore = useSettingsStore()
+const authStore = useAuthStore()
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
   { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
-  { path: '/public-opinion', name: '舆情监测', icon: 'i-lucide-radar' },
   { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
-  { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
-  { path: '/data-search', name: '数据搜索', icon: 'i-lucide-table-properties' },
-  { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },
+  { path: '/admin/data-update', name: '数据更新', icon: 'i-lucide-database-zap' },
   { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' },
 ]
 
@@ -77,6 +75,7 @@ const currentPath = computed(() => route.path)
 watch(
   () => route.path,
   (newPath: string) => {
+    if (newPath === '/admin/data-update' && !authStore.isAdmin) return
     const navItem = NAV_ITEMS.find((item) => item.path === newPath)
     if (navItem && !tabs.value.find((tab) => tab.path === newPath)) {
       tabs.value.push({ path: newPath, name: navItem.name })

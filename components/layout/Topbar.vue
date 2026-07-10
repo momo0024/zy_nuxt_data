@@ -3,8 +3,10 @@
     <!-- Logo + 导航 -->
     <div class="topbar-left">
       <div class="topbar-brand">
-        <div class="brand-icon">智</div>
-        <span class="brand-text">智知云</span>
+        <div class="brand-icon">
+          <UIcon name="i-lucide-building-2" class="size-4 text-white" />
+        </div>
+        <span class="brand-text">企业服务数据</span>
       </div>
       <nav class="topbar-nav">
         <NuxtLink
@@ -92,6 +94,7 @@ const settingsStore = useSettingsStore()
 const hydrated = ref(false)
 
 const user = computed(() => authStore.user)
+const isAdmin = computed(() => authStore.isAdmin)
 const currentTheme = computed(() => settingsStore.theme)
 const themes = THEMES
 
@@ -100,15 +103,17 @@ const currentThemeName = computed(() => currentThemeMeta.value?.name || '主题'
 const currentThemeColors = computed(() => currentThemeMeta.value?.colors.slice(0, 3) || ['#888'])
 const userInitials = computed(() => user.value?.name?.slice(0, 1) || user.value?.avatar?.slice(0, 1) || '?')
 
-const navItems = computed(() => [
-  { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
-  { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
-  // { path: '/public-opinion', name: '舆情监测', icon: 'i-lucide-radar' },
-  { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
-  // { path: '/retrieve', name: '文档检索', icon: 'i-lucide-search' },
-  // { path: '/data-search', name: '数据检索', icon: 'i-lucide-table-properties' },
-  // { path: '/import', name: '文档导入', icon: 'i-lucide-file-up' },
-])
+const navItems = computed(() => {
+  const items = [
+    { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
+    { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
+    { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
+  ]
+  if (isAdmin.value) {
+    items.push({ path: '/admin/data-update', name: '数据更新', icon: 'i-lucide-database-zap' })
+  }
+  return items
+})
 
 const themeMenuItems = computed(() => [
   [
@@ -199,8 +204,6 @@ onMounted(() => {
   border-radius: 8px;
   background: linear-gradient(135deg, var(--primary), var(--accent));
   color: #fff;
-  font-size: 14px;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;

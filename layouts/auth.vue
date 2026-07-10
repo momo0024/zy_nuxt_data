@@ -1,27 +1,23 @@
 <template>
   <div class="auth-page">
-    <!-- 左侧品牌区 -->
     <div class="auth-left">
-      <!-- 粒子动画背景 -->
       <div class="particles-bg" aria-hidden="true">
         <div v-for="i in 20" :key="i" class="particle" :style="particleStyle(i)" />
       </div>
-      <!-- 品牌内容 -->
       <div class="auth-brand">
         <div class="brand-logo">
-          <div class="logo-mark">智</div>
+          <UIcon name="i-lucide-building-2" class="size-7 text-white" />
         </div>
-        <h1 class="brand-title">智知云</h1>
-        <p class="brand-sub">企业知识中台</p>
+        <h1 class="brand-title">企业服务数据平台</h1>
+        <p class="brand-sub">Enterprise Data Service Platform</p>
         <div class="brand-features">
-          <div class="feature-item" v-for="f in features" :key="f.text">
+          <div v-for="f in features" :key="f.text" class="feature-item">
             <span class="feature-dot" />
             <span>{{ f.text }}</span>
           </div>
         </div>
       </div>
     </div>
-    <!-- 右侧表单区 -->
     <div class="auth-right">
       <slot />
     </div>
@@ -30,10 +26,10 @@
 
 <script setup lang="ts">
 const features = [
-  { text: '多角色知识资产总览' },
-  { text: '语义检索与知识查询' },
-  { text: '数字人 AI 助手问答' },
-  { text: '智能文档解析入库' }
+  { text: '企业全景地图可视化' },
+  { text: '产业供应链图谱分析' },
+  { text: '新闻资讯智能聚合' },
+  { text: '企业数据运维管理' }
 ]
 
 function particleStyle(i: number) {
@@ -71,12 +67,6 @@ function particleStyle(i: number) {
   justify-content: center;
   margin: 0 auto 24px;
   box-shadow: 0 0 40px color-mix(in srgb, var(--primary) 50%, transparent);
-}
-
-.logo-mark {
-  font-size: 32px;
-  font-weight: 700;
-  color: white;
 }
 
 .brand-title {

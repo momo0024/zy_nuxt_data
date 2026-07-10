@@ -71,37 +71,27 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   user: ['news', 'information', 'faq', 'other']
 }
 
-// ---- Mock 账户 ----
+// ---- Mock 账户（仅超级管理员 + 普通用户）----
 export const MOCK_USERS = [
   {
     id: 'u001',
-    username: 'zhangyuan',
-    password: '123456',
-    name: '张媛',
+    username: 'admin',
+    password: 'admin123',
+    name: '系统管理员',
     role: 'admin',
-    roleName: '知识管理员',
-    tenant: '集团知识租户',
-    avatar: 'ZY'
+    roleName: '超级管理员',
+    tenant: '企业服务数据平台',
+    avatar: '管'
   },
   {
     id: 'u002',
-    username: 'linan',
-    password: '123456',
-    name: '李楠',
-    role: 'analyst',
-    roleName: '投研分析师',
-    tenant: '投研事业部',
-    avatar: 'LN'
-  },
-  {
-    id: 'u003',
-    username: 'sunlan',
-    password: '123456',
-    name: '孙岚',
-    role: 'operations',
-    roleName: '运营经理',
-    tenant: '运营管理部',
-    avatar: 'SL'
+    username: 'user',
+    password: 'user123',
+    name: '普通用户',
+    role: 'user',
+    roleName: '普通用户',
+    tenant: '企业服务数据平台',
+    avatar: '用'
   }
 ]
 

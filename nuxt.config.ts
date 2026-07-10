@@ -79,11 +79,11 @@ export default defineNuxtConfig({
       htmlAttrs: {
         'data-theme': 'light',
       },
-      title: '智知云 · 企业知识中台',
+      title: '企业服务数据平台',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: '智知云企业知识中台系统' }
+        { name: 'description', content: '企业服务数据平台 — 企业地图、产业图谱与数据管理' }
       ],
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

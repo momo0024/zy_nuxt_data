@@ -3,7 +3,7 @@ export default defineNuxtRouteMiddleware((to) => {
   if (import.meta.server) return
 
   // Public routes that don't need authentication
-  const publicRoutes = ['/login', '/register']
+  const publicRoutes = ['/login']
 
   const authStore = useAuthStore()
   authStore.loadFromStorage()

@@ -236,6 +236,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import type { DateRangeValue } from '~/components/DateRangePicker.vue'
+import { newsRequest } from '~/utils/request'
 
 definePageMeta({ middleware: 'auth', keepalive: true })
 
