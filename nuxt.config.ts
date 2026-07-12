@@ -40,11 +40,41 @@ export default defineNuxtConfig({
       alias: {
         'eventemitter3-original': 'eventemitter3',
         'eventemitter3': resolve(rootDir, 'lib/eventemitter3-shim.js'),
+        '@mapbox/tiny-sdf': resolve(rootDir, 'lib/tiny-sdf-shim.js'),
+        '@mapbox/tiny-sdf-original': resolve(rootDir, 'node_modules/@mapbox/tiny-sdf/index.js'),
+        'hammerjs': resolve(rootDir, 'lib/hammerjs-shim.js'),
+        'hammerjs-original': resolve(rootDir, 'node_modules/hammerjs/hammer.js'),
+        '@mapbox/point-geometry': resolve(rootDir, 'lib/point-geometry-shim.js'),
+        '@mapbox/point-geometry-original': resolve(rootDir, 'node_modules/@mapbox/point-geometry/index.js'),
+        '@mapbox/unitbezier': resolve(rootDir, 'lib/unitbezier-shim.js'),
+        '@mapbox/unitbezier-original': resolve(rootDir, 'node_modules/@mapbox/unitbezier/index.js'),
+        '@mapbox/martini': resolve(rootDir, 'lib/martini-shim.js'),
+        '@mapbox/martini-original': resolve(rootDir, 'node_modules/@mapbox/martini/index.js'),
         'tslib': resolve(rootDir, 'node_modules/tslib/tslib.es6.mjs'),
       },
     },
     optimizeDeps: {
-      include: ['simple-mind-map', 'eventemitter3-original'],
+      include: [
+        'simple-mind-map',
+        'eventemitter3-original',
+        '@mapbox/tiny-sdf-original',
+        'hammerjs-original',
+        '@mapbox/point-geometry-original',
+        '@mapbox/unitbezier-original',
+        '@mapbox/martini-original',
+        '@antv/l7',
+        '@antv/l7-maps',
+        '@antv/l7-core',
+        '@antv/l7-map',
+        '@antv/l7-layers',
+      ],
+      needsInterop: [
+        '@mapbox/tiny-sdf-original',
+        'hammerjs-original',
+        '@mapbox/point-geometry-original',
+        '@mapbox/unitbezier-original',
+        '@mapbox/martini-original',
+      ],
     },
     plugins: [
       {
@@ -96,7 +126,7 @@ export default defineNuxtConfig({
     }
   },
   build: {
-    transpile: ['echarts', 'vue-echarts', 'resize-detector', 'simple-mind-map', '@antv/l7', '@antv/l7-maps'],
+    transpile: ['echarts', 'vue-echarts', 'resize-detector', 'simple-mind-map', '@antv/l7', '@antv/l7-maps', '@antv/l7-core', '@antv/l7-map', '@antv/l7-layers'],
   },
   fonts: {
     provider: 'local'

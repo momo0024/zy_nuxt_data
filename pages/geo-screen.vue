@@ -1713,10 +1713,10 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .cd-strength-score .cd-strength-card-num { color: #fff; }
 .cd-strength-score {
   border: none;
-  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, var(--accent)) 100%);
+  background: var(--primary);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 35%, transparent);
+  box-shadow: var(--shadow-sm);
 }
 .cd-strength-score::before {
   content: '';
@@ -1837,14 +1837,14 @@ function hasStrengthData(c: CompanyRecord): boolean {
   white-space: nowrap;
 }
 .cp-strength-dot-score {
-  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, var(--accent)) 100%);
+  background: var(--primary);
   color: #fff;
   font-weight: 700;
   font-size: 11px;
   padding: 0 8px;
   height: 19px;
   border-radius: 5px;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent);
+  box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
 }
@@ -1932,7 +1932,7 @@ function hasStrengthData(c: CompanyRecord): boolean {
 }
 
 .type-info { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
-.type-product { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+.type-product { background: rgba(30, 77, 140, 0.12); color: #1e4d8c; }
 .type-product-type { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
 
 .cd-tags-section {

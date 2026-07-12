@@ -4,10 +4,12 @@
     <header class="nc-hero">
       <div class="nc-hero-masthead">
         <div class="nc-brand">
-          <span class="nc-brand-symbol">N</span>
+          <span class="nc-brand-symbol">
+            <UIcon name="i-lucide-newspaper" class="size-5" />
+          </span>
           <div class="nc-brand-text">
             <h1 class="nc-brand-title">新闻中心</h1>
-            <p class="nc-brand-sub">创新平台资讯聚合 · 智能检索</p>
+            <p class="nc-brand-sub">创新平台资讯聚合</p>
           </div>
         </div>
         <div class="nc-hero-stats">
@@ -669,30 +671,8 @@ usePageInit(initNewsCenterPage)
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--surface-radius);
-  padding: 28px 28px 22px;
+  padding: 24px 28px 20px;
   margin-bottom: 16px;
-  position: relative;
-  overflow: hidden;
-}
-
-.nc-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 600px 300px at 85% -20%, color-mix(in srgb, var(--primary) 4%, transparent), transparent),
-    radial-gradient(ellipse 400px 200px at 15% 120%, color-mix(in srgb, var(--primary) 3%, transparent), transparent);
-  pointer-events: none;
-}
-
-.nc-hero::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 15%, transparent) 50%, transparent);
-  pointer-events: none;
 }
 
 .nc-hero-masthead {
@@ -713,15 +693,12 @@ usePageInit(initNewsCenterPage)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px; height: 42px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary);
   color: #fff;
-  font-size: 20px;
-  font-weight: 800;
-  font-family: var(--font-display);
   flex-shrink: 0;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 .nc-brand-title {
@@ -1067,9 +1044,11 @@ usePageInit(initNewsCenterPage)
 /* 顶部渐变装饰条 */
 .nc-card-accent-bar {
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -1079,9 +1058,8 @@ usePageInit(initNewsCenterPage)
 }
 
 .nc-card:hover {
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--primary) 10%, rgba(0,0,0,0.08));
-  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
 }
 
 .nc-card--link {

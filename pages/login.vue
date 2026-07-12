@@ -2,16 +2,18 @@
   <div class="login-page" data-layout="auth">
     <!-- 左侧品牌区 -->
     <div class="login-left">
-      <div class="login-grid-bg" aria-hidden="true" />
-      <div class="login-glow login-glow--1" aria-hidden="true" />
-      <div class="login-glow login-glow--2" aria-hidden="true" />
+      <div class="login-bg" aria-hidden="true" />
 
       <div class="login-brand">
         <div class="login-logo">
-          <UIcon name="i-lucide-building-2" class="size-7 text-white" />
+          <svg viewBox="0 0 40 40" class="login-seal" aria-hidden="true">
+            <rect x="1" y="1" width="38" height="38" rx="2" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.6" />
+            <path d="M13 20 h14 M20 13 v14" stroke="currentColor" stroke-width="1" />
+            <circle cx="20" cy="20" r="4.5" fill="none" stroke="currentColor" stroke-width="1" />
+          </svg>
         </div>
-        <h1 class="login-brand-title">企业服务数据平台</h1>
-        <p class="login-brand-sub">Enterprise Data Service Platform</p>
+        <h1 class="login-brand-title">智知云 · 产业情报中心</h1>
+        <p class="login-brand-sub">Industrial Intelligence Platform</p>
 
         <div class="login-features">
           <div v-for="item in features" :key="item.title" class="login-feature">
@@ -113,10 +115,10 @@ const loading = ref(false)
 const showPassword = ref(false)
 
 const features = [
-  { icon: 'i-lucide-map', title: '企业全景地图', desc: '可视化展示园区企业分布与区域边界' },
-  { icon: 'i-lucide-network', title: '产业供应链图谱', desc: '上中下游产业链结构与企业关联分析' },
-  { icon: 'i-lucide-newspaper', title: '新闻资讯聚合', desc: '创新平台动态与行业资讯智能检索' },
-  { icon: 'i-lucide-database', title: '企业数据管理', desc: '管理员专属的数据同步与运维入口' },
+  { icon: 'i-lucide-map', title: '企业全景地图', desc: '园区企业空间分布与区域边界可视化' },
+  { icon: 'i-lucide-network', title: '产业链图谱', desc: '上中下游结构与企业关联分析' },
+  { icon: 'i-lucide-newspaper', title: '新闻资讯聚合', desc: '创新平台动态与行业资讯检索' },
+  { icon: 'i-lucide-monitor-dot', title: '产业态势大屏', desc: '光谷高新区企业态势总览展示' },
 ]
 
 async function handleLogin() {
@@ -149,42 +151,18 @@ async function handleLogin() {
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: linear-gradient(160deg, #0f172a 0%, #1e3a5f 45%, #0c4a6e 100%);
-  color: #fff;
+  background: #0a1428;
+  color: #f5f2e8;
   padding: 48px 40px;
 }
 
-.login-grid-bg {
+.login-bg {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 20%, transparent 100%);
-}
-
-.login-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
   pointer-events: none;
-}
-
-.login-glow--1 {
-  width: 400px;
-  height: 400px;
-  background: rgba(37, 99, 235, 0.25);
-  top: -10%;
-  right: -5%;
-}
-
-.login-glow--2 {
-  width: 300px;
-  height: 300px;
-  background: rgba(6, 182, 212, 0.2);
-  bottom: 5%;
-  left: -5%;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(198, 164, 100, 0.08), transparent 45%),
+    linear-gradient(180deg, #060d1c 0%, #0a1428 55%, #060d1c 100%);
 }
 
 .login-brand {
@@ -197,28 +175,34 @@ async function handleLogin() {
 .login-logo {
   width: 56px;
   height: 56px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  border-radius: 8px;
+  background: rgba(198, 164, 100, 0.12);
+  border: 1px solid rgba(198, 164, 100, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 28px;
-  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.35);
+  color: #e0c084;
+}
+
+.login-seal {
+  width: 32px;
+  height: 32px;
 }
 
 .login-brand-title {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   margin: 0 0 8px;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
 }
 
 .login-brand-sub {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  color: rgba(200, 206, 224, 0.55);
   margin: 0 0 40px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -237,14 +221,14 @@ async function handleLogin() {
 .login-feature-icon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(200, 206, 224, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.85);
+  color: #c6a464;
 }
 
 .login-feature-title {

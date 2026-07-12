@@ -31,29 +31,29 @@
    主题 Token 定义（5套）
    ============================================================ */
 
-/* 深色主题（默认） */
+/* 深色主题（藏青政务） */
 :root,
 [data-theme='dark'] {
-  --surface-radius: 20px;
-  --control-radius: 16px;
+  --surface-radius: 12px;
+  --control-radius: 8px;
   --font-sans: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', 'Segoe UI', sans-serif;
   --font-display: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  --bg: #0d0d14;
-  --surface: #13131f;
-  --surface-alt: #1a1a2a;
-  --border: #252538;
-  --text-strong: #f0f0ff;
-  --text: #c0c0dc;
-  --text-muted: #5a5a80;
-  --primary: #6366f1;
-  --primary-soft: #1e1e3f;
-  --accent: #a78bfa;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --bg: #0a1428;
+  --surface: #0e1a34;
+  --surface-alt: #132040;
+  --border: #1e3058;
+  --text-strong: #f5f2e8;
+  --text: #c8cee0;
+  --text-muted: #7a8299;
+  --primary: #4a7ab5;
+  --primary-soft: #152a4a;
+  --accent: #c6a464;
+  --success: #3d9a6e;
+  --warning: #c9a227;
+  --danger: #c25a5a;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.38);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.45);
   --dh-face: #1a1a3e;
   --dh-highlight: #2e2e6e;
   /* NuxtUI v4 颜色映射 */
@@ -88,24 +88,24 @@
   --border-default: var(--border);
 }
 
-/* 浅色主题 */
+/* 浅色主题（霁白实业） */
 [data-theme='light'] {
-  --bg: #f8f9fc;
+  --bg: #f4f6fa;
   --surface: #ffffff;
-  --surface-alt: #f3f4f8;
-  --border: #e2e5ed;
-  --text-strong: #0f1117;
-  --text: #2d3240;
-  --text-muted: #8b92a5;
-  --primary: #2563eb;
-  --primary-soft: #eff6ff;
-  --accent: #7c3aed;
-  --success: #16a34a;
-  --warning: #d97706;
-  --danger: #dc2626;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.18);
+  --surface-alt: #eef1f6;
+  --border: #d8dee8;
+  --text-strong: #0f1729;
+  --text: #2a3548;
+  --text-muted: #6b7589;
+  --primary: #1e4d8c;
+  --primary-soft: #e8eef6;
+  --accent: #b8935a;
+  --success: #2d7a55;
+  --warning: #a67c1a;
+  --danger: #b54545;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 41, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 23, 41, 0.08);
+  --shadow-xl: 0 12px 40px rgba(15, 23, 41, 0.12);
   --dh-face: #1e2a5e;
   --dh-highlight: #2e3f8e;
   /* NuxtUI v4 颜色映射 */
@@ -140,24 +140,24 @@
   --border-default: var(--border);
 }
 
-/* 紫色主题 */
+/* 墨蓝银灰主题 */
 [data-theme='purple'] {
-  --bg: #100d1e;
-  --surface: #17132a;
-  --surface-alt: #1f1a36;
-  --border: #302850;
-  --text-strong: #f5f0ff;
-  --text: #c0b0e8;
-  --text-muted: #604890;
-  --primary: #a855f7;
-  --primary-soft: #2d1860;
-  --accent: #f472b6;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 24px rgba(80, 0, 120, 0.3);
-  --shadow-xl: 0 24px 64px rgba(80, 0, 120, 0.4);
+  --bg: #0c1220;
+  --surface: #121a2c;
+  --surface-alt: #182238;
+  --border: #243048;
+  --text-strong: #e8ecf4;
+  --text: #b4bcc8;
+  --text-muted: #6e7a8e;
+  --primary: #3d6a9e;
+  --primary-soft: #152238;
+  --accent: #8fa4c4;
+  --success: #3d9a6e;
+  --warning: #c9a227;
+  --danger: #c25a5a;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.42);
   --dh-face: #2d1860;
   --dh-highlight: #4a2890;
   /* NuxtUI v4 颜色映射 */
@@ -192,24 +192,24 @@
   --border-default: var(--border);
 }
 
-/* 暖纸主题 */
+/* 素笺暖阅主题 */
 [data-theme='warm'] {
-  --bg: #faf6f0;
-  --surface: #fffdf9;
-  --surface-alt: #f5f0e8;
-  --border: #e0d4c0;
-  --text-strong: #2a1f10;
-  --text: #4a3820;
-  --text-muted: #9a8060;
-  --primary: #b45309;
-  --primary-soft: #fef3e2;
-  --accent: #d97706;
-  --success: #16a34a;
-  --warning: #d97706;
-  --danger: #dc2626;
-  --shadow-sm: 0 1px 3px rgba(80, 40, 0, 0.1);
-  --shadow-md: 0 8px 24px rgba(80, 40, 0, 0.15);
-  --shadow-xl: 0 24px 64px rgba(80, 40, 0, 0.2);
+  --bg: #f6f4ef;
+  --surface: #faf9f6;
+  --surface-alt: #ede8df;
+  --border: #d5cdc0;
+  --text-strong: #1f1a14;
+  --text: #3d3528;
+  --text-muted: #8a7d6b;
+  --primary: #6b4f2e;
+  --primary-soft: #ede8df;
+  --accent: #a67c52;
+  --success: #3d7a55;
+  --warning: #a67c1a;
+  --danger: #b54545;
+  --shadow-sm: 0 1px 2px rgba(31, 26, 20, 0.06);
+  --shadow-md: 0 4px 16px rgba(31, 26, 20, 0.08);
+  --shadow-xl: 0 12px 40px rgba(31, 26, 20, 0.12);
   --dh-face: #5c3010;
   --dh-highlight: #8a4820;
   /* NuxtUI v4 颜色映射 */
@@ -467,15 +467,14 @@ body {
   width: 32px;
   height: 32px;
   min-width: 32px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border-radius: 8px;
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 700;
   color: white;
-  box-shadow: 0 0 16px color-mix(in srgb, var(--primary) 50%, transparent);
 }
 
 .sidebar-logo .brand-name {
@@ -640,8 +639,7 @@ body {
 .page-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
-  animation: fadeIn 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 16px 20px;
 }
 
 :where(button, input, textarea, select) {
@@ -674,8 +672,8 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--surface-radius);
   padding: 20px;
-  box-shadow: 0 18px 42px color-mix(in srgb, black 16%, transparent);
-  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 .card-hover:hover {
@@ -684,10 +682,10 @@ body {
 }
 
 .user-avatar-shell {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 90%, white), color-mix(in srgb, var(--accent) 84%, white));
+  background: var(--primary);
   color: white;
   border: 1px solid color-mix(in srgb, white 18%, transparent);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--primary) 28%, transparent);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-title {
@@ -790,8 +788,8 @@ body {
 }
 
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.1);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 40%, transparent);
+  filter: brightness(1.06);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .btn-secondary {
@@ -1157,12 +1155,12 @@ body {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-md), 0 0 30px color-mix(in srgb, var(--primary) 40%, transparent);
+  box-shadow: var(--shadow-md);
   z-index: 999;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   border: none;
@@ -1170,8 +1168,8 @@ body {
 }
 
 .ai-fab:hover {
-  transform: scale(1.08);
-  box-shadow: var(--shadow-xl), 0 0 40px color-mix(in srgb, var(--primary) 60%, transparent);
+  transform: scale(1.04);
+  box-shadow: var(--shadow-xl);
 }
 
 .ai-fab .pulse-ring {
@@ -1236,7 +1234,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
+  background: var(--primary);
   border-radius: 999px;
   transition: width 0.4s ease;
 }
@@ -1509,7 +1507,7 @@ html * {
 
 .auth-left {
   flex: 1;
-  background: linear-gradient(135deg, var(--primary-soft) 0%, color-mix(in srgb, var(--accent) 10%, var(--bg)) 100%);
+  background: color-mix(in srgb, var(--primary-soft) 40%, var(--bg));
   display: flex;
   align-items: center;
   justify-content: center;

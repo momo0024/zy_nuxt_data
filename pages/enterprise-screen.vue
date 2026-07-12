@@ -1,341 +1,265 @@
 <template>
   <ClientOnly>
-    <div class="es-screen">
-      <div class="es-bg-grid" aria-hidden="true" />
-      <div class="es-bg-glow" aria-hidden="true" />
+    <div class="gs-screen">
+      <!-- 背景层：极淡星纹 + 顶部/底部装饰线 -->
+      <div class="gs-bg" aria-hidden="true">
+        <div class="gs-bg-grain" />
+        <div class="gs-bg-vignette" />
+      </div>
+
+      <!-- 四角装饰印章 -->
+      <span class="gs-corner gs-corner-tl" aria-hidden="true" />
+      <span class="gs-corner gs-corner-tr" aria-hidden="true" />
+      <span class="gs-corner gs-corner-bl" aria-hidden="true" />
+      <span class="gs-corner gs-corner-br" aria-hidden="true" />
 
       <!-- 顶部标题栏 -->
-      <header class="es-header">
-        <div class="es-brand">
-          <span class="es-brand-mark">
-            <UIcon name="i-lucide-radar" class="size-5" />
-          </span>
-          <div>
-            <p class="es-kicker">企业大屏</p>
-            <h1>光谷高新区企业态势总览</h1>
+      <header class="gs-header">
+        <div class="gs-header-left">
+          <div class="gs-seal">
+            <svg viewBox="0 0 40 40" class="gs-seal-svg" aria-hidden="true">
+              <rect x="1" y="1" width="38" height="38" rx="2" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.6" />
+              <rect x="6" y="6" width="28" height="28" rx="1" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.4" />
+              <path d="M13 20 h14 M20 13 v14" stroke="currentColor" stroke-width="1" />
+              <circle cx="20" cy="20" r="4.5" fill="none" stroke="currentColor" stroke-width="1" />
+            </svg>
+          </div>
+          <div class="gs-header-title">
+            <p class="gs-header-org">智知云 · 产业情报中心</p>
+            <p class="gs-header-eng">EAST LAKE HIGH-TECH ZONE INTELLIGENCE</p>
           </div>
         </div>
-        <div class="es-header-right">
-          <div class="es-clock">
-            <span>{{ currentDate }}</span>
-            <strong>{{ currentTime }}</strong>
+
+        <div class="gs-header-center">
+          <div class="gs-title-line" />
+          <h1 class="gs-title">光谷高新区 · 产业态势总览</h1>
+          <div class="gs-title-line" />
+          <p class="gs-title-sub">
+            东湖高新技术开发区
+            <span class="gs-title-sep" />
+            期次
+            <span class="gs-title-value">{{ reportPeriod }}</span>
+            <span class="gs-title-sep" />
+            共 <span class="gs-title-value">{{ companies.length }}</span> 家在册企业
+          </p>
+        </div>
+
+        <div class="gs-header-right">
+          <div class="gs-clock">
+            <div class="gs-clock-time">{{ currentTime }}</div>
+            <div class="gs-clock-date">
+              {{ currentDate }}
+              <span class="gs-sep-dot" />
+              {{ weekDay }}
+            </div>
           </div>
-          <button
-            class="es-cruise-btn"
-            :class="{ active: autoPulse }"
-            type="button"
-            @click="autoPulse = !autoPulse"
-          >
-            <UIcon :name="autoPulse ? 'i-lucide-pause' : 'i-lucide-play'" class="size-4" />
-            <span>{{ autoPulse ? '巡航中' : '启动巡航' }}</span>
-          </button>
+          <div class="gs-sync">
+            <span class="gs-sync-dot" />
+            数据同步
+            <strong>{{ syncTime }}</strong>
+          </div>
         </div>
       </header>
 
-      <!-- 主体三栏布局 -->
-      <main class="es-body">
+      <!-- 主体三栏 -->
+      <main class="gs-body">
         <!-- 左栏 -->
-        <aside class="es-col es-left">
-          <!-- KPI 指标 -->
-          <div class="es-panel es-kpi-panel">
-            <div class="es-panel-head">
-              <span>运营总览</span>
-              <button class="es-icon-btn" type="button" title="刷新" @click="loadCompanies">
-                <UIcon name="i-lucide-refresh-cw" class="size-4" />
-              </button>
+        <aside class="gs-col gs-left">
+          <!-- 01 核心指标 -->
+          <section class="gs-panel">
+            <div class="gs-panel-head">
+              <h2>核心指标</h2>
             </div>
-            <div class="es-kpi-grid">
-              <button
+            <div class="gs-metrics">
+              <article
                 v-for="metric in metrics"
                 :key="metric.key"
-                type="button"
-                class="es-kpi"
+                class="gs-metric"
                 :class="{ active: activeMetric === metric.key }"
-                @click="activeMetric = metric.key"
               >
-                <span class="es-kpi-label">{{ metric.label }}</span>
-                <strong>{{ metric.value }}</strong>
-                <small>{{ metric.hint }}</small>
-              </button>
+                <div class="gs-metric-head">
+                  <span class="gs-metric-label">{{ metric.label }}</span>
+                  <span class="gs-metric-unit">{{ metric.unit }}</span>
+                </div>
+                <div class="gs-metric-value">{{ metric.value }}</div>
+                <div class="gs-metric-hint">{{ metric.hint }}</div>
+              </article>
             </div>
-          </div>
+          </section>
 
-          <!-- 产业集群强度 -->
-          <div class="es-panel es-chart-panel">
-            <div class="es-panel-head">
-              <span>产业集群强度</span>
-              <span class="es-panel-note">{{ filteredCompanies.length }} 家</span>
+          <!-- 02 产业集群分布 -->
+          <section class="gs-panel gs-panel-flex">
+            <div class="gs-panel-head">
+              <h2>产业集群分布</h2>
+              <span class="gs-panel-tag">{{ filteredCompanies.length }} 家</span>
             </div>
-            <VChart class="es-chart" :option="industryOption" autoresize />
-          </div>
+            <VChart class="gs-chart" :option="industryOption" autoresize />
+          </section>
 
-          <!-- 重点企业 -->
-          <div class="es-panel es-list-panel">
-            <div class="es-panel-head">
-              <span>重点企业</span>
-              <span class="es-panel-note">点击定位</span>
+          <!-- 03 重点企业名录 -->
+          <section class="gs-panel gs-panel-flex">
+            <div class="gs-panel-head">
+              <h2>重点企业名录</h2>
+              <span class="gs-panel-tag">TOP {{ topCompanies.length }}</span>
             </div>
-            <div class="es-company-list">
-              <button
+            <div class="gs-companies">
+              <div
                 v-for="company in topCompanies"
                 :key="company.id"
-                type="button"
-                class="es-company-row"
+                class="gs-company"
                 :class="{ active: selectedCompany?.id === company.id }"
                 @click="selectCompany(company)"
               >
-                <span class="es-company-rank">{{ company.rank }}</span>
-                <span class="es-company-info">
+                <span class="gs-company-rank">{{ company.rank }}</span>
+                <div class="gs-company-body">
                   <strong>{{ company.company_name }}</strong>
-                  <small>{{ company.chain_name || company.product_type || '未分类' }}</small>
-                </span>
-                <span class="es-score">{{ company.company_score || 68 }}</span>
-              </button>
+                  <small>{{ company.chain_name || company.product_type || '综合服务' }}</small>
+                </div>
+                <div class="gs-company-score">
+                  <span>{{ Math.round(scoreOf(company)) }}</span>
+                  <small>评分</small>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
         </aside>
 
         <!-- 中央地图 -->
-        <section class="es-center">
-          <!-- 地图工具栏 -->
-          <div class="es-map-toolbar">
-            <div class="es-filter-group">
-              <button
-                v-for="item in sourceFilters"
-                :key="item.value"
-                type="button"
-                class="es-filter"
-                :class="{ active: sourceFilter === item.value }"
-                @click="sourceFilter = item.value"
-              >
-                {{ item.label }}
-              </button>
-            </div>
-            <div class="es-filter-group compact">
-              <button
-                v-for="item in densityModes"
-                :key="item.value"
-                type="button"
-                class="es-filter"
-                :class="{ active: densityMode === item.value }"
-                @click="densityMode = item.value"
-              >
-                {{ item.label }}
-              </button>
-            </div>
-          </div>
+        <section class="gs-center">
+          <div class="gs-stage">
+            <div ref="mapContainerRef" class="gs-stage-canvas" />
 
-          <!-- L7 地图容器 -->
-          <div class="es-map-stage">
-            <div ref="mapContainerRef" class="es-map-container" />
-
-            <!-- 地图加载中 -->
-            <div v-if="!mapReady" class="es-map-loading">
-              <span class="es-loader" />
-              <strong>地图加载中</strong>
+            <!-- 地图加载 -->
+            <div v-if="!mapReady" class="gs-stage-loading">
+              <span class="gs-loader" />
+              <span>地图渲染中</span>
             </div>
 
-            <!-- 悬浮统计卡片（左上） -->
-            <Transition name="es-fade">
-              <div v-if="mapReady" class="es-map-stats">
-                <div class="es-stat-card">
-                  <span class="es-stat-label">企业总数</span>
-                  <strong class="es-stat-value">{{ filteredCompanies.length }}</strong>
-                </div>
-                <div class="es-stat-card">
-                  <span class="es-stat-label">上市公司</span>
-                  <strong class="es-stat-value es-stat-listed">{{ listedCount }}</strong>
-                </div>
-                <div class="es-stat-card">
-                  <span class="es-stat-label">本土培育</span>
-                  <strong class="es-stat-value es-stat-native">{{ nativeCount }}</strong>
-                </div>
-                <div class="es-stat-card">
-                  <span class="es-stat-label">招商引资</span>
-                  <strong class="es-stat-value es-stat-attract">{{ attractCount }}</strong>
-                </div>
-              </div>
-            </Transition>
-
-            <!-- 悬浮图例（左下） -->
-            <Transition name="es-fade">
-              <div v-if="mapReady" class="es-map-legend">
-                <span class="es-legend-title">产业分布</span>
-                <div class="es-legend-items">
-                  <span
-                    v-for="item in legendItems"
-                    :key="item.name"
-                    class="es-legend-item"
-                  >
-                    <span class="es-legend-dot" :style="{ background: item.color }" />
-                    {{ item.name }}
-                  </span>
-                </div>
-              </div>
-            </Transition>
-
-            <!-- 悬浮信息条（右下） -->
-            <Transition name="es-fade">
-              <div v-if="mapReady && selectedIndustryLabel" class="es-map-info">
-                <UIcon name="i-lucide-layers" class="size-4" />
-                <span>当前筛选</span>
-                <strong>{{ selectedIndustryLabel }}</strong>
-              </div>
-            </Transition>
-
-            <!-- 企业详情抽屉 -->
-            <Transition name="es-drawer">
-              <aside v-if="selectedCompany" class="es-detail">
-                <button class="es-detail-close" type="button" @click="selectedCompany = null">
-                  <UIcon name="i-lucide-x" class="size-4" />
-                </button>
-                <div class="es-detail-header">
-                  <span class="es-detail-avatar" :style="{ background: industryColor(selectedCompany) }">
-                    {{ selectedCompany.company_name.slice(0, 2) }}
-                  </span>
-                  <div>
-                    <h2>{{ selectedCompany.company_name }}</h2>
-                    <p>{{ selectedCompany.product_type || selectedCompany.company_industry || '企业服务' }}</p>
-                  </div>
-                </div>
-                <div class="es-detail-metrics">
-                  <div>
-                    <small>企业评分</small>
-                    <strong>{{ selectedCompany.company_score || 72 }}</strong>
-                  </div>
-                  <div>
-                    <small>专利</small>
-                    <strong>{{ patentCount(selectedCompany) }}</strong>
-                  </div>
-                  <div>
-                    <small>标准</small>
-                    <strong>{{ standardCount(selectedCompany) }}</strong>
-                  </div>
-                </div>
-                <dl class="es-detail-list">
-                  <div>
-                    <dt>产业链</dt>
-                    <dd>{{ selectedCompany.chain_name || '未分类' }}</dd>
-                  </div>
-                  <div>
-                    <dt>区域</dt>
-                    <dd>{{ selectedCompany.company_city || '武汉市' }} {{ selectedCompany.conpany_district || '' }}</dd>
-                  </div>
-                  <div>
-                    <dt>融资</dt>
-                    <dd>{{ selectedCompany.company_financing_round || '暂无披露' }}</dd>
-                  </div>
-                  <div v-if="selectedCompany.company_registered_capital">
-                    <dt>注册资本</dt>
-                    <dd>{{ selectedCompany.company_registered_capital }}</dd>
-                  </div>
-                  <div v-if="selectedCompany.tag_name">
-                    <dt>来源</dt>
-                    <dd>{{ selectedCompany.tag_name }}</dd>
-                  </div>
-                </dl>
-                <NuxtLink
-                  class="es-detail-link"
-                  :to="{ path: '/company-detail', query: { id: selectedCompany.id } }"
-                  target="_blank"
+            <!-- 左上：园区分布图例 -->
+            <div class="gs-legend">
+              <span class="gs-legend-title">园区分布</span>
+              <div class="gs-legend-items">
+                <span
+                  v-for="item in parkLegend"
+                  :key="item.name"
+                  class="gs-legend-item"
                 >
-                  查看企业档案
-                  <UIcon name="i-lucide-arrow-up-right" class="size-4" />
-                </NuxtLink>
-              </aside>
-            </Transition>
-
-            <!-- 悬浮企业名称提示 -->
-            <Transition name="es-fade">
-              <div
-                v-if="hoveredCompany"
-                class="es-hover-tip"
-              >
-                <strong>{{ hoveredCompany.company_name }}</strong>
-                <span v-if="hoveredCompany.chain_name">{{ hoveredCompany.chain_name }}</span>
+                  <span class="gs-legend-dot" :style="{ background: item.color }" />
+                  {{ item.shortName }} · {{ item.count }}
+                </span>
               </div>
-            </Transition>
+            </div>
+
           </div>
         </section>
 
         <!-- 右栏 -->
-        <aside class="es-col es-right">
-          <!-- 产业筛选 -->
-          <div class="es-panel es-filter-panel">
-            <div class="es-panel-head">
-              <span>产业筛选</span>
-              <button class="es-text-btn" type="button" @click="activeIndustry = 'all'">重置</button>
+        <aside class="gs-col gs-right">
+          <!-- 04 产业结构 -->
+          <section class="gs-panel gs-panel-flex">
+            <div class="gs-panel-head">
+              <h2>产业结构评估</h2>
+              <span class="gs-panel-tag">五维</span>
             </div>
-            <div class="es-industry-tabs">
-              <button
-                v-for="item in industryTabs"
-                :key="item.name"
-                type="button"
-                class="es-industry-tab"
-                :class="{ active: activeIndustry === item.name }"
-                @click="activeIndustry = item.name"
-              >
-                <span class="es-tab-dot" :style="{ background: item.color }" />
-                <strong>{{ item.name }}</strong>
-                <small>{{ item.count }}</small>
-              </button>
-            </div>
-          </div>
+            <VChart class="gs-chart" :option="chainOption" autoresize />
+          </section>
 
-          <!-- 产业链结构雷达 -->
-          <div class="es-panel es-chart-panel">
-            <div class="es-panel-head">
-              <span>产业链结构</span>
-              <span class="es-panel-note">来源联动</span>
+          <!-- 05 来源结构 -->
+          <section class="gs-panel">
+            <div class="gs-panel-head">
+              <h2>企业来源</h2>
             </div>
-            <VChart class="es-chart" :option="chainOption" autoresize />
-          </div>
-
-          <!-- 实时信号 -->
-          <div class="es-panel es-event-panel">
-            <div class="es-panel-head">
-              <span>实时信号</span>
-              <span class="es-live-badge">LIVE</span>
-            </div>
-            <div class="es-events">
-              <button
-                v-for="event in eventStream"
-                :key="event.id"
-                type="button"
-                class="es-event"
-                @click="focusByName(event.company)"
+            <div class="gs-bars">
+              <div
+                v-for="bar in sourceBars"
+                :key="bar.label"
+                class="gs-bar"
               >
-                <span class="es-event-time">{{ event.time }}</span>
-                <div class="es-event-body">
-                  <strong>{{ event.company }}</strong>
-                  <small>{{ event.text }}</small>
+                <div class="gs-bar-info">
+                  <span class="gs-bar-label">{{ bar.label }}</span>
+                  <span class="gs-bar-value">{{ bar.value }} <small>{{ bar.percent }}%</small></span>
                 </div>
-              </button>
+                <div class="gs-bar-track">
+                  <div class="gs-bar-fill" :style="{ width: bar.percent + '%' }" />
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <!-- 06 新闻动态 -->
+          <section class="gs-panel gs-panel-flex">
+            <div class="gs-panel-head">
+              <h2>新闻动态</h2>
+              <span class="gs-panel-tag">{{ newsPanelTag }}</span>
+            </div>
+            <div class="gs-events">
+              <div v-if="newsLoading" class="gs-events-empty">加载新闻中</div>
+              <div v-else-if="!newsList.length" class="gs-events-empty">暂无新闻</div>
+              <template v-else>
+                <a
+                  v-for="item in newsList"
+                  :key="item.id"
+                  class="gs-event gs-event-link"
+                  :href="item.url || undefined"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  @click.prevent="openNews(item)"
+                >
+                  <div class="gs-event-time">
+                    <strong>{{ item.time || '--:--' }}</strong>
+                    <small>{{ formatNewsDate(item.date) }}</small>
+                  </div>
+                  <div class="gs-event-body">
+                    <strong>{{ item.source || '资讯' }}</strong>
+                    <p>{{ item.title }}</p>
+                  </div>
+                </a>
+              </template>
+            </div>
+          </section>
         </aside>
       </main>
 
-      <!-- 加载遮罩 -->
-      <div v-if="loading" class="es-loading">
-        <span class="es-loader" />
-        <strong>加载企业数据</strong>
+      <!-- 底栏 · 数据来源与版权 -->
+      <footer class="gs-footer">
+        <span>数据来源 · 光谷高新区经济信息中心 / 天眼查 / 企查查 / 国家知识产权局</span>
+        <span class="gs-footer-sep" />
+        <span>更新频率 · 每 4 小时</span>
+        <span class="gs-footer-sep" />
+        <span>版本 · 智知云 产业情报中心</span>
+      </footer>
+
+      <!-- 全屏加载 -->
+      <div v-if="loading" class="gs-loading">
+        <span class="gs-loader" />
+        <span>加载企业数据</span>
       </div>
     </div>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import type { CompanyRecord } from '~/types/company'
 import { fetchCompanies } from '~/types/company'
+import { newsRequest } from '~/utils/request'
 
-definePageMeta({ middleware: ['auth'], keepalive: true, ssr: false })
+definePageMeta({ layout: 'blank', middleware: ['auth'], keepalive: true, ssr: false })
 
 type SourceFilter = 'all' | 'listed' | 'native' | 'attract'
-type DensityMode = 'core' | 'all'
 type MetricKey = 'scale' | 'listed' | 'patent' | 'active'
+
+interface NewsItem {
+  id: string
+  title: string
+  source: string
+  date: string
+  time: string
+  url: string
+}
+
+const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
 
 const fallbackCompanies: CompanyRecord[] = [
   makeCompany('武汉光电工程技术研究院', '激光光电', '核心器件', 114.42, 30.505, 88, 0, '本土培育'),
@@ -360,37 +284,24 @@ const loading = ref(false)
 const companies = ref<CompanyRecord[]>(fallbackCompanies)
 const selectedCompany = ref<CompanyRecord | null>(null)
 const sourceFilter = ref<SourceFilter>('all')
-const densityMode = ref<DensityMode>('core')
 const activeIndustry = ref('all')
 const activeMetric = ref<MetricKey>('scale')
-const autoPulse = ref(true)
 const now = ref(new Date())
+const syncStamp = ref(new Date())
+const newsList = ref<NewsItem[]>([])
+const newsLoading = ref(false)
 let clockTimer: ReturnType<typeof setInterval> | null = null
-let cruiseTimer: ReturnType<typeof setInterval> | null = null
-let cruiseIndex = 0
 
 const {
   mapContainerRef,
   mapReady,
-  hoveredCompany,
+  parkLegend,
   initMap,
   updateCompanies,
   highlightCompany,
   flyToCompany,
   destroyMap,
 } = useEnterpriseL7Map()
-
-const sourceFilters: { label: string, value: SourceFilter }[] = [
-  { label: '全部', value: 'all' },
-  { label: '上市', value: 'listed' },
-  { label: '本土', value: 'native' },
-  { label: '招商', value: 'attract' },
-]
-
-const densityModes: { label: string, value: DensityMode }[] = [
-  { label: '核心', value: 'core' },
-  { label: '全量', value: 'all' },
-]
 
 const filteredCompanies = computed(() => companies.value.filter((company) => {
   if (sourceFilter.value === 'listed' && company.company_traded !== 1) return false
@@ -400,14 +311,9 @@ const filteredCompanies = computed(() => companies.value.filter((company) => {
   return true
 }))
 
-const mapCompanies = computed(() => {
-  const list = [...filteredCompanies.value].sort((a, b) => scoreOf(b) - scoreOf(a))
-  return densityMode.value === 'core' ? list.slice(0, 20) : list.slice(0, 80)
-})
-
 const topCompanies = computed(() => [...filteredCompanies.value]
   .sort((a, b) => scoreOf(b) - scoreOf(a))
-  .slice(0, 7)
+  .slice(0, 8)
   .map((company, index) => ({ ...company, rank: String(index + 1).padStart(2, '0') })))
 
 const industryTabs = computed(() => {
@@ -416,77 +322,128 @@ const industryTabs = computed(() => {
     const name = industryName(company)
     counter.set(name, (counter.get(name) || 0) + 1)
   }
-  return [
-    { name: 'all', color: '#68e8d2', count: companies.value.length },
-    ...Array.from(counter, ([name, count]) => ({ name, color: colorForName(name), count })),
-  ]
-})
-
-const legendItems = computed(() => industryTabs.value.filter(t => t.name !== 'all').slice(0, 8))
-
-const metrics = computed(() => {
-  const list = filteredCompanies.value
-  const patent = list.reduce((sum, company) => sum + patentCount(company), 0)
-  const listed = list.filter(company => company.company_traded === 1).length
-  return [
-    { key: 'scale' as const, label: '企业总数', value: list.length.toLocaleString(), hint: '当前筛选范围' },
-    { key: 'listed' as const, label: '上市公司', value: listed.toString(), hint: `${Math.round((listed / Math.max(list.length, 1)) * 100)}% 资本化` },
-    { key: 'patent' as const, label: '知识产权', value: patent.toLocaleString(), hint: '专利总数' },
-    { key: 'active' as const, label: '活跃指数', value: averageScore(list).toString(), hint: '综合评分均值' },
-  ]
+  return Array.from(counter, ([name, count]) => ({ name, color: colorForName(name), count }))
+    .sort((a, b) => b.count - a.count)
 })
 
 const listedCount = computed(() => filteredCompanies.value.filter(c => c.company_traded === 1).length)
 const nativeCount = computed(() => filteredCompanies.value.filter(c => String(c.tag_name || '').includes('本土')).length)
 const attractCount = computed(() => filteredCompanies.value.filter(c => String(c.tag_name || '').includes('招商')).length)
+const totalPatents = computed(() => filteredCompanies.value.reduce((s, c) => s + patentCount(c), 0))
 
-const selectedIndustryLabel = computed(() => activeIndustry.value === 'all' ? '全产业链' : activeIndustry.value)
-const currentDate = computed(() => now.value.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', weekday: 'short' }))
+const metrics = computed(() => {
+  const list = filteredCompanies.value
+  const patents = list.reduce((sum, c) => sum + patentCount(c), 0)
+  const listed = list.filter(c => c.company_traded === 1).length
+  const listedRate = list.length ? Math.round((listed / list.length) * 1000) / 10 : 0
+  return [
+    { key: 'scale' as const, label: '企业总数', unit: '家', value: list.length.toLocaleString(), hint: '当前筛选范围' },
+    { key: 'listed' as const, label: '上市公司', unit: '家', value: listed.toString(), hint: `资本化率 ${listedRate}%` },
+    { key: 'patent' as const, label: '知识产权', unit: '件', value: patents.toLocaleString(), hint: '专利总量' },
+    { key: 'active' as const, label: '综合评分', unit: '分', value: averageScore(list).toString(), hint: '均值口径' },
+  ]
+})
+
+const sourceBars = computed(() => {
+  const total = filteredCompanies.value.length || 1
+  const native = nativeCount.value
+  const attract = attractCount.value
+  const listed = listedCount.value
+  const other = Math.max(0, total - native - attract)
+  return [
+    { label: '本土培育', value: native, percent: Math.round((native / total) * 100) },
+    { label: '招商引资', value: attract, percent: Math.round((attract / total) * 100) },
+    { label: '上市公司', value: listed, percent: Math.round((listed / total) * 100) },
+    { label: '其他类型', value: other, percent: Math.round((other / total) * 100) },
+  ]
+})
+
+const currentDate = computed(() => {
+  const d = now.value
+  return `${d.getFullYear()} 年 ${String(d.getMonth() + 1).padStart(2, '0')} 月 ${String(d.getDate()).padStart(2, '0')} 日`
+})
 const currentTime = computed(() => now.value.toLocaleTimeString('zh-CN', { hour12: false }))
+const weekDay = computed(() => WEEKDAYS[now.value.getDay()])
+const syncTime = computed(() => syncStamp.value.toLocaleTimeString('zh-CN', { hour12: false }).slice(0, 5))
+const reportPeriod = computed(() => {
+  const d = syncStamp.value
+  const q = Math.floor(d.getMonth() / 3) + 1
+  return `${d.getFullYear()}-Q${q}`
+})
 
+// ECharts · 产业集群横条
 const industryOption = computed(() => {
-  const items = industryTabs.value.filter(item => item.name !== 'all').slice(0, 8)
+  const items = industryTabs.value.slice(0, 8)
   return {
     backgroundColor: 'transparent',
-    grid: { left: 8, right: 16, top: 18, bottom: 12, containLabel: true },
-    tooltip: { trigger: 'axis', backgroundColor: '#071114', borderColor: 'rgba(104,232,210,.22)', textStyle: { color: '#d7fff8' } },
+    grid: { left: 10, right: 22, top: 8, bottom: 8, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(198, 164, 100, 0.06)' } },
+      backgroundColor: 'rgba(10, 20, 40, 0.94)',
+      borderColor: 'rgba(198, 164, 100, 0.32)',
+      borderWidth: 1,
+      textStyle: { color: '#f5f2e8', fontSize: 12 },
+    },
     xAxis: { type: 'value', show: false },
     yAxis: {
       type: 'category',
       inverse: true,
-      data: items.map(item => item.name),
+      data: items.map(i => i.name),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#8aa8a4', fontSize: 11 },
+      axisLabel: { color: '#c8cee0', fontSize: 12 },
     },
     series: [{
       type: 'bar',
-      data: items.map(item => ({ value: item.count, itemStyle: { color: item.color } })),
-      barWidth: 10,
+      data: items.map((i, idx) => ({
+        value: i.count,
+        itemStyle: {
+          color: idx === 0
+            ? { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [
+                { offset: 0, color: 'rgba(224, 192, 132, 0.9)' },
+                { offset: 1, color: 'rgba(198, 164, 100, 0.7)' },
+              ] }
+            : 'rgba(200, 206, 224, 0.28)',
+        },
+      })),
+      barWidth: 8,
       showBackground: true,
-      backgroundStyle: { color: 'rgba(255,255,255,.05)', borderRadius: 8 },
-      itemStyle: { borderRadius: 8 },
-      label: { show: true, position: 'right', color: '#e7fff9', fontSize: 11 },
+      backgroundStyle: { color: 'rgba(245, 242, 232, 0.04)' },
+      itemStyle: { borderRadius: [0, 2, 2, 0] },
+      label: {
+        show: true,
+        position: 'right',
+        color: '#f5f2e8',
+        fontSize: 12,
+        fontFamily: 'DIN Alternate, ui-monospace, monospace',
+        formatter: '{c}',
+      },
     }],
   }
 })
 
+// ECharts · 产业结构雷达
 const chainOption = computed(() => {
   const list = filteredCompanies.value
-  const native = list.filter(company => String(company.tag_name || '').includes('本土')).length
-  const attract = list.filter(company => String(company.tag_name || '').includes('招商')).length
-  const listed = list.filter(company => company.company_traded === 1).length
+  const native = list.filter(c => String(c.tag_name || '').includes('本土')).length
+  const attract = list.filter(c => String(c.tag_name || '').includes('招商')).length
+  const listed = list.filter(c => c.company_traded === 1).length
   return {
     backgroundColor: 'transparent',
-    tooltip: { backgroundColor: '#071114', borderColor: 'rgba(104,232,210,.22)', textStyle: { color: '#d7fff8' } },
+    tooltip: {
+      backgroundColor: 'rgba(10, 20, 40, 0.94)',
+      borderColor: 'rgba(198, 164, 100, 0.32)',
+      textStyle: { color: '#f5f2e8', fontSize: 12 },
+    },
     radar: {
-      center: ['50%', '52%'],
+      center: ['50%', '54%'],
       radius: '68%',
       splitNumber: 4,
-      axisName: { color: '#9db8b4', fontSize: 11 },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,.12)' } },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,.1)' } },
-      splitArea: { areaStyle: { color: ['rgba(104,232,210,.03)', 'rgba(255,255,255,.015)'] } },
+      axisName: { color: '#c8cee0', fontSize: 12, padding: [2, 4] },
+      axisLine: { lineStyle: { color: 'rgba(245, 242, 232, 0.12)' } },
+      splitLine: { lineStyle: { color: 'rgba(245, 242, 232, 0.09)' } },
+      splitArea: { areaStyle: { color: ['rgba(198, 164, 100, 0.02)', 'rgba(245, 242, 232, 0.015)'] } },
       indicator: [
         { name: '创新', max: 100 },
         { name: '资本', max: 100 },
@@ -497,6 +454,8 @@ const chainOption = computed(() => {
     },
     series: [{
       type: 'radar',
+      symbol: 'circle',
+      symbolSize: 5,
       data: [{
         value: [
           averageScore(list),
@@ -505,49 +464,93 @@ const chainOption = computed(() => {
           Math.min(100, native * 10 + 36),
           Math.min(100, list.length * 3 + 42),
         ],
-        areaStyle: { color: 'rgba(104,232,210,.2)' },
-        lineStyle: { color: '#68e8d2', width: 2 },
-        itemStyle: { color: '#68e8d2' },
+        areaStyle: { color: 'rgba(198, 164, 100, 0.14)' },
+        lineStyle: { color: '#e0c084', width: 1.4 },
+        itemStyle: { color: '#e0c084', borderColor: '#f5f2e8', borderWidth: 1 },
       }],
     }],
   }
 })
 
-const eventStream = computed(() => topCompanies.value.slice(0, 5).map((company, index) => ({
-  id: `${company.id}-${index}`,
-  time: ['09:42', '10:16', '11:08', '14:22', '15:35'][index] || '16:00',
-  company: company.company_name,
-  text: [
-    '产业链关系已更新',
-    '知识产权指标上升',
-    '企业画像完成校准',
-    '招商匹配度进入高优先级',
-    '空间聚集热度提升',
-  ][index] || '数据完成同步',
-})))
+const newsPanelTag = computed(() => {
+  if (newsLoading.value) return '加载中'
+  if (!newsList.value.length) return '暂无数据'
+  return `最新 ${newsList.value.length} 条`
+})
+
+function parseNewsDateParts(isoTime: string): { date: string, time: string } {
+  if (!isoTime) return { date: '', time: '' }
+  const cnMatch = isoTime.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/)
+  if (cnMatch) return { date: cnMatch[1], time: cnMatch[2] }
+  const d = new Date(isoTime)
+  if (Number.isNaN(d.getTime())) return { date: '', time: '' }
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return { date: `${y}-${m}-${day}`, time: `${h}:${min}` }
+}
+
+function mapNewsItem(item: Record<string, unknown>): NewsItem {
+  const { date, time } = parseNewsDateParts(String(item.publish_time || ''))
+  return {
+    id: String(item.id ?? ''),
+    title: String(item.title || ''),
+    source: String(item.source || ''),
+    date,
+    time,
+    url: String(item.url || ''),
+  }
+}
+
+function formatNewsDate(dateStr: string) {
+  if (!dateStr) return '--'
+  const [, month, day] = dateStr.split('-')
+  return `${month}-${day}`
+}
+
+function openNews(item: NewsItem) {
+  if (!item.url) return
+  window.open(item.url, '_blank', 'noopener,noreferrer')
+}
+
+async function loadNews() {
+  newsLoading.value = true
+  try {
+    const res = await newsRequest.get('/news/list', {
+      params: {
+        page: 1,
+        page_size: 8,
+        sort_by: 'publish_time',
+        sort_order: 'desc',
+      },
+    })
+    if (res.data?.code === 0) {
+      newsList.value = (res.data.data?.items || []).map(mapNewsItem)
+    } else {
+      newsList.value = []
+    }
+  } catch (e) {
+    console.error('获取新闻列表失败:', e)
+    newsList.value = []
+  } finally {
+    newsLoading.value = false
+  }
+}
 
 function selectCompany(company: CompanyRecord) {
   selectedCompany.value = company
-  activeIndustry.value = industryName(company)
   highlightCompany(company)
   flyToCompany(company)
-}
-
-function focusByName(name: string) {
-  const hit = companies.value.find(company => company.company_name === name)
-  if (hit) selectCompany(hit)
 }
 
 function industryName(company: CompanyRecord) {
   return clean(company.chain_name) || clean(company.product_type) || clean(company.company_industry) || '综合服务'
 }
 
-function industryColor(company: CompanyRecord) {
-  return colorForName(industryName(company))
-}
-
 function colorForName(name: string) {
-  const palette = ['#68e8d2', '#7dd3fc', '#f2c46d', '#f48fb1', '#a7f070', '#89a7ff', '#ff9f68', '#b6f3ff']
+  const palette = ['#c6a464', '#e0c084', '#b7935a', '#8fa4c4', '#a86b56', '#6e8bb0', '#c9b98a', '#7d92a8']
   let hash = 0
   for (const char of name) hash = (hash + char.charCodeAt(0)) % palette.length
   return palette[hash]
@@ -559,7 +562,7 @@ function scoreOf(company: CompanyRecord) {
 
 function averageScore(list: CompanyRecord[]) {
   if (!list.length) return 0
-  return Math.round(list.reduce((sum, company) => sum + scoreOf(company), 0) / list.length)
+  return Math.round(list.reduce((sum, c) => sum + scoreOf(c), 0) / list.length)
 }
 
 function patentCount(company: CompanyRecord) {
@@ -647,7 +650,8 @@ async function loadCompanies() {
     const res = await fetchCompanies(1, 300)
     const list = res.data?.list || []
     companies.value = list.length ? list.map(normalizeCompany) : fallbackCompanies
-    selectedCompany.value = companies.value.find(company => company.company_traded === 1) || companies.value[0] || null
+    selectedCompany.value = companies.value.find(c => c.company_traded === 1) || companies.value[0] || null
+    syncStamp.value = new Date()
   } catch {
     companies.value = fallbackCompanies
     selectedCompany.value = fallbackCompanies[1]
@@ -656,991 +660,785 @@ async function loadCompanies() {
   }
 }
 
-// 监听筛选变化，更新地图
 watch([filteredCompanies, mapReady], () => {
   if (mapReady.value) {
-    updateCompanies(
-      mapCompanies.value,
-      selectCompany,
-      (c) => { hoveredCompany.value = c },
-    )
+    updateCompanies(filteredCompanies.value)
   }
 })
 
-// 自动巡航
-watch(autoPulse, (active) => {
-  if (active) {
-    cruiseTimer = setInterval(() => {
-      const list = topCompanies.value
-      if (!list.length) return
-      cruiseIndex = (cruiseIndex + 1) % list.length
-      selectCompany(list[cruiseIndex])
-    }, 4000)
-  } else {
-    if (cruiseTimer) clearInterval(cruiseTimer)
-    cruiseTimer = null
-  }
-}, { immediate: true })
-
 onMounted(async () => {
-  await loadCompanies()
-  initMap(mapCompanies.value, selectCompany, (c) => { hoveredCompany.value = c })
+  await Promise.all([loadCompanies(), loadNews()])
+  await nextTick()
+  initMap(filteredCompanies.value)
   clockTimer = setInterval(() => { now.value = new Date() }, 1000)
 })
 
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
-  if (cruiseTimer) clearInterval(cruiseTimer)
   destroyMap()
 })
 </script>
 
 <style scoped>
-.es-screen {
-  position: relative;
-  min-height: calc(100dvh - 112px);
+/* ============================================================
+   政务藏青金 · 智知云 产业情报大屏
+   Palette:  #0a1428 深藏青 / #c6a464 冷金 / #f5f2e8 象牙 / #c25a5a 备红
+   ============================================================ */
+.gs-screen {
+  --gs-bg-deep: #060d1c;
+  --gs-bg: #0a1428;
+  --gs-bg-elev: #0e1a34;
+  --gs-panel: rgba(14, 26, 52, 0.72);
+  --gs-panel-solid: #10203f;
+  --gs-hair: rgba(200, 206, 224, 0.09);
+  --gs-hair-strong: rgba(200, 206, 224, 0.18);
+  --gs-gold: #c6a464;
+  --gs-gold-soft: #e0c084;
+  --gs-gold-line: rgba(198, 164, 100, 0.42);
+  --gs-crimson: #c25a5a;
+  --gs-text-strong: #f5f2e8;
+  --gs-text: #c8cee0;
+  --gs-text-mute: #7a8299;
+  --gs-text-dim: #5b647c;
+  --gs-mono: 'DIN Alternate', 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
+
+  position: fixed;
+  inset: 0;
   overflow: hidden;
-  padding: 16px;
-  color: #d7fff8;
-  background: #040809;
+  color: var(--gs-text);
+  background: var(--gs-bg-deep);
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+  font-feature-settings: 'tnum';
+  display: grid;
+  grid-template-rows: 96px 1fr 32px;
+  padding: 18px 22px 6px;
 }
 
-.es-bg-grid {
+/* ============ 背景 ============ */
+.gs-bg {
   position: absolute;
   inset: 0;
-  opacity: 0.25;
   pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(198, 164, 100, 0.09), transparent 45%),
+    radial-gradient(ellipse at 15% 100%, rgba(30, 60, 120, 0.18), transparent 55%),
+    radial-gradient(ellipse at 85% 100%, rgba(30, 60, 120, 0.14), transparent 55%),
+    linear-gradient(180deg, #060d1c 0%, #0a1428 50%, #060d1c 100%);
+}
+
+.gs-bg-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.32;
   background-image:
-    linear-gradient(rgba(104, 232, 210, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(104, 232, 210, 0.06) 1px, transparent 1px);
-  background-size: 48px 48px;
+    linear-gradient(rgba(198, 164, 100, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(198, 164, 100, 0.028) 1px, transparent 1px);
+  background-size: 56px 56px;
   mask-image: radial-gradient(ellipse at center, black 0%, transparent 78%);
 }
 
-.es-bg-glow {
+.gs-bg-vignette {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 48% 42%, rgba(104, 232, 210, 0.1), transparent 36%),
-    radial-gradient(circle at 82% 78%, rgba(242, 196, 109, 0.06), transparent 28%);
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
 }
 
-.es-header,
-.es-body,
-.es-loading {
+/* ============ 四角装饰印章 ============ */
+.gs-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--gs-gold);
+  opacity: 0.55;
+  z-index: 3;
+}
+.gs-corner-tl { top: 10px; left: 12px; border-right: 0; border-bottom: 0; }
+.gs-corner-tr { top: 10px; right: 12px; border-left: 0; border-bottom: 0; }
+.gs-corner-bl { bottom: 10px; left: 12px; border-right: 0; border-top: 0; }
+.gs-corner-br { bottom: 10px; right: 12px; border-left: 0; border-top: 0; }
+
+/* ============ 顶部标题栏 ============ */
+.gs-header {
   position: relative;
-  z-index: 1;
-}
-
-/* ============================
-   顶部标题栏
-   ============================ */
-.es-header {
-  display: flex;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto minmax(260px, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 24px;
-  height: 68px;
-  padding: 0 4px 14px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--gs-hair);
 }
 
-.es-brand {
+.gs-header-left {
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
-.es-brand-mark {
-  display: grid;
+.gs-seal {
   width: 44px;
   height: 44px;
-  place-items: center;
-  color: #041111;
-  background: linear-gradient(135deg, #68e8d2, #f2c46d);
-  border-radius: 12px;
-  box-shadow: 0 0 28px rgba(104, 232, 210, 0.24);
-}
-
-.es-kicker {
-  margin: 0 0 3px;
-  color: #7d9994;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-}
-
-.es-brand h1 {
-  margin: 0;
-  font-size: clamp(20px, 2.4vw, 32px);
-  line-height: 1;
-  color: #f2fffc;
-}
-
-.es-header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.es-clock {
-  min-width: 140px;
-  padding: 8px 14px;
-  border: 1px solid rgba(104, 232, 210, 0.16);
-  border-radius: 12px;
-  background: rgba(5, 17, 18, 0.6);
-  text-align: right;
-}
-
-.es-clock span {
-  display: block;
-  color: #74928c;
-  font-size: 11px;
-}
-
-.es-clock strong {
-  display: block;
-  color: #f2fffc;
-  font-size: 16px;
-  line-height: 1.1;
-}
-
-.es-cruise-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 14px;
-  color: #061311;
-  border: 0;
-  border-radius: 12px;
-  background: #68e8d2;
-  font-weight: 800;
-  font-size: 12px;
-  cursor: pointer;
-  transition: filter 0.15s;
-}
-
-.es-cruise-btn:hover {
-  filter: brightness(1.1);
-}
-
-.es-cruise-btn.active {
-  background: linear-gradient(135deg, #68e8d2, #f2c46d);
-}
-
-/* ============================
-   主体三栏
-   ============================ */
-.es-body {
-  display: grid;
-  grid-template-columns: minmax(250px, 0.72fr) minmax(480px, 1.5fr) minmax(260px, 0.76fr);
-  gap: 14px;
-  min-height: calc(100dvh - 180px);
-}
-
-.es-col {
-  display: grid;
-  gap: 14px;
-  min-width: 0;
-}
-
-.es-left {
-  grid-template-rows: auto minmax(190px, 1fr) minmax(220px, 1.1fr);
-}
-
-.es-right {
-  grid-template-rows: auto minmax(190px, 1fr) minmax(220px, 1.1fr);
-}
-
-/* ============================
-   面板通用
-   ============================ */
-.es-panel {
-  min-width: 0;
-  border: 1px solid rgba(104, 232, 210, 0.14);
-  border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
-    rgba(6, 18, 20, 0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 40px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(16px);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.es-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  height: 40px;
-  padding: 0 12px;
-  border-bottom: 1px solid rgba(104, 232, 210, 0.1);
-  color: #f3fffc;
-  font-size: 13px;
-  font-weight: 800;
+  color: var(--gs-gold);
   flex-shrink: 0;
 }
-
-.es-panel-note {
-  color: #789690;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.es-icon-btn,
-.es-text-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: 0;
-  background: transparent;
-  color: #9bb8b3;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.es-icon-btn {
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  border-radius: 8px;
-}
-
-.es-icon-btn:hover,
-.es-text-btn:hover {
-  color: #68e8d2;
-}
-
-/* ============================
-   KPI 指标
-   ============================ */
-.es-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  padding: 12px;
-}
-
-.es-kpi {
-  min-height: 80px;
-  padding: 12px;
-  text-align: left;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  color: #d7fff8;
-  background: rgba(255, 255, 255, 0.03);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.es-kpi:hover,
-.es-kpi.active {
-  border-color: rgba(104, 232, 210, 0.4);
-  background: rgba(104, 232, 210, 0.07);
-}
-
-.es-kpi-label {
-  display: block;
-  color: #7c9993;
-  font-size: 11px;
-}
-
-.es-kpi strong {
-  display: block;
-  margin: 6px 0 2px;
-  color: #f5fffc;
-  font-size: 24px;
-  line-height: 1;
-}
-
-.es-kpi small {
-  display: block;
-  color: #789690;
-  font-size: 10px;
-}
-
-/* ============================
-   图表
-   ============================ */
-.es-chart-panel {
-  min-height: 0;
-}
-
-.es-chart {
-  flex: 1;
-  min-height: 160px;
-}
-
-/* ============================
-   企业列表
-   ============================ */
-.es-list-panel,
-.es-event-panel {
-  min-height: 0;
-}
-
-.es-company-list,
-.es-events {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.es-company-list::-webkit-scrollbar,
-.es-events::-webkit-scrollbar,
-.es-industry-tabs::-webkit-scrollbar {
-  width: 3px;
-}
-
-.es-company-list::-webkit-scrollbar-thumb,
-.es-events::-webkit-scrollbar-thumb,
-.es-industry-tabs::-webkit-scrollbar-thumb {
-  background: rgba(104, 232, 210, 0.2);
-  border-radius: 2px;
-}
-
-.es-company-row {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 38px;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  color: #d7fff8;
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
-}
-
-.es-company-row + .company-row {
-  margin-top: 4px;
-}
-
-.es-company-row:hover,
-.es-company-row.active {
-  border-color: rgba(104, 232, 210, 0.24);
-  background: rgba(104, 232, 210, 0.06);
-}
-
-.es-company-rank {
-  color: #f2c46d;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.es-company-info {
-  min-width: 0;
-}
-
-.es-company-info strong {
-  display: block;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.es-company-info small {
-  display: block;
-  color: #789690;
-  font-size: 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.es-score {
-  display: grid;
-  height: 28px;
-  place-items: center;
-  color: #061311;
-  background: #68e8d2;
-  border-radius: 8px;
-  font-weight: 900;
-  font-size: 12px;
-}
-
-/* ============================
-   中央地图区
-   ============================ */
-.es-center {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.es-map-toolbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.es-filter-group {
-  display: flex;
-  gap: 6px;
-  padding: 5px;
-  border: 1px solid rgba(104, 232, 210, 0.12);
-  border-radius: 12px;
-  background: rgba(6, 18, 20, 0.7);
-}
-
-.es-filter {
-  height: 30px;
-  padding: 0 12px;
-  color: #8aa8a4;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: color 0.12s, background 0.12s;
-}
-
-.es-filter.active,
-.es-filter:hover {
-  color: #061311;
-  background: #68e8d2;
-}
-
-.es-map-stage {
-  position: relative;
-  flex: 1;
-  min-height: 520px;
-  border: 1px solid rgba(104, 232, 210, 0.16);
-  border-radius: 16px;
-  overflow: hidden;
-  background: #060d10;
-  box-shadow: inset 0 0 80px rgba(104, 232, 210, 0.04), 0 16px 56px rgba(0, 0, 0, 0.32);
-}
-
-.es-map-container {
+.gs-seal-svg {
   width: 100%;
   height: 100%;
 }
 
-.es-map-container :deep(canvas) {
-  outline: none;
-}
-
-/* 地图加载中 */
-.es-map-loading {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(4, 8, 9, 0.85);
-  z-index: 10;
-}
-
-.es-map-loading strong {
-  margin-top: 50px;
-  color: #d7fff8;
-  font-size: 13px;
-}
-
-.es-loader {
-  position: absolute;
-  width: 40px;
-  height: 40px;
-  border: 2px solid rgba(104, 232, 210, 0.16);
-  border-top-color: #68e8d2;
-  border-radius: 50%;
-  animation: es-spin 0.8s linear infinite;
-}
-
-/* ============================
-   地图悬浮卡片
-   ============================ */
-.es-map-stats {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  max-width: 280px;
-}
-
-.es-stat-card {
-  padding: 10px 14px;
-  border: 1px solid rgba(104, 232, 210, 0.14);
-  border-radius: 10px;
-  background: rgba(5, 17, 18, 0.78);
-  backdrop-filter: blur(14px);
-}
-
-.es-stat-label {
-  display: block;
-  color: #789690;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.es-stat-value {
-  display: block;
-  margin-top: 4px;
-  color: #f5fffc;
-  font-size: 22px;
-  line-height: 1;
-}
-
-.es-stat-listed { color: #f2c46d; }
-.es-stat-native { color: #68e8d2; }
-.es-stat-attract { color: #f48fb1; }
-
-/* 图例 */
-.es-map-legend {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  z-index: 5;
-  padding: 10px 14px;
-  border: 1px solid rgba(104, 232, 210, 0.14);
-  border-radius: 10px;
-  background: rgba(5, 17, 18, 0.78);
-  backdrop-filter: blur(14px);
-  max-width: 320px;
-}
-
-.es-legend-title {
-  display: block;
-  color: #789690;
-  font-size: 10px;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.es-legend-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-}
-
-.es-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #ccece6;
-  font-size: 11px;
-}
-
-.es-legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-/* 信息条 */
-.es-map-info {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border: 1px solid rgba(104, 232, 210, 0.14);
-  border-radius: 10px;
-  background: rgba(5, 17, 18, 0.78);
-  backdrop-filter: blur(14px);
-  color: #789690;
-  font-size: 11px;
-}
-
-.es-map-info strong {
-  color: #68e8d2;
-  font-size: 13px;
-}
-
-/* 悬浮提示 */
-.es-hover-tip {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 8;
+.gs-header-title {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 14px;
-  border: 1px solid rgba(242, 196, 109, 0.3);
-  border-radius: 10px;
-  background: rgba(5, 17, 18, 0.9);
-  backdrop-filter: blur(14px);
-  max-width: 260px;
 }
-
-.es-hover-tip strong {
-  color: #f2c46d;
-  font-size: 12px;
-}
-
-.es-hover-tip span {
-  color: #789690;
-  font-size: 11px;
-}
-
-/* ============================
-   企业详情抽屉
-   ============================ */
-.es-detail {
-  position: absolute;
-  right: 16px;
-  top: 72px;
-  z-index: 7;
-  width: min(320px, calc(100% - 32px));
-  border: 1px solid rgba(104, 232, 210, 0.2);
-  border-radius: 14px;
-  background: rgba(5, 17, 18, 0.88);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(20px);
-  padding: 16px;
-}
-
-.es-detail-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  color: #9bb8b3;
-  border: 0;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  cursor: pointer;
-}
-
-.es-detail-close:hover {
-  color: #68e8d2;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.es-detail-header {
-  display: flex;
-  gap: 10px;
-  padding-right: 24px;
-  margin-bottom: 14px;
-}
-
-.es-detail-avatar {
-  display: grid;
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
-  place-items: center;
-  color: #061311;
-  border-radius: 12px;
-  font-weight: 900;
-  font-size: 13px;
-}
-
-.es-detail-header h2 {
+.gs-header-org {
   margin: 0;
-  color: #f5fffc;
-  font-size: 16px;
-  line-height: 1.25;
+  color: var(--gs-text-strong);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
-
-.es-detail-header p {
-  margin: 4px 0 0;
-  color: #86a39d;
-  font-size: 11px;
-}
-
-.es-detail-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  margin-bottom: 14px;
-}
-
-.es-detail-metrics div {
-  padding: 8px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  text-align: center;
-}
-
-.es-detail-metrics small {
-  display: block;
-  color: #789690;
+.gs-header-eng {
+  margin: 0;
+  color: var(--gs-text-dim);
   font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  font-family: var(--gs-mono);
 }
 
-.es-detail-metrics strong {
-  display: block;
-  color: #68e8d2;
-  font-size: 20px;
-  margin-top: 2px;
-}
-
-.es-detail-list {
-  display: grid;
+.gs-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
-  margin: 0 0 14px;
+  min-width: 0;
 }
-
-.es-detail-list div {
-  display: grid;
-  grid-template-columns: 60px minmax(0, 1fr);
-  gap: 8px;
+.gs-title-line {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--gs-gold-line) 20%, var(--gs-gold) 50%, var(--gs-gold-line) 80%, transparent 100%);
 }
-
-.es-detail-list dt {
-  color: #789690;
-  font-size: 11px;
-}
-
-.es-detail-list dd {
+.gs-title {
   margin: 0;
-  color: #e2fff9;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--gs-text-strong);
+  font-size: clamp(22px, 2.4vw, 32px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
+  text-shadow: 0 0 24px rgba(198, 164, 100, 0.18);
 }
-
-.es-detail-link {
+.gs-title-sub {
+  margin: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+  color: var(--gs-text-mute);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.gs-title-sep {
+  width: 3px;
+  height: 3px;
+  background: var(--gs-gold);
+  opacity: 0.7;
+  transform: rotate(45deg);
+}
+.gs-title-value {
+  color: var(--gs-gold-soft);
+  font-family: var(--gs-mono);
+  font-weight: 600;
+  padding: 0 2px;
+}
+
+.gs-header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.gs-clock {
+  text-align: right;
+  min-width: 156px;
+}
+.gs-clock-time {
+  color: var(--gs-text-strong);
+  font-family: var(--gs-mono);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.gs-clock-date {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  height: 38px;
-  color: #061311;
-  text-decoration: none;
-  border-radius: 11px;
-  background: #68e8d2;
-  font-weight: 800;
-  font-size: 13px;
-  transition: filter 0.15s;
+  color: var(--gs-text-mute);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+.gs-sep-dot {
+  width: 3px;
+  height: 3px;
+  background: var(--gs-text-dim);
+  border-radius: 50%;
 }
 
-.es-detail-link:hover {
-  filter: brightness(1.1);
+.gs-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--gs-hair-strong);
+  color: var(--gs-text-mute);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.gs-sync strong {
+  color: var(--gs-gold-soft);
+  font-family: var(--gs-mono);
+  font-weight: 600;
+  margin-left: 4px;
+}
+.gs-sync-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--gs-gold);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--gs-gold);
 }
 
-/* ============================
-   产业筛选 tabs
-   ============================ */
-.es-filter-panel {
+/* ============ 主体三栏 ============ */
+.gs-body {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(300px, 22%) 1fr minmax(300px, 22%);
+  gap: 18px;
+  min-height: 0;
+  padding: 18px 4px 4px;
+}
+
+.gs-col {
+  display: grid;
+  gap: 16px;
+  min-height: 0;
+  min-width: 0;
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1.15fr);
+}
+
+/* ============ 面板通用 ============ */
+.gs-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--gs-hair);
+  background:
+    linear-gradient(180deg, rgba(198, 164, 100, 0.025) 0%, transparent 30%),
+    var(--gs-panel);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+}
+
+.gs-panel::before,
+.gs-panel::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--gs-gold);
+  opacity: 0.7;
+}
+.gs-panel::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.gs-panel::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+.gs-panel-flex {
+  flex: 1;
   min-height: 0;
 }
 
-.es-industry-tabs {
-  display: grid;
-  gap: 6px;
-  padding: 8px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.es-industry-tab {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  color: #ccece6;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
-}
-
-.es-industry-tab:hover,
-.es-industry-tab.active {
-  border-color: rgba(104, 232, 210, 0.28);
-  background: rgba(104, 232, 210, 0.07);
-}
-
-.es-tab-dot {
-  width: 6px;
-  height: 24px;
-  border-radius: 4px;
-}
-
-.es-industry-tab strong {
-  min-width: 0;
-  text-align: left;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.es-industry-tab small {
-  color: #f2c46d;
-  font-weight: 900;
-  font-size: 11px;
-}
-
-/* ============================
-   实时信号
-   ============================ */
-.es-live-badge {
-  color: #061311;
-  background: #f2c46d;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 10px;
-  font-weight: 900;
-}
-
-.es-event {
+.gs-panel-head {
   display: flex;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  color: #d7fff8;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.12s, background 0.12s;
-}
-
-.es-event:hover {
-  border-color: rgba(104, 232, 210, 0.24);
-  background: rgba(104, 232, 210, 0.06);
-}
-
-.es-event-time {
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--gs-hair);
   flex-shrink: 0;
-  color: #f2c46d;
+}
+.gs-panel-idx {
+  color: var(--gs-gold);
+  font-family: var(--gs-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.gs-panel-head h2 {
+  margin: 0;
+  color: var(--gs-text-strong);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+.gs-panel-tag {
+  margin-left: auto;
+  color: var(--gs-text-dim);
   font-size: 11px;
-  font-weight: 900;
-  padding-top: 2px;
+  letter-spacing: 0.06em;
+  font-family: var(--gs-mono);
 }
 
-.es-event-body {
-  min-width: 0;
+/* ============ 01 · 核心指标 ============ */
+.gs-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--gs-hair);
+  padding: 1px;
 }
-
-.es-event-body strong {
-  display: block;
-  color: #f3fffc;
+.gs-metric {
+  padding: 14px 16px 12px;
+  background: var(--gs-panel-solid);
+  transition: background 0.4s ease;
+  position: relative;
+}
+.gs-metric.active {
+  background: linear-gradient(180deg, rgba(198, 164, 100, 0.12) 0%, var(--gs-panel-solid) 100%);
+}
+.gs-metric.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--gs-gold);
+}
+.gs-metric-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.gs-metric-label {
+  color: var(--gs-text-mute);
   font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  letter-spacing: 0.08em;
 }
-
-.es-event-body small {
-  display: block;
-  color: #7e9b95;
+.gs-metric-unit {
+  color: var(--gs-text-dim);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.gs-metric-value {
+  color: var(--gs-text-strong);
+  font-family: var(--gs-mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+.gs-metric.active .gs-metric-value {
+  color: var(--gs-gold-soft);
+  text-shadow: 0 0 20px rgba(224, 192, 132, 0.4);
+}
+.gs-metric-hint {
+  margin-top: 6px;
+  color: var(--gs-text-dim);
   font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+/* ============ 02 · 图表通用 ============ */
+.gs-chart {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 10px 6px 8px;
+}
+
+/* ============ 03 · 企业名录 ============ */
+.gs-companies {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 8px 8px;
+}
+.gs-company {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--gs-hair);
+  transition: background 0.3s ease;
+  cursor: pointer;
+}
+.gs-company:hover {
+  background: rgba(198, 164, 100, 0.05);
+}
+.gs-company:last-child { border-bottom: 0; }
+.gs-company.active {
+  background: linear-gradient(90deg, rgba(198, 164, 100, 0.14) 0%, transparent 100%);
+}
+.gs-company-rank {
+  color: var(--gs-gold);
+  font-family: var(--gs-mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.gs-company.active .gs-company-rank {
+  color: var(--gs-gold-soft);
+}
+.gs-company-body { min-width: 0; }
+.gs-company-body strong {
+  display: block;
+  color: var(--gs-text-strong);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.gs-company-body small {
+  display: block;
+  margin-top: 2px;
+  color: var(--gs-text-dim);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gs-company-score {
+  text-align: right;
+  border-left: 1px solid var(--gs-hair);
+  padding-left: 10px;
+}
+.gs-company-score span {
+  display: block;
+  color: var(--gs-gold-soft);
+  font-family: var(--gs-mono);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+}
+.gs-company-score small {
+  display: block;
+  margin-top: 2px;
+  color: var(--gs-text-dim);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
 
-/* ============================
-   加载遮罩
-   ============================ */
-.es-loading {
+/* ============ 中央地图 ============ */
+.gs-center {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+/* 地图舞台 */
+.gs-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  border: 1px solid var(--gs-hair-strong);
+  overflow: hidden;
+  background: #050a14;
+}
+.gs-stage::before,
+.gs-stage::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--gs-gold);
+  z-index: 4;
+  pointer-events: none;
+}
+.gs-stage::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.gs-stage::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+.gs-stage-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.gs-stage-canvas :deep(canvas) {
+  outline: none;
+}
+.gs-stage-canvas :deep(.amap-logo),
+.gs-stage-canvas :deep(.amap-copyright) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.gs-stage-loading {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(3, 8, 9, 0.7);
+  color: var(--gs-text-mute);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  background: rgba(6, 13, 28, 0.86);
+  z-index: 10;
+  gap: 12px;
+}
+.gs-stage-loading span:last-child {
+  margin-top: 54px;
+}
+
+.gs-loader {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid rgba(198, 164, 100, 0.16);
+  border-top-color: var(--gs-gold);
+  border-radius: 50%;
+  animation: gs-spin 1s linear infinite;
+}
+
+/* 左上：园区分布图例 */
+.gs-legend {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  padding: 7px 10px;
+  border: 1px solid var(--gs-hair-strong);
+  background: rgba(6, 13, 28, 0.82);
   backdrop-filter: blur(10px);
+  max-width: 168px;
+}
+.gs-legend-title {
+  display: block;
+  color: var(--gs-text-dim);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  margin-bottom: 5px;
+  font-family: var(--gs-mono);
+}
+.gs-legend-items {
+  display: grid;
+  gap: 3px;
+}
+.gs-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gs-text);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.gs-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ============ 05 · 来源结构条 ============ */
+.gs-bars {
+  padding: 14px 16px 14px;
+  display: grid;
+  gap: 14px;
+}
+.gs-bar-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.gs-bar-label {
+  color: var(--gs-text);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.gs-bar-value {
+  color: var(--gs-text-strong);
+  font-family: var(--gs-mono);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.gs-bar-value small {
+  color: var(--gs-gold-soft);
+  font-size: 11px;
+  margin-left: 4px;
+}
+.gs-bar-track {
+  height: 4px;
+  background: var(--gs-hair);
+  overflow: hidden;
+}
+.gs-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gs-gold) 0%, var(--gs-gold-soft) 100%);
+  transition: width 0.6s ease;
+}
+
+/* ============ 06 · 新闻动态 ============ */
+.gs-events {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 12px 12px;
+}
+.gs-events-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--gs-text-dim);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.gs-event {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  padding: 10px 4px 10px 8px;
+  border-bottom: 1px solid var(--gs-hair);
+  align-items: flex-start;
+}
+.gs-event:last-child { border-bottom: 0; }
+.gs-event-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.gs-event-link:hover {
+  background: rgba(198, 164, 100, 0.04);
+}
+.gs-event-time {
+  border-right: 1px solid var(--gs-gold-line);
+  padding-right: 8px;
+  text-align: right;
+}
+.gs-event-time strong {
+  display: block;
+  color: var(--gs-gold-soft);
+  font-family: var(--gs-mono);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+.gs-event-time small {
+  display: block;
+  margin-top: 3px;
+  color: var(--gs-text-dim);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  font-family: var(--gs-mono);
+}
+.gs-event-body strong {
+  display: block;
+  color: var(--gs-text-strong);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.gs-event-body p {
+  margin: 4px 0 0;
+  color: var(--gs-text-mute);
+  font-size: 11px;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+}
+
+/* ============ 底栏 ============ */
+.gs-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  height: 32px;
+  padding: 0 24px;
+  color: var(--gs-text-dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  border-top: 1px solid var(--gs-hair);
+}
+.gs-footer-sep {
+  width: 3px;
+  height: 3px;
+  background: var(--gs-gold);
+  opacity: 0.6;
+  transform: rotate(45deg);
+}
+
+/* ============ 加载遮罩 ============ */
+.gs-loading {
+  position: fixed;
+  inset: 0;
   z-index: 100;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  color: var(--gs-text-mute);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  background: rgba(6, 13, 28, 0.9);
+  backdrop-filter: blur(8px);
+}
+.gs-loading span:last-child {
+  margin-top: 52px;
 }
 
-.es-loading strong {
-  margin-top: 50px;
-  color: #d7fff8;
+/* ============ 滚动条 ============ */
+.gs-companies::-webkit-scrollbar,
+.gs-events::-webkit-scrollbar { width: 3px; }
+.gs-companies::-webkit-scrollbar-thumb,
+.gs-events::-webkit-scrollbar-thumb {
+  background: var(--gs-gold-line);
 }
 
-/* ============================
-   动画
-   ============================ */
-@keyframes es-spin {
-  to { transform: rotate(360deg); }
+/* ============ 动画 ============ */
+@keyframes gs-spin { to { transform: rotate(360deg); } }
+
+/* ============ 响应式（大屏 ≥ 1440px 为设计基准） ============ */
+@media (max-width: 1400px) {
+  .gs-title { font-size: 24px; }
+  .gs-metric-value { font-size: 24px; }
+  .gs-body { grid-template-columns: minmax(280px, 24%) 1fr minmax(280px, 24%); gap: 14px; }
 }
 
-.es-drawer-enter-active,
-.es-drawer-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.es-drawer-enter-from,
-.es-drawer-leave-to {
-  opacity: 0;
-  transform: translateX(16px);
-}
-
-.es-fade-enter-active,
-.es-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.es-fade-enter-from,
-.es-fade-leave-to {
-  opacity: 0;
-}
-
-/* ============================
-   响应式
-   ============================ */
 @media (max-width: 1180px) {
-  .es-body {
-    grid-template-columns: 1fr;
-  }
-
-  .es-left,
-  .es-right {
-    grid-template-rows: none;
-  }
-
-  .es-map-stage {
-    min-height: 580px;
-  }
+  .gs-screen { padding: 12px 14px 4px; grid-template-rows: 96px 1fr 32px; }
+  .gs-body { grid-template-columns: 1fr; padding: 12px 0; }
+  .gs-col { grid-template-rows: none; }
+  .gs-stage { min-height: 460px; }
+  .gs-header { grid-template-columns: auto 1fr auto; gap: 12px; }
+  .gs-header-center { gap: 4px; }
+  .gs-title { font-size: 20px; white-space: normal; }
 }
 
 @media (max-width: 720px) {
-  .es-screen {
-    padding: 10px;
-  }
-
-  .es-header {
-    height: auto;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .es-map-toolbar {
-    flex-direction: column;
-  }
-
-  .es-map-stats {
-    grid-template-columns: 1fr 1fr;
-    max-width: calc(100% - 32px);
-  }
-
-  .es-detail {
-    top: auto;
-    bottom: 16px;
-    right: 16px;
-    left: 16px;
-    width: auto;
-  }
+  .gs-screen { padding: 8px 10px 4px; }
+  .gs-header-center { display: none; }
+  .gs-footer { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
 }
 </style>

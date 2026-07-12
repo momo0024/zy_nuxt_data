@@ -7,6 +7,6 @@
 <style>
 .blank-layout {
   min-height: 100vh;
-  background: var(--bg, #f1f5f9);
+  background: #060d1c;
 }
 </style>

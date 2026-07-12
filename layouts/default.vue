@@ -67,7 +67,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/enterprise-screen', name: '企业大屏', icon: 'i-lucide-monitor-dot' },
   { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
   { path: '/admin/data-update', name: '数据更新', icon: 'i-lucide-database-zap' },
-  { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' },
+  // { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' },
 ]
 
 const tabs = ref<TabItem[]>([])
@@ -203,5 +203,6 @@ function closeTab(path: string) {
   flex: 1;
   overflow: auto;
   background: var(--bg);
+  padding: 0;
 }
 </style>

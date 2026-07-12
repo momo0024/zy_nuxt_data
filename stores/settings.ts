@@ -19,22 +19,28 @@ export interface AiConfig {
 export const THEMES: ThemeMeta[] = [
   {
     id: 'dark' as ThemeId,
-    name: '曜夜智海',
-    desc: '深海墨蓝，带一层冷紫辉光',
-    colors: ['#13131f', '#6366f1', '#a78bfa', '#1e1e3f']
+    name: '藏青政务',
+    desc: '深藏青底，冷金点缀，适合大屏与夜间值守',
+    colors: ['#0a1428', '#1e4d8c', '#c6a464', '#0e1a34'],
   },
-  { id: 'light' as ThemeId, name: '云境霁白', desc: '雾白界面，配清透蓝调高光', colors: ['#f8f9fc', '#2563eb', '#7c3aed', '#eff6ff'] },
-  { id: 'purple' as ThemeId,
-    name: '霓幕绛夜',
-    desc: '绛紫夜幕，点缀玫粉霓光',
-    colors: ['#100d1e', '#a855f7', '#f472b6', '#2d1860']
+  {
+    id: 'light' as ThemeId,
+    name: '霁白实业',
+    desc: '冷灰白界面，藏蓝主色，日常办公首选',
+    colors: ['#f4f6fa', '#1e4d8c', '#b8935a', '#e8eef6'],
+  },
+  {
+    id: 'purple' as ThemeId,
+    name: '墨蓝银灰',
+    desc: '墨蓝灰调，低饱和银蓝，沉稳耐看',
+    colors: ['#0c1220', '#3d6a9e', '#8fa4c4', '#152238'],
   },
   {
     id: 'warm' as ThemeId,
-    name: '素笺暖光',
-    desc: '暖纸米杏，适合长时间阅读',
-    colors: ['#faf6f0', '#b45309', '#d97706', '#fef3e2']
-  }
+    name: '素笺暖阅',
+    desc: '暖灰纸色，适合长时间查阅文档',
+    colors: ['#f6f4ef', '#8b5e34', '#a67c52', '#ede8df'],
+  },
 ]
 
 export const useSettingsStore = defineStore('settings', () => {

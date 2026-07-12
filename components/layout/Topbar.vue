@@ -4,9 +4,16 @@
     <div class="topbar-left">
       <div class="topbar-brand">
         <div class="brand-icon">
-          <UIcon name="i-lucide-building-2" class="size-4 text-white" />
+          <svg viewBox="0 0 32 32" class="brand-seal" aria-hidden="true">
+            <rect x="1" y="1" width="30" height="30" rx="2" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5" />
+            <path d="M10 16 h12 M16 10 v12" stroke="currentColor" stroke-width="1.2" />
+            <circle cx="16" cy="16" r="3.5" fill="none" stroke="currentColor" stroke-width="1" />
+          </svg>
         </div>
-        <span class="brand-text">企业服务数据</span>
+        <div class="brand-copy">
+          <span class="brand-text">智知云</span>
+          <span class="brand-sub">产业情报中心</span>
+        </div>
       </div>
       <nav class="topbar-nav">
         <NuxtLink
@@ -202,8 +209,8 @@ onMounted(() => {
 .brand-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border-radius: 6px;
+  background: var(--primary);
   color: #fff;
   display: flex;
   align-items: center;
@@ -211,11 +218,29 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+.brand-seal {
+  width: 20px;
+  height: 20px;
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
 .brand-text {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-strong);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
+}
+
+.brand-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
 }
 
 .topbar-nav {

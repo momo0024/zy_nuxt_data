@@ -2036,14 +2036,14 @@ function buildRadialRelationGraphOption(
   const nodeCount = items.length
   const nodes: any[] = []
   const links: any[] = []
-  const colorPalette = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
+  const colorPalette = ['#1e4d8c', '#4a7ab5', '#3d7a6e', '#b8935a', '#6e8bb0', '#a86b56', '#2d7a55', '#8fa4c4']
 
   nodes.push({
     name: 'root',
     symbolSize: 60,
     x: 0,
     y: 0,
-    itemStyle: { color: '#4f46e5', shadowBlur: 12, shadowColor: 'rgba(79,70,229,0.3)' },
+    itemStyle: { color: '#1e4d8c', shadowBlur: 12, shadowColor: 'rgba(30, 77, 140, 0.25)' },
     label: { show: true, fontSize: 12, fontWeight: 'bold', color: '#fff', position: 'inside', formatter: '企业' },
     category: 0,
     fullName: companyName,
@@ -3868,10 +3868,10 @@ function getIndustryBg(industry: string): string {
 .cd-strength-score .cd-strength-card-num-detail { color: #fff; }
 .cd-strength-score {
   border: none;
-  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, var(--accent)) 100%);
+  background: var(--primary);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 35%, transparent);
+  box-shadow: var(--shadow-sm);
 }
 .cd-strength-score::before {
   content: '';

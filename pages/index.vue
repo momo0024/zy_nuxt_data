@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="chain-page">
     <header class="chain-top">
       <div class="chain-top-title">
@@ -1244,7 +1244,7 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   gap: 16px;
   padding: 0px 22px 10px;
   flex-wrap: wrap;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--surface)), var(--surface));
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
   width: 100%;
   max-width: var(--chain-max-width);
@@ -1261,13 +1261,12 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary);
   color: #fff;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
 }
 
 .chain-top h1 {
