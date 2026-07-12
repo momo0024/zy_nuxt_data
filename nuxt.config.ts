@@ -40,6 +40,7 @@ export default defineNuxtConfig({
       alias: {
         'eventemitter3-original': 'eventemitter3',
         'eventemitter3': resolve(rootDir, 'lib/eventemitter3-shim.js'),
+        'tslib': resolve(rootDir, 'node_modules/tslib/tslib.es6.mjs'),
       },
     },
     optimizeDeps: {
