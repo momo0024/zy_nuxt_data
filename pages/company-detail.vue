@@ -6,7 +6,7 @@
     </div>
 
     <div v-else-if="!company" class="cd-not-found">
-      <UIcon name="i-lucide-building-x" class="size-12 opacity-20" />
+      <UIcon name="i-lucide-building-2" class="size-12 opacity-20" />
       <p>未找到该企业信息</p>
     </div>
 

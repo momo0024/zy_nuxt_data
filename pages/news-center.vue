@@ -21,7 +21,7 @@
 
     <!-- ── 筛选栏 ── -->
     <div class="nc-filter-bar">
-      <!-- 第一行：关键词搜索 + 时间 + 来源 + 搜索按钮 -->
+      <!-- 第一行：关键词搜索 + 时间 + 命中范围 + 搜索按钮 -->
       <div class="nc-filter-row">
         <UInput
           v-model="filters.keyword"
@@ -35,18 +35,21 @@
           <!-- <label class="nc-filter-label">时间</label> -->
           <DateRangePicker v-model="dateRange" placeholder="选择时间" class="nc-date-picker" />
         </div>
-        <USelectMenu
-          v-model="filters.source"
-          :items="sourceOptions"
-          value-key="value"
-          placeholder="全部来源"
-          size="lg"
-          class="nc-filter-select"
-        >
-          <template #item="{ item }">
-            <span :title="item.label" class="truncate">{{ item.label }}</span>
-          </template>
-        </USelectMenu>
+        <div class="nc-hit-scope-wrap">
+          <USelect
+            v-model="filters.hitScope"
+            :items="hitScopeOptions"
+            placeholder="命中范围"
+            size="lg"
+            class="nc-filter-hit-scope"
+            :ui="{
+              base: 'w-full min-w-full justify-between',
+              value: 'whitespace-nowrap',
+              placeholder: 'whitespace-nowrap',
+            }"
+            @update:model-value="onHitScopeChange"
+          />
+        </div>
         <UButton
           color="primary"
           icon="i-lucide-search"
@@ -74,9 +77,51 @@
         </div>
       </div>
 
-      <!-- 第三行：关键词标签选择 -->
+      <!-- 第三行：来源标签选择 -->
+      <div class="nc-filter-row nc-source-row">
+        <label class="nc-filter-label">来源：</label>
+        <div class="nc-source-list">
+          <span
+            v-for="opt in sourceGroupOptions"
+            :key="opt.value"
+            class="nc-source-chip"
+            :class="{ 'nc-source-chip--active': selectedSourceGroups.has(opt.value) }"
+            @click="toggleSourceGroup(opt.value)"
+          >
+            {{ opt.label }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 第四行：关键词标签选择 -->
       <div class="nc-filter-row nc-keyword-row">
-        <label class="nc-filter-label">关键词：</label>
+        <div class="nc-keyword-head">
+          <label class="nc-filter-label">关键词：</label>
+          <div
+            class="nc-mode-toggle"
+            :class="{ 'nc-mode-toggle--disabled': selectedKeywords.size < 2 }"
+            :title="selectedKeywords.size < 2 ? '选中 2 个及以上关键词后可切换逻辑' : ''"
+          >
+            <button
+              type="button"
+              class="nc-mode-btn"
+              :class="{ 'nc-mode-btn--active': keywordMode === 'or' }"
+              :disabled="selectedKeywords.size < 2"
+              @click="setKeywordMode('or')"
+            >
+              或
+            </button>
+            <button
+              type="button"
+              class="nc-mode-btn"
+              :class="{ 'nc-mode-btn--active': keywordMode === 'and' }"
+              :disabled="selectedKeywords.size < 2"
+              @click="setKeywordMode('and')"
+            >
+              且
+            </button>
+          </div>
+        </div>
         <div class="nc-keyword-list" :class="{ 'nc-keyword-list--expanded': keywordExpanded }">
           <span
             v-for="kw in visibleKeywords"
@@ -254,11 +299,28 @@ interface NewsItem {
 
 interface FilterState {
   keyword: string
-  source: string
+  hitScope: string
 }
 
+type SourceGroup = 'central' | 'local' | 'hubei'
+
+const sourceGroupOptions: Array<{ label: string; value: SourceGroup }> = [
+  { label: '央媒', value: 'central' },
+  { label: '地方媒体', value: 'local' },
+  { label: '湖北', value: 'hubei' },
+]
+
+const sourceGroupLabelMap = Object.fromEntries(
+  sourceGroupOptions.map(opt => [opt.value, opt.label]),
+) as Record<SourceGroup, string>
+
 /* ── 来源选项 ── */
-const sourceOptions = ref([{ label: '全部来源', value: 'all' }])
+
+const hitScopeOptions = [
+  { label: '全部命中', value: 'all' },
+  { label: '标题含关键词', value: 'title' },
+  { label: '内容含关键词', value: 'body' },
+]
 
 const sourceTextColors: Record<string, string> = {
   '证券时报': '#d97706', '经济日报': '#16a34a', '财经周报': '#d97706',
@@ -277,8 +339,13 @@ const sourceBadgeColors: Record<string, string> = {
 }
 
 /* ── 状态 ── */
-const filters = reactive<FilterState>({ keyword: '', source: 'all' })
-const appliedFilters = reactive<FilterState>({ keyword: '', source: 'all' })
+const filters = reactive<FilterState>({ keyword: '', hitScope: 'all' })
+const appliedFilters = reactive<FilterState>({ keyword: '', hitScope: 'all' })
+
+const selectedSourceGroups = ref(new Set<SourceGroup>())
+
+const keywordMode = ref<'or' | 'and'>('or')
+const appliedKeywordMode = ref<'or' | 'and'>('or')
 
 const todayStr = getTodayStr()
 const dateRange = ref<DateRangeValue>({ start: todayStr, end: todayStr })
@@ -363,8 +430,11 @@ function getRelativeLabel(dateStr: string): string {
 
 /* ── 计算属性 ── */
 const hasActiveFilters = computed(() => {
-  return appliedFilters.keyword || appliedFilters.source !== 'all'
-    || appliedDateRange.value.start || appliedDateRange.value.end || selectedKeywords.value.size > 0
+  return appliedFilters.keyword || appliedFilters.hitScope !== 'all'
+    || appliedDateRange.value.start || appliedDateRange.value.end
+    || selectedKeywords.value.size > 0
+    || selectedSourceGroups.value.size > 0
+    || appliedKeywordMode.value === 'and'
 })
 
 const heroStats = computed(() => [
@@ -388,9 +458,20 @@ const activeFilters = computed(() => {
   if (appliedFilters.keyword.trim()) {
     t.push({ key: 'kw', label: `"${appliedFilters.keyword.trim()}"`, onRemove: () => { appliedFilters.keyword = ''; filters.keyword = ''; fetchNews() } })
   }
-  if (appliedFilters.source !== 'all') {
-    const siteLabel = sourceOptions.value.find(o => o.value === appliedFilters.source)?.label || appliedFilters.source
-    t.push({ key: 'src', label: siteLabel, onRemove: () => { appliedFilters.source = 'all'; filters.source = 'all'; fetchNews() } })
+  selectedSourceGroups.value.forEach(group => {
+    t.push({
+      key: `src-${group}`,
+      label: sourceGroupLabelMap[group],
+      onRemove: () => {
+        selectedSourceGroups.value.delete(group)
+        currentPage.value = 1
+        fetchNews()
+      },
+    })
+  })
+  if (appliedFilters.hitScope !== 'all') {
+    const scopeLabel = hitScopeOptions.find(o => o.value === appliedFilters.hitScope)?.label || appliedFilters.hitScope
+    t.push({ key: 'scope', label: scopeLabel, onRemove: () => { appliedFilters.hitScope = 'all'; filters.hitScope = 'all'; fetchNews() } })
   }
   if (appliedDateRange.value.start || appliedDateRange.value.end) {
     const start = appliedDateRange.value.start
@@ -410,6 +491,17 @@ const activeFilters = computed(() => {
       fetchNews()
     }})
   })
+  if (appliedKeywordMode.value === 'and' && selectedKeywords.value.size > 1) {
+    t.push({
+      key: 'kw-mode',
+      label: '关键词：且',
+      onRemove: () => {
+        appliedKeywordMode.value = 'or'
+        keywordMode.value = 'or'
+        fetchNews()
+      },
+    })
+  }
   return t
 })
 
@@ -428,12 +520,37 @@ function getSourceDotColor(s: string): string {
   return sourceDotColorMap[s] || 'var(--primary)'
 }
 
+function toggleSourceGroup(group: SourceGroup) {
+  if (selectedSourceGroups.value.has(group)) {
+    selectedSourceGroups.value.delete(group)
+  } else {
+    selectedSourceGroups.value.add(group)
+  }
+  currentPage.value = 1
+  fetchNews()
+}
+
 function toggleKeyword(kw: string) {
   if (selectedKeywords.value.has(kw)) {
     selectedKeywords.value.delete(kw)
   } else {
     selectedKeywords.value.add(kw)
   }
+  appliedKeywordMode.value = keywordMode.value
+  currentPage.value = 1
+  fetchNews()
+}
+
+function setKeywordMode(mode: 'or' | 'and') {
+  if (keywordMode.value === mode) return
+  keywordMode.value = mode
+  appliedKeywordMode.value = mode
+  currentPage.value = 1
+  fetchNews()
+}
+
+function onHitScopeChange() {
+  appliedFilters.hitScope = filters.hitScope
   currentPage.value = 1
   fetchNews()
 }
@@ -480,13 +597,21 @@ async function fetchNews(opts?: { includeSummary?: boolean }) {
       sort_order: 'desc',
     }
     if (opts?.includeSummary) query.include_summary = true
-    if (appliedFilters.source && appliedFilters.source !== 'all') query.site_id = Number(appliedFilters.source)
+    if (selectedSourceGroups.value.size) {
+      query.source_groups = [...selectedSourceGroups.value].join(',')
+    }
     if (appliedDateRange.value.start) query.start_date = appliedDateRange.value.start
     if (appliedDateRange.value.end) query.end_date = appliedDateRange.value.end
     const keywordParts: string[] = []
     if (appliedFilters.keyword.trim()) keywordParts.push(appliedFilters.keyword.trim())
     if (keywordParts.length) query.keyword = keywordParts.join(' ')
     if (selectedKeywords.value.size) query.keywords = [...selectedKeywords.value].join(' ')
+    if (selectedKeywords.value.size > 1) {
+      query.keyword_mode = appliedKeywordMode.value
+    }
+    if (appliedFilters.hitScope && appliedFilters.hitScope !== 'all') {
+      query.hit_scope = appliedFilters.hitScope
+    }
 
     const res = await newsRequest.get('/news/list', { params: query })
     if (res.data?.code === 0) {
@@ -508,32 +633,21 @@ async function fetchNews(opts?: { includeSummary?: boolean }) {
   }
 }
 
-async function fetchSources() {
-  try {
-    const res = await newsRequest.get('/sources')
-    if (res.data?.code === 0) {
-      const sources = res.data.data || []
-      sourceOptions.value = [
-        { label: '全部来源', value: 'all' },
-        ...sources.map((s: { id: number; site_name: string }) => ({ label: s.site_name, value: String(s.id) })),
-      ]
-    }
-  } catch (e) {
-    console.error('获取来源列表失败:', e)
-  }
-}
-
 async function handleSearch() {
   appliedFilters.keyword = filters.keyword
-  appliedFilters.source = filters.source
+  appliedFilters.hitScope = filters.hitScope
   appliedDateRange.value = { ...dateRange.value }
+  appliedKeywordMode.value = keywordMode.value
   currentPage.value = 1
   await fetchNews()
 }
 
 function handleReset() {
-  filters.keyword = ''; filters.source = 'all'
-  appliedFilters.keyword = ''; appliedFilters.source = 'all'
+  filters.keyword = ''; filters.hitScope = 'all'
+  appliedFilters.keyword = ''; appliedFilters.hitScope = 'all'
+  keywordMode.value = 'or'
+  appliedKeywordMode.value = 'or'
+  selectedSourceGroups.value.clear()
   const tStr = getTodayStr()
   dateRange.value = { start: tStr, end: tStr }
   appliedDateRange.value = { start: tStr, end: tStr }
@@ -554,7 +668,6 @@ function onPageSizeChange() {
 async function initNewsCenterPage() {
   await fetchNews({ includeSummary: true })
   pageReady.value = true
-  void fetchSources()
 }
 
 usePageInit(initNewsCenterPage)
@@ -732,9 +845,90 @@ usePageInit(initNewsCenterPage)
 }
 
 .nc-filter-select {
-  width: 240px;
+  width: 220px;
   min-width: 180px;
   flex-shrink: 0;
+}
+
+.nc-hit-scope-wrap {
+  width: 200px;
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.nc-filter-hit-scope {
+  width: 100%;
+}
+
+.nc-filter-hit-scope :deep(button) {
+  width: 100%;
+  min-width: 100%;
+}
+
+.nc-filter-hit-scope :deep([data-slot="value"]),
+.nc-filter-hit-scope :deep([data-slot="placeholder"]) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.nc-keyword-row {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nc-keyword-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.nc-keyword-head .nc-filter-label {
+  margin-bottom: 0;
+}
+
+.nc-mode-toggle--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.nc-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+}
+
+.nc-mode-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nc-mode-btn:hover:not(:disabled) {
+  color: var(--text-strong);
+}
+
+.nc-mode-btn--active,
+.nc-mode-btn--active:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.nc-mode-btn:disabled {
+  cursor: not-allowed;
 }
 
 .nc-search-btn {
@@ -769,6 +963,55 @@ usePageInit(initNewsCenterPage)
   flex-shrink: 0;
 }
 
+/* Source groups */
+.nc-source-row {
+  align-items: flex-start;
+}
+
+.nc-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.nc-source-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.nc-source-chip:not(.nc-source-chip--active):hover {
+  border-color: color-mix(in srgb, var(--primary) 60%, var(--border));
+  color: var(--primary);
+}
+
+.nc-source-chip--active {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.nc-source-chip--active:hover {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+  opacity: 0.9;
+}
+
+.nc-source-chip:active {
+  transform: scale(0.98);
+}
+
 /* Keywords */
 .nc-keyword-row {
   align-items: flex-start;
@@ -789,10 +1032,10 @@ usePageInit(initNewsCenterPage)
   user-select: none;
 }
 
-.nc-keyword-chip:hover {
+.nc-keyword-chip:not(.nc-keyword-chip--active):hover {
   border-color: var(--primary);
-  color: #fff;
-  background: var(--primary);
+  color: var(--primary);
+  background: var(--surface-alt);
 }
 
 .nc-keyword-chip--active {
@@ -1200,6 +1443,7 @@ usePageInit(initNewsCenterPage)
 @media (max-width: 1024px) {
   .nc-filter-row { flex-direction: column; align-items: stretch; }
   .nc-filter-select { width: 100%; }
+  .nc-hit-scope-wrap { width: 100%; min-width: 0; }
   .nc-date-picker-wrap { min-width: auto; }
   .nc-date-picker { max-width: none; }
   .nc-new-keyword { width: 100%; }
@@ -1242,6 +1486,11 @@ usePageInit(initNewsCenterPage)
 .dp__cell_inner {
   cursor: pointer !important;
   pointer-events: auto !important;
+}
+
+/* 命中范围下拉选项完整显示 */
+.nc-filter-hit-scope :deep([data-slot="content"]) {
+  min-width: max-content !important;
 }
 
 /* 来源下拉框文字完整显示 */

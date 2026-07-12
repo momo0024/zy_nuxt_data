@@ -911,6 +911,43 @@ body {
   color: var(--text-muted) !important;
 }
 
+/* Nuxt UI Select / SelectMenu 触发器与 Input 边框统一 */
+[data-theme] button[data-slot="base"][aria-haspopup="listbox"],
+[data-theme] button[data-slot="base"][role="combobox"] {
+  border: 1px solid var(--border) !important;
+  background-color: var(--surface-alt) !important;
+  color: var(--text-strong) !important;
+  box-shadow: 0 0 0 1px var(--border) inset !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-ring-color: transparent !important;
+}
+
+[data-theme] button[data-slot="base"][aria-haspopup="listbox"]:hover,
+[data-theme] button[data-slot="base"][role="combobox"]:hover {
+  background-color: var(--surface-alt) !important;
+}
+
+[data-theme] button[data-slot="base"][aria-haspopup="listbox"]:focus,
+[data-theme] button[data-slot="base"][aria-haspopup="listbox"]:focus-visible,
+[data-theme] button[data-slot="base"][role="combobox"]:focus,
+[data-theme] button[data-slot="base"][role="combobox"]:focus-visible {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 1px var(--primary) inset, 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent) !important;
+  outline: none !important;
+}
+
+/* DatePicker / DateRangePicker 与 Input 边框统一 */
+[data-theme] .date-input {
+  border-color: var(--border) !important;
+  background-color: var(--surface-alt) !important;
+  box-shadow: 0 0 0 1px var(--border) inset !important;
+}
+
+[data-theme] .date-input:hover {
+  border-color: var(--primary) !important;
+}
+
 .form-select {
   width: 100%;
   padding: 9px 12px;

@@ -92,7 +92,7 @@ export default defineNuxtConfig({
     }
   },
   build: {
-    transpile: ['echarts', 'vue-echarts', 'resize-detector', 'simple-mind-map'],
+    transpile: ['echarts', 'vue-echarts', 'resize-detector', 'simple-mind-map', '@antv/l7', '@antv/l7-maps'],
   },
   fonts: {
     provider: 'local'

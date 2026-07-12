@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 type NavItem = {
@@ -64,25 +64,37 @@ const authStore = useAuthStore()
 const NAV_ITEMS: NavItem[] = [
   { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
   { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
+  { path: '/enterprise-screen', name: '企业大屏', icon: 'i-lucide-monitor-dot' },
   { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
   { path: '/admin/data-update', name: '数据更新', icon: 'i-lucide-database-zap' },
   { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' },
 ]
 
 const tabs = ref<TabItem[]>([])
+const tabsReady = ref(false)
 const currentPath = computed(() => route.path)
+
+function addTabForPath(path: string) {
+  if (path === '/admin/data-update' && !authStore.isAdmin) return
+  const navItem = NAV_ITEMS.find((item) => item.path === path)
+  if (navItem && !tabs.value.find((tab) => tab.path === path)) {
+    tabs.value.push({ path, name: navItem.name })
+  }
+}
 
 watch(
   () => route.path,
   (newPath: string) => {
-    if (newPath === '/admin/data-update' && !authStore.isAdmin) return
-    const navItem = NAV_ITEMS.find((item) => item.path === newPath)
-    if (navItem && !tabs.value.find((tab) => tab.path === newPath)) {
-      tabs.value.push({ path: newPath, name: navItem.name })
-    }
+    if (!tabsReady.value) return
+    addTabForPath(newPath)
   },
-  { immediate: true }
 )
+
+onMounted(() => {
+  authStore.loadFromStorage()
+  tabsReady.value = true
+  addTabForPath(route.path)
+})
 
 function getTabIcon(path: string) {
   return NAV_ITEMS.find((item) => item.path === path)?.icon || 'i-lucide-panel-right-open'

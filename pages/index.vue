@@ -270,7 +270,7 @@
             </h3>
             <div class="chain-chart-wrap">
               <ClientOnly>
-                <VChart ref="parkChartRef" v-if="parkChartOption" :option="parkChartOption" class="chain-chart" autoresize @zr:click="handleChartAreaClick($event, 'park')" />
+                <VChart v-if="chartsReady && parkChartOption" ref="parkChartRef" :option="parkChartOption" class="chain-chart" autoresize @zr:click="handleChartAreaClick($event, 'park')" />
                 <div v-else class="chain-chart-empty">暂无数据</div>
               </ClientOnly>
             </div>
@@ -282,7 +282,7 @@
             </h3>
             <div class="chain-chart-wrap">
               <ClientOnly>
-                <VChart ref="typeChartRef" v-if="typeChartOption" :option="typeChartOption" class="chain-chart" autoresize @zr:click="handleChartAreaClick($event, 'type')" />
+                <VChart v-if="chartsReady && typeChartOption" ref="typeChartRef" :option="typeChartOption" class="chain-chart" autoresize @zr:click="handleChartAreaClick($event, 'type')" />
                 <div v-else class="chain-chart-empty">暂无数据</div>
               </ClientOnly>
             </div>
@@ -874,10 +874,15 @@ function updateChartColors() {
 }
 
 let chartColorObserver: MutationObserver | null = null
+const chartsReady = ref(false)
+
 onMounted(() => {
   updateChartColors()
   chartColorObserver = new MutationObserver(() => updateChartColors())
   chartColorObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+  nextTick(() => {
+    chartsReady.value = true
+  })
 })
 onBeforeUnmount(() => {
   chartColorObserver?.disconnect()

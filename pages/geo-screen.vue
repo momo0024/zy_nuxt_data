@@ -225,7 +225,7 @@
               </div>
 
               <div v-if="filteredCompanies.length === 0" class="cp-empty">
-                <UIcon name="i-lucide-building-x" class="size-10 opacity-20" />
+                <UIcon name="i-lucide-building-2" class="size-10 opacity-20" />
                 <span v-if="isLoadingCompanies || isLoadingParkCompanies">企业数据加载中…</span>
                 <span v-else-if="companySearch.trim()">未找到匹配 "{{ companySearch.trim() }}" 的企业</span>
                 <span v-else-if="selectedRegion?.type === 'park'">该园区暂无企业数据</span>

@@ -1,6 +1,7 @@
 const WM_ID = 'app-watermark-overlay'
 const TILE_W = 300
 const TILE_H = 200
+const WM_ROTATE_DEG = -45
 const WM_Z_INDEX = 2147483647
 
 const WATERMARK_EXCLUDED_PATHS = new Set(['/meeting-monitor'])
@@ -50,7 +51,7 @@ export function getWatermarkContent(): string {
 }
 
 function cacheKey(content: string, color: string) {
-  return `wm-cache:${content}:${color}`
+  return `wm-cache:${WM_ROTATE_DEG}:${content}:${color}`
 }
 
 export function buildWatermarkDataUrl(content: string, color: string): string {
@@ -60,7 +61,7 @@ export function buildWatermarkDataUrl(content: string, color: string): string {
   const ctx = canvas.getContext('2d')
   if (!ctx) return ''
   ctx.translate(TILE_W / 2, TILE_H / 2)
-  ctx.rotate((45 * Math.PI) / 180)
+  ctx.rotate((WM_ROTATE_DEG * Math.PI) / 180)
   ctx.font = '600 18px PingFang SC, Microsoft YaHei, sans-serif'
   ctx.fillStyle = color
   ctx.textAlign = 'center'

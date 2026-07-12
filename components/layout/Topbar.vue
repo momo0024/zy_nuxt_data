@@ -107,9 +107,10 @@ const navItems = computed(() => {
   const items = [
     { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
     { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
+    { path: '/enterprise-screen', name: '企业大屏', icon: 'i-lucide-monitor-dot' },
     { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
   ]
-  if (isAdmin.value) {
+  if (hydrated.value && isAdmin.value) {
     items.push({ path: '/admin/data-update', name: '数据更新', icon: 'i-lucide-database-zap' })
   }
   return items
