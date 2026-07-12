@@ -74,6 +74,9 @@ export default defineNuxtConfig({
         },
       },
     },
+    ssr: {
+      external: ['@antv/l7', '@antv/l7-maps', '@antv/l7-utils', 'simple-mind-map', 'echarts', 'vue-echarts'],
+    },
   },
   app: {
     head: {
@@ -99,6 +102,14 @@ export default defineNuxtConfig({
     provider: 'local'
   },
   nitro: {
+    externals: {
+      traceExclude: [
+        /^@antv\//,
+        'simple-mind-map',
+        'echarts',
+        'vue-echarts',
+      ],
+    },
     devProxy: {
       '/api/': {
         target: apiBase,
@@ -111,6 +122,15 @@ export default defineNuxtConfig({
         rewrite: (path: string) => path.replace(/^\/news-api/, ''),
       },
     },
+    // 生产环境代理（routeRules 生产/开发都生效）
+    routeRules: {
+      '/api/**': {
+        proxy: 'http://127.0.0.1:8096/**',
+      },
+      '/news-api/**': {
+        proxy: 'http://127.0.0.1:9094/**',
+      },
+    },
     rollupConfig: {
       onwarn(warning: any, warn: any) {
         if (warning.code === 'SOURCEMAP_ERROR') return
@@ -119,7 +139,7 @@ export default defineNuxtConfig({
         if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('node_modules/nitropack')) return
         warn(warning)
       },
-      external: ['tslib'],
+      external: ['tslib', '@antv/l7', '@antv/l7-maps', '@antv/l7-utils', '@antv/l7-core', '@antv/l7-component', '@antv/l7-source'],
     },
   }
 })

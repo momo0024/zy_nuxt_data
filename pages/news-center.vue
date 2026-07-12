@@ -21,18 +21,9 @@
 
     <!-- ── 筛选栏 ── -->
     <div class="nc-filter-bar">
-      <!-- 第一行：关键词搜索 + 时间 + 命中范围 + 搜索按钮 -->
+      <!-- 第一行：时间 + 命中范围 + 重置 -->
       <div class="nc-filter-row">
-        <UInput
-          v-model="filters.keyword"
-          placeholder="输入标题、关键词搜索新闻..."
-          icon="i-lucide-search"
-          size="lg"
-          class="nc-search-input"
-          @keyup.enter="handleSearch"
-        />
         <div class="nc-date-picker-wrap">
-          <!-- <label class="nc-filter-label">时间</label> -->
           <DateRangePicker v-model="dateRange" placeholder="选择时间" class="nc-date-picker" />
         </div>
         <div class="nc-hit-scope-wrap">
@@ -50,19 +41,6 @@
             @update:model-value="onHitScopeChange"
           />
         </div>
-        <UButton
-          color="primary"
-          icon="i-lucide-search"
-          size="lg"
-          class="nc-search-btn"
-          @click="handleSearch"
-        >
-          搜索
-        </UButton>
-      </div>
-
-      <!-- 第二行：重置 + 关键词 -->
-      <div class="nc-filter-row nc-reset-keyword-row">
         <div class="nc-reset-wrap">
           <UButton
             v-if="hasActiveFilters"
@@ -77,7 +55,7 @@
         </div>
       </div>
 
-      <!-- 第三行：来源标签选择 -->
+      <!-- 第二行：来源标签选择 -->
       <div class="nc-filter-row nc-source-row">
         <label class="nc-filter-label">来源：</label>
         <div class="nc-source-list">
@@ -93,7 +71,7 @@
         </div>
       </div>
 
-      <!-- 第四行：关键词标签选择 -->
+      <!-- 第三行：关键词标签选择 -->
       <div class="nc-filter-row nc-keyword-row">
         <div class="nc-keyword-head">
           <label class="nc-filter-label">关键词：</label>
@@ -298,7 +276,6 @@ interface NewsItem {
 }
 
 interface FilterState {
-  keyword: string
   hitScope: string
 }
 
@@ -339,8 +316,8 @@ const sourceBadgeColors: Record<string, string> = {
 }
 
 /* ── 状态 ── */
-const filters = reactive<FilterState>({ keyword: '', hitScope: 'all' })
-const appliedFilters = reactive<FilterState>({ keyword: '', hitScope: 'all' })
+const filters = reactive<FilterState>({ hitScope: 'all' })
+const appliedFilters = reactive<FilterState>({ hitScope: 'all' })
 
 const selectedSourceGroups = ref(new Set<SourceGroup>())
 
@@ -430,7 +407,7 @@ function getRelativeLabel(dateStr: string): string {
 
 /* ── 计算属性 ── */
 const hasActiveFilters = computed(() => {
-  return appliedFilters.keyword || appliedFilters.hitScope !== 'all'
+  return appliedFilters.hitScope !== 'all'
     || appliedDateRange.value.start || appliedDateRange.value.end
     || selectedKeywords.value.size > 0
     || selectedSourceGroups.value.size > 0
@@ -455,9 +432,6 @@ const visibleKeywords = computed(() => {
 
 const activeFilters = computed(() => {
   const t: Array<{ key: string; label: string; onRemove: () => void }> = []
-  if (appliedFilters.keyword.trim()) {
-    t.push({ key: 'kw', label: `"${appliedFilters.keyword.trim()}"`, onRemove: () => { appliedFilters.keyword = ''; filters.keyword = ''; fetchNews() } })
-  }
   selectedSourceGroups.value.forEach(group => {
     t.push({
       key: `src-${group}`,
@@ -602,9 +576,6 @@ async function fetchNews(opts?: { includeSummary?: boolean }) {
     }
     if (appliedDateRange.value.start) query.start_date = appliedDateRange.value.start
     if (appliedDateRange.value.end) query.end_date = appliedDateRange.value.end
-    const keywordParts: string[] = []
-    if (appliedFilters.keyword.trim()) keywordParts.push(appliedFilters.keyword.trim())
-    if (keywordParts.length) query.keyword = keywordParts.join(' ')
     if (selectedKeywords.value.size) query.keywords = [...selectedKeywords.value].join(' ')
     if (selectedKeywords.value.size > 1) {
       query.keyword_mode = appliedKeywordMode.value
@@ -633,18 +604,9 @@ async function fetchNews(opts?: { includeSummary?: boolean }) {
   }
 }
 
-async function handleSearch() {
-  appliedFilters.keyword = filters.keyword
-  appliedFilters.hitScope = filters.hitScope
-  appliedDateRange.value = { ...dateRange.value }
-  appliedKeywordMode.value = keywordMode.value
-  currentPage.value = 1
-  await fetchNews()
-}
-
 function handleReset() {
-  filters.keyword = ''; filters.hitScope = 'all'
-  appliedFilters.keyword = ''; appliedFilters.hitScope = 'all'
+  filters.hitScope = 'all'
+  appliedFilters.hitScope = 'all'
   keywordMode.value = 'or'
   appliedKeywordMode.value = 'or'
   selectedSourceGroups.value.clear()
@@ -659,6 +621,13 @@ function handleReset() {
 watch(currentPage, () => {
   if (pageReady.value) fetchNews()
 })
+
+watch(dateRange, (val) => {
+  if (!pageReady.value) return
+  appliedDateRange.value = { ...val }
+  currentPage.value = 1
+  fetchNews()
+}, { deep: true })
 
 function onPageSizeChange() {
   currentPage.value = 1
@@ -834,16 +803,6 @@ usePageInit(initNewsCenterPage)
   min-width: 60px;
 }
 
-.nc-search-input {
-  flex: 1;
-  min-width: 180px;
-}
-
-.nc-search-input :deep(input) {
-  height: 48px;
-  font-size: 15px;
-}
-
 .nc-filter-select {
   width: 220px;
   min-width: 180px;
@@ -929,16 +888,6 @@ usePageInit(initNewsCenterPage)
 
 .nc-mode-btn:disabled {
   cursor: not-allowed;
-}
-
-.nc-search-btn {
-  flex-shrink: 0;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.nc-search-btn :deep(span) {
-  color: #fff;
 }
 
 /* Date picker */

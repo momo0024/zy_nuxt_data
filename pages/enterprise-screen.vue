@@ -331,7 +331,7 @@ import VChart from 'vue-echarts'
 import type { CompanyRecord } from '~/types/company'
 import { fetchCompanies } from '~/types/company'
 
-definePageMeta({ middleware: ['auth'], keepalive: true })
+definePageMeta({ middleware: ['auth'], keepalive: true, ssr: false })
 
 type SourceFilter = 'all' | 'listed' | 'native' | 'attract'
 type DensityMode = 'core' | 'all'
