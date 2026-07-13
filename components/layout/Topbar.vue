@@ -115,7 +115,7 @@ const navItems = computed(() => {
   const items = [
     { path: '/', name: '产业图谱', icon: 'i-lucide-network', openInNewTab: false },
     { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map', openInNewTab: false },
-    { path: '/enterprise-screen', name: '企业大屏', icon: 'i-lucide-monitor-dot', openInNewTab: false },
+    { path: '/enterprise-screen', name: '数据大屏', icon: 'i-lucide-monitor-dot', openInNewTab: false },
     { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper', openInNewTab: false },
   ]
   if (hydrated.value && isAdmin.value) {

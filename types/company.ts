@@ -55,7 +55,87 @@ export interface CompanyListResponse {
   }
 }
 
+export interface CompanyStatItem {
+  num?: number
+  count?: number
+  name?: string
+  industry_name?: string
+  chain_name?: string
+  product_type?: string
+  park_name?: string
+  type_id?: number
+}
+
+export interface CompanyTypeInfoItem {
+  type_id: number
+  park_name: string
+  num: number
+}
+
+export interface CompanyApiListResponse<T> {
+  code: number
+  msg: string
+  data: T
+}
+
 import { request } from '~/utils/request'
+
+function statItemName(item: CompanyStatItem): string {
+  return String(
+    item.industry_name
+    || item.name
+    || item.chain_name
+    || item.product_type
+    || item.park_name
+    || '未分类',
+  ).trim() || '未分类'
+}
+
+function statItemCount(item: CompanyStatItem): number {
+  const n = Number(item.count ?? item.num)
+  return Number.isFinite(n) ? n : 0
+}
+
+export function normalizeCompanyStatList(list: CompanyStatItem[] | undefined | null) {
+  if (!Array.isArray(list)) return []
+  return list
+    .map(item => ({
+      name: statItemName(item),
+      count: statItemCount(item),
+    }))
+    .filter(item => item.count > 0)
+    .sort((a, b) => b.count - a.count)
+}
+
+export function normalizeTypeInfoList(list: CompanyTypeInfoItem[] | undefined | null) {
+  if (!Array.isArray(list)) return []
+  return list
+    .map(item => ({
+      name: String(item.park_name || '未分类').trim() || '未分类',
+      count: Number(item.num) || 0,
+    }))
+    .filter(item => item.count > 0)
+    .sort((a, b) => b.count - a.count)
+}
+
+export async function fetchParkChain(parkId?: number): Promise<CompanyApiListResponse<CompanyStatItem[]>> {
+  const res = await request.get<CompanyStatItem[]>('/company/ParkChain', {
+    params: parkId ? { park_id: parkId } : {},
+  })
+  return res.data as unknown as CompanyApiListResponse<CompanyStatItem[]>
+}
+
+export async function fetchCompanyTypeInfo(parkId?: number): Promise<CompanyApiListResponse<CompanyTypeInfoItem[]>> {
+  const res = await request.get<CompanyTypeInfoItem[]>('/company/typeInfo', {
+    params: parkId ? { park_id: parkId } : {},
+  })
+  return res.data as unknown as CompanyApiListResponse<CompanyTypeInfoItem[]>
+}
+
+export async function fetchParkList(): Promise<CompanyApiListResponse<{ park_id: number, park_name: string, num?: number }[]>> {
+  const res = await request.get<{ park_id: number, park_name: string, num?: number }[]>('/company/park')
+  return res.data as unknown as CompanyApiListResponse<{ park_id: number, park_name: string, num?: number }[]>
+}
 
 export function isCreditCode(code: string) {
   return /^[0-9A-Z]{18}$/i.test(code)

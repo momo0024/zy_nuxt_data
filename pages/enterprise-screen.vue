@@ -51,7 +51,7 @@
           <section class="es-panel es-panel-flex">
             <div class="es-panel-head">
               <h2>产业集群分布</h2>
-              <span class="es-panel-tag">{{ filteredCompanies.length }} 家 · {{ industryTabs.length }} 类</span>
+              <span class="es-panel-tag">{{ industryTotal }} 家 · {{ industryTabs.length }} 类</span>
             </div>
             <div class="es-chart-scroll">
               <ul class="es-industry-list">
@@ -78,7 +78,21 @@
             </div>
           </section>
 
-          <!-- 03 重点企业名录（暂隐藏）
+          <!-- 03 产业公司性质分布 -->
+          <section class="es-panel es-panel-nature">
+            <div class="es-panel-head">
+              <h2>产业公司性质分布</h2>
+              <span class="es-panel-tag">{{ natureTabs.length }} 类</span>
+            </div>
+            <VChart
+              v-if="chartsReady"
+              class="es-chart es-chart-nature"
+              :option="natureOption"
+              autoresize
+            />
+          </section>
+
+          <!-- 04 重点企业名录（暂隐藏）
           <section class="es-panel es-panel-flex">
             ...
           </section>
@@ -149,8 +163,17 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
 import type { CompanyRecord } from '~/types/company'
-import { fetchCompanies } from '~/types/company'
+import {
+  fetchCompanies,
+  fetchCompanyTypeInfo,
+  fetchParkChain,
+  fetchParkList,
+  normalizeCompanyStatList,
+  normalizeTypeInfoList,
+} from '~/types/company'
+import { matchParkId, type ParkInfo } from '~/composables/useGeoAmapMap'
 import { newsRequest } from '~/utils/request'
 
 definePageMeta({ layout: 'blank', middleware: ['auth'], keepalive: false, ssr: false })
@@ -193,7 +216,13 @@ const fallbackCompanies: CompanyRecord[] = [
 ]
 
 const loading = ref(false)
+const panelStatsLoading = ref(false)
+const chartsReady = ref(false)
 const companies = ref<CompanyRecord[]>(fallbackCompanies)
+const parkList = ref<ParkInfo[]>([])
+const activeParkId = ref<number | null>(null)
+const parkChainStats = ref<{ name: string, count: number }[]>([])
+const typeInfoStats = ref<{ name: string, count: number }[]>([])
 const selectedCompany = ref<CompanyRecord | null>(null)
 const sourceFilter = ref<SourceFilter>('all')
 const activeIndustry = ref('all')
@@ -234,20 +263,16 @@ const topCompanies = computed(() => [...filteredCompanies.value]
   .map((company, index) => ({ ...company, rank: String(index + 1).padStart(2, '0') })))
 
 const industryTabs = computed(() => {
-  const total = filteredCompanies.value.length || 1
-  const counter = new Map<string, number>()
-  for (const company of filteredCompanies.value) {
-    const name = productSubName(company)
-    counter.set(name, (counter.get(name) || 0) + 1)
-  }
-  return Array.from(counter, ([name, count]) => ({
-    name,
-    color: colorForName(name),
-    count,
-    percent: Math.round((count / total) * 1000) / 10,
+  const total = industryTotal.value || 1
+  return parkChainStats.value.map(item => ({
+    name: item.name,
+    color: colorForName(item.name),
+    count: item.count,
+    percent: Math.round((item.count / total) * 1000) / 10,
   }))
-    .sort((a, b) => b.count - a.count)
 })
+
+const industryTotal = computed(() => parkChainStats.value.reduce((sum, item) => sum + item.count, 0))
 
 const listedCount = computed(() => filteredCompanies.value.filter(c => c.company_traded === 1).length)
 const nativeCount = computed(() => filteredCompanies.value.filter(c => String(c.tag_name || '').includes('本土')).length)
@@ -284,6 +309,76 @@ const sourceBars = computed(() => {
   ]
 })
 
+
+const natureTabs = computed(() => typeInfoStats.value)
+
+const natureOption = computed(() => {
+  const items = natureTabs.value
+  return {
+    backgroundColor: 'transparent',
+    animationDuration: 600,
+    grid: { left: 8, right: 12, top: 20, bottom: 8, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(21, 32, 51, 0.96)',
+      borderColor: 'rgba(148, 163, 184, 0.28)',
+      borderWidth: 1,
+      textStyle: { color: '#e6edf5', fontSize: 12 },
+    },
+    xAxis: {
+      type: 'category',
+      data: items.map(i => i.name),
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.25)' } },
+      axisTick: { show: false },
+      axisLabel: {
+        color: '#8a9bb0',
+        fontSize: 10,
+        interval: 0,
+        rotate: items.length > 4 ? 28 : 0,
+        width: 64,
+        overflow: 'truncate',
+      },
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: '#7a8ea3', fontSize: 10 },
+      splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.1)', type: 'dashed' } },
+    },
+    series: [{
+      type: 'line',
+      data: items.map(i => i.count),
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: { width: 2, color: '#6ea6ce' },
+      itemStyle: { color: '#6ea6ce', borderColor: '#e8f4ff', borderWidth: 1 },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(110, 166, 206, 0.35)' },
+            { offset: 1, color: 'rgba(110, 166, 206, 0.02)' },
+          ],
+        },
+      },
+      label: {
+        show: true,
+        position: 'top',
+        color: '#b5c3d4',
+        fontSize: 10,
+        fontFamily: 'DIN Alternate, ui-monospace, monospace',
+      },
+    }],
+  }
+})
 
 // ECharts · 产业结构雷达
 const chainOption = computed(() => {
@@ -524,6 +619,51 @@ function makeCompany(
   }
 }
 
+async function loadParkList() {
+  try {
+    const res = await fetchParkList()
+    if (res.code === 0 && Array.isArray(res.data)) {
+      parkList.value = res.data.map(item => ({
+        park_id: item.park_id,
+        park_name: item.park_name,
+      }))
+    }
+  } catch (e) {
+    console.error('获取园区列表失败:', e)
+    parkList.value = []
+  }
+}
+
+async function loadPanelStats(parkId?: number) {
+  panelStatsLoading.value = true
+  try {
+    const [chainRes, typeRes] = await Promise.all([
+      fetchParkChain(parkId),
+      fetchCompanyTypeInfo(parkId),
+    ])
+    if (chainRes.code === 0) {
+      parkChainStats.value = normalizeCompanyStatList(chainRes.data)
+    } else {
+      parkChainStats.value = []
+    }
+    if (typeRes.code === 0) {
+      typeInfoStats.value = normalizeTypeInfoList(typeRes.data)
+    } else {
+      typeInfoStats.value = []
+    }
+  } catch (e) {
+    console.error('获取左侧统计失败:', e)
+    parkChainStats.value = []
+    typeInfoStats.value = []
+  } finally {
+    panelStatsLoading.value = false
+  }
+}
+
+function syncActiveParkFromMap(parkName: string | null) {
+  activeParkId.value = parkName ? matchParkId(parkName, parkList.value) : null
+}
+
 async function loadCompanies() {
   loading.value = true
   try {
@@ -546,9 +686,17 @@ watch([filteredCompanies, mapReady], () => {
   }
 })
 
+watch(selectedParkName, async (parkName) => {
+  syncActiveParkFromMap(parkName)
+  await loadPanelStats(activeParkId.value ?? undefined)
+})
+
 onMounted(async () => {
-  await Promise.all([loadCompanies(), loadNews()])
+  await Promise.all([loadCompanies(), loadNews(), loadParkList()])
+  syncActiveParkFromMap(selectedParkName.value)
+  await loadPanelStats(activeParkId.value ?? undefined)
   await nextTick()
+  chartsReady.value = true
   initMap(filteredCompanies.value)
 })
 
@@ -677,9 +825,10 @@ onUnmounted(() => {
   min-width: 0;
 }
 .es-left {
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(style: 'light'0, 1.15fr) minmax(160px, 0.85fr);
   position: relative;
   z-index: 2;
+  overflow: hidden;
 }
 
 /* ============ 面板通用 ============ */
@@ -698,6 +847,10 @@ onUnmounted(() => {
 .es-panel-flex {
   flex: 1;
   min-height: 0;
+  padding: 10px;
+}
+.es-panel-nature {
+  min-height: 160px;
   padding: 10px;
 }
 
@@ -872,6 +1025,12 @@ onUnmounted(() => {
   min-height: 180px;
   width: 100%;
   padding: 10px 6px 8px;
+}
+.es-chart-nature {
+  flex: 1;
+  min-height: 140px;
+  width: 100%;
+  padding: 4px 2px 0;
 }
 .es-chart-industry {
   flex: none;
@@ -1317,24 +1476,43 @@ onUnmounted(() => {
   }
 }
 
-/* ============ 响应式（大屏 ≥ 1440px 为设计基准） ============ */
+/* ============ 响应式 ============ */
+@media (max-width: 1600px) {
+  .es-body { grid-template-columns: minmax(280px, 30%) 1fr; gap: 12px; }
+  .es-left { grid-template-rows: auto minmax(0, 1.1fr) minmax(150px, 0.8fr); }
+}
+
 @media (max-width: 1400px) {
   .es-title { font-size: 18px; }
   .es-metric-value { font-size: 22px; }
-  .es-body { grid-template-columns: minmax(280px, 32%) 1fr; gap: 12px; }
+  .es-body { grid-template-columns: minmax(260px, 34%) 1fr; gap: 12px; }
+  .es-industry-row { grid-template-columns: 96px minmax(0, 1fr) 28px; }
 }
 
 @media (max-width: 1180px) {
   .es-screen { padding: 8px 12px 8px; grid-template-rows: 52px 1fr; }
-  .es-body { grid-template-columns: 1fr; padding: 10px 0 0; }
-  .es-col { grid-template-rows: none; }
-  .es-stage { min-height: 460px; }
+  .es-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(420px, 1fr);
+    padding: 10px 0 0;
+    overflow: auto;
+  }
+  .es-left {
+    grid-template-rows: auto minmax(220px, 280px) minmax(180px, 220px);
+    max-height: none;
+  }
+  .es-stage { min-height: 420px; }
   .es-title { font-size: 17px; white-space: normal; }
+  .es-header { flex-wrap: wrap; height: auto; min-height: 52px; padding: 8px 0; gap: 8px; }
 }
 
 @media (max-width: 720px) {
   .es-screen { padding: 8px 10px 8px; }
   .es-title { font-size: 16px; }
+  .es-metrics { grid-template-columns: 1fr; }
+  .es-left { grid-template-rows: auto minmax(200px, 260px) minmax(160px, 200px); }
+  .es-stage { min-height: 360px; }
   .es-footer { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
+  .es-industry-row { grid-template-columns: 80px minmax(0, 1fr) 28px; gap: 6px; }
 }
 </style>

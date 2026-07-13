@@ -33,21 +33,38 @@ type AMapLike = {
 declare global {
   interface Window {
     AMap?: AMapLike
+    Loca?: any
     _AMapSecurityConfig?: { securityJsCode: string }
     __enterpriseAmapPromise__?: Promise<AMapLike>
+    __enterpriseLocaPromise__?: Promise<any>
   }
 }
 
+/** Loca 官方示例呼吸波纹序列帧纹理（贴地扩散） */
+const BREATH_TEXTURE = 'https://a.amap.com/Loca/static/loca-v2/demos/images/breath_blue.png'
+const BREATH_TEXTURE_ALT = 'https://a.amap.com/Loca/static/loca-v2/demos/images/breath_yellow.png'
+
 const PARK_PALETTE = [
-  '#38bdf8', // 天蓝
-  '#34d399', // 翠绿
-  '#fbbf24', // 琥珀
-  '#f472b6', // 粉玫
-  '#a78bfa', // 紫色
-  '#fb923c', // 橙色
-  '#22d3ee', // 青蓝
-  '#4ade80', // 草绿
+  '#5b8fb8', // 钢蓝
+  '#7a9e8e', // 灰绿
+  '#c49a6a', // 沙褐
+  '#9b7eb8', // 灰紫
+  '#6b8cae', // 板岩蓝
+  '#a88b7a', // 陶土
+  '#8a9bb0', // 冷灰蓝
+  '#7e9a72', // 橄榄绿
 ]
+
+/** 相邻园区易混淆时单独指定色（低饱和，仍保持区分） */
+const PARK_COLOR_OVERRIDES: Record<string, string> = {
+  '光谷未来科技城': '#c97b8a', // 灰玫
+  '光谷智能制造产业园': '#c9b05a', // 暗金
+  '光谷生物城': '#5a9e82', // 墨绿
+}
+
+function isHighlightPark(parkName: string) {
+  return parkName in PARK_COLOR_OVERRIDES
+}
 
 /**
  * 企业大屏地图：高德 AMap 3D + 高新区园区边界 + 各园区企业数标注
@@ -83,14 +100,16 @@ export function useEnterpriseL7Map() {
 
   let overviewViewState: MapViewState | null = null
   let overviewViewSettled = false
+  let loca: any = null
+  let breathLayers: any[] = []
 
   /** 全览：轻微倾斜；选中园区：平面俯视 */
   const MAP_PITCH = 30
   const MAP_PITCH_FLAT = 0
   const MAP_ROTATION = 12
   const MAP_ROTATION_FLAT = 0
-  const MAP_ZOOM = 12.8
-  const MAP_FIT_MAX_ZOOM = 13.4
+  const MAP_ZOOM = 13.2
+  const MAP_FIT_MAX_ZOOM = 14.0
   const MAP_PARK_FIT_MAX_ZOOM = 15.2
 
   function getParkName(feature: GeoFeature): string {
@@ -225,6 +244,159 @@ export function useEnterpriseL7Map() {
     return [(minLng + maxLng) / 2, (minLat + maxLat) / 2]
   }
 
+  function boundsForPark(parkName: string): [[number, number], [number, number]] | null {
+    const features = parkFeatures.filter(f => getParkName(f) === parkName)
+    let minLng = Infinity
+    let minLat = Infinity
+    let maxLng = -Infinity
+    let maxLat = -Infinity
+
+    for (const feature of features) {
+      if (!feature.geometry) continue
+      for (const ring of outerRingsFromGeometry(feature.geometry)) {
+        for (const [lng, lat] of ring) {
+          minLng = Math.min(minLng, lng)
+          minLat = Math.min(minLat, lat)
+          maxLng = Math.max(maxLng, lng)
+          maxLat = Math.max(maxLat, lat)
+        }
+      }
+    }
+
+    if (!Number.isFinite(minLng)) return null
+    return [[minLng, minLat], [maxLng, maxLat]]
+  }
+
+  function calloutLayoutForPark(
+    parkName: string,
+    anchor: [number, number],
+    index: number,
+  ): { path: [number, number][]; labelPos: [number, number]; textAnchor: string } {
+    const [lng, lat] = anchor
+    const [cx, cy] = zoneCenter
+    let dx = lng - cx
+    let dy = lat - cy
+    const len = Math.hypot(dx, dy) || 1
+    dx /= len
+    dy /= len
+
+    // 轻微错开方向，减少相邻标签重叠
+    const angleOffset = ((index % 7) - 3) * 0.18
+    const cos = Math.cos(angleOffset)
+    const sin = Math.sin(angleOffset)
+    const ndx = dx * cos - dy * sin
+    const ndy = dx * sin + dy * cos
+
+    const bounds = boundsForPark(parkName)
+    let stub = 0.012
+    let arm = 0.022
+    if (bounds) {
+      const [[minLng, minLat], [maxLng, maxLat]] = bounds
+      const span = Math.max(maxLng - minLng, maxLat - minLat)
+      stub = Math.max(0.008, Math.min(0.02, span * 0.7))
+      arm = Math.max(0.014, Math.min(0.032, span * 1.15))
+    }
+
+    // 折线：锚点 → 折点 → 标签（L 形，先短伸出再拐向外侧）
+    const preferHorizontal = Math.abs(ndx) >= Math.abs(ndy)
+    const sx = Math.sign(ndx) || 1
+    const sy = Math.sign(ndy) || 1
+    let elbow: [number, number]
+    let labelPos: [number, number]
+    let textAnchor: string
+
+    if (preferHorizontal) {
+      // 先竖直伸出，再水平指向标签
+      elbow = [lng, lat + sy * stub]
+      labelPos = [lng + sx * arm, elbow[1]]
+      textAnchor = sx > 0 ? 'middle-left' : 'middle-right'
+    } else {
+      // 先水平伸出，再竖直指向标签
+      elbow = [lng + sx * stub, lat]
+      labelPos = [elbow[0], lat + sy * arm]
+      textAnchor = sy > 0 ? 'bottom-center' : 'top-center'
+    }
+
+    return {
+      path: [anchor, elbow, labelPos],
+      labelPos,
+      textAnchor,
+    }
+  }
+
+  function attachParkSelectHandler(overlay: any, parkName: string) {
+    overlay.on?.('click', (e: any) => {
+      e?.originEvent?.stopPropagation?.()
+      e?.originEvent?.preventDefault?.()
+      deferSelectPark(parkName, true)
+    })
+  }
+
+  function createParkCallout(parkName: string, shortName: string, color: string, index: number) {
+    if (!map || !AMap) return
+
+    const anchor = centroidForPark(parkName)
+    const { path, labelPos, textAnchor } = calloutLayoutForPark(parkName, anchor, index)
+
+    const line = new AMap.Polyline({
+      path,
+      strokeColor: color,
+      strokeWeight: 1.2,
+      strokeOpacity: 0.88,
+      strokeStyle: 'solid',
+      lineJoin: 'round',
+      lineCap: 'round',
+      zIndex: 198,
+      bubble: true,
+      cursor: 'pointer',
+    })
+    line.setMap(map)
+    attachParkSelectHandler(line, parkName)
+    parkLabels.push(line)
+
+    if (AMap.CircleMarker) {
+      const dot = new AMap.CircleMarker({
+        center: anchor,
+        radius: 2.5,
+        strokeColor: '#ffffff',
+        strokeWeight: 1,
+        strokeOpacity: 0.9,
+        fillColor: color,
+        fillOpacity: 1,
+        zIndex: 199,
+        bubble: true,
+        cursor: 'pointer',
+      })
+      dot.setMap(map)
+      attachParkSelectHandler(dot, parkName)
+      parkLabels.push(dot)
+    }
+
+    const label = new AMap.Text({
+      text: shortName,
+      position: labelPos,
+      anchor: textAnchor,
+      zIndex: 200,
+      style: {
+        'background-color': 'rgba(10, 32, 64, 0.9)',
+        'border': `1px solid ${color}99`,
+        'border-radius': '2px',
+        'color': '#e8f4ff',
+        'font-size': '10px',
+        'font-weight': '500',
+        'padding': '2px 6px',
+        'text-align': 'center',
+        'line-height': '1.3',
+        'white-space': 'nowrap',
+        'box-shadow': '0 2px 8px rgba(0, 0, 0, 0.25)',
+        'cursor': 'pointer',
+      },
+    })
+    label.setMap(map)
+    attachParkSelectHandler(label, parkName)
+    parkLabels.push(label)
+  }
+
   function boundsFromZone(geoData: GeoFeatureCollection): [[number, number], [number, number]] | null {
     const ring = polygonRing(geoData)
     if (!ring.length) return null
@@ -253,7 +425,7 @@ export function useEnterpriseL7Map() {
     const names = [...new Set(features.map(getParkName).filter(Boolean))]
     const map = new Map<string, string>()
     names.forEach((name, index) => {
-      map.set(name, PARK_PALETTE[index % PARK_PALETTE.length])
+      map.set(name, PARK_COLOR_OVERRIDES[name] ?? PARK_PALETTE[index % PARK_PALETTE.length])
     })
     return map
   }
@@ -374,15 +546,143 @@ export function useEnterpriseL7Map() {
     })
   }
 
+  function loadLoca(key: string) {
+    if (typeof window === 'undefined') return Promise.reject(new Error('Loca only runs in browser'))
+    if (window.Loca) return Promise.resolve(window.Loca)
+    if (window.__enterpriseLocaPromise__) return window.__enterpriseLocaPromise__
+
+    window.__enterpriseLocaPromise__ = new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = `https://webapi.amap.com/loca?v=2.0.0&key=${encodeURIComponent(key)}`
+      script.async = true
+      script.onload = () => {
+        if (window.Loca) resolve(window.Loca)
+        else reject(new Error('Loca 加载失败'))
+      }
+      script.onerror = () => reject(new Error('Failed to load Loca'))
+      document.head.appendChild(script)
+    })
+
+    return window.__enterpriseLocaPromise__
+  }
+
+  function stopMapRipple(destroyContainer = true) {
+    breathLayers.forEach((layer) => {
+      try {
+        loca?.remove?.(layer)
+        layer?.destroy?.()
+      } catch {
+        // ignore
+      }
+    })
+    breathLayers = []
+    try {
+      loca?.animate?.stop?.()
+    } catch {
+      // ignore
+    }
+    if (destroyContainer) {
+      try {
+        loca?.destroy?.()
+      } catch {
+        // ignore
+      }
+      loca = null
+    }
+  }
+
+  function buildBreathGeoJSON(points: [number, number][]) {
+    return {
+      type: 'FeatureCollection',
+      features: points.map(([lng, lat], index) => ({
+        type: 'Feature',
+        properties: { id: index },
+        geometry: {
+          type: 'Point',
+          coordinates: [lng, lat],
+        },
+      })),
+    }
+  }
+
+  function breathPointsForFocus(focusParkName?: string | null): [number, number][] {
+    const parkNames = focusParkName
+      ? [focusParkName].filter(name => parkColorMap.has(name))
+      : [...parkColorMap.keys()]
+    const parkPoints = parkNames.map(name => centroidForPark(name))
+    if (parkPoints.length) return parkPoints
+    return focusParkName ? [] : [zoneCenter]
+  }
+
+  /** 贴地呼吸波纹：放在标注线起始点（园区中心）；选中园区时仅保留该园区 */
+  function startMapRipple(focusParkName?: string | null) {
+    if (!map || !window.Loca) return
+
+    const points = breathPointsForFocus(focusParkName)
+    // 只移除波纹图层，不要 destroy Loca 容器（会清掉园区 Polygon）
+    stopMapRipple(false)
+    if (!points.length) return
+
+    if (!loca) {
+      loca = new window.Loca.Container({ map })
+    }
+
+    // 主波纹：标注线起点
+    const parkLayer = new window.Loca.ScatterLayer({
+      loca,
+      zIndex: 9,
+      opacity: 0.72,
+      visible: true,
+      zooms: [10, 20],
+    })
+    parkLayer.setSource(new window.Loca.GeoJSONSource({
+      data: buildBreathGeoJSON(points),
+    }))
+    parkLayer.setStyle({
+      unit: 'meter',
+      size: [2600, 2600],
+      borderWidth: 0,
+      texture: BREATH_TEXTURE,
+      duration: 1400,
+      animate: true,
+    })
+    loca.add(parkLayer)
+    breathLayers.push(parkLayer)
+
+    // 次级波纹：同一起点，节奏错开
+    const sparkLayer = new window.Loca.ScatterLayer({
+      loca,
+      zIndex: 10,
+      opacity: 0.45,
+      visible: true,
+      zooms: [11, 20],
+    })
+    sparkLayer.setSource(new window.Loca.GeoJSONSource({
+      data: buildBreathGeoJSON(points),
+    }))
+    sparkLayer.setStyle({
+      unit: 'meter',
+      size: [1400, 1400],
+      borderWidth: 0,
+      texture: BREATH_TEXTURE_ALT,
+      duration: 1000,
+      animate: true,
+    })
+    loca.add(sparkLayer)
+    breathLayers.push(sparkLayer)
+
+    loca.animate.start()
+  }
+
   function applyMapView(targetCenter: [number, number], fitRegion = false) {
     if (!map) return
     if (fitRegion) {
       // 框住高新区后略再拉近一点
       const fitTargets = [...zonePolygons, ...zoneLines]
       if (fitTargets.length) {
-        map.setFitView(fitTargets, true, [40, 40, 40, 40], MAP_FIT_MAX_ZOOM)
+        map.setFitView(fitTargets, true, [24, 24, 24, 24], MAP_FIT_MAX_ZOOM)
         const z = typeof map.getZoom === 'function' ? Number(map.getZoom()) : MAP_ZOOM
-        map.setZoom(Math.min(z + 0.25, MAP_FIT_MAX_ZOOM))
+        map.setZoom(Math.min(z + 0.65, MAP_FIT_MAX_ZOOM))
       } else {
         map.setZoomAndCenter(MAP_ZOOM, targetCenter, true, 0)
       }
@@ -397,8 +697,9 @@ export function useEnterpriseL7Map() {
   function applyParkFocusView() {
     if (!map || !parkPolygons.length) return
     map.setFitView(parkPolygons, true, [64, 64, 64, 64], MAP_PARK_FIT_MAX_ZOOM)
-    if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH_FLAT)
-    if (typeof map.setRotation === 'function') map.setRotation(MAP_ROTATION_FLAT)
+    // 选中园区后仍保持 3D 俯仰与旋转
+    if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH)
+    if (typeof map.setRotation === 'function') map.setRotation(MAP_ROTATION)
   }
 
   function showCompanyHoverLabel(name: string, lng: number, lat: number) {
@@ -459,9 +760,9 @@ export function useEnterpriseL7Map() {
     const minLng = Math.min(...lngs)
     const maxLng = Math.max(...lngs)
     const t = maxLng > minLng ? (lng - minLng) / (maxLng - minLng) : 0.5
-    // 右侧略高，保持适度高度差与可见突起
-    const base = 900 + t * 2200
-    return Math.max(900, Math.min(4200, base + count * 6))
+    // 右侧略高，保持可见突起与区域高度差
+    const base = 1000 + t * 3000
+    return Math.max(1000, Math.min(5200, base + count * 8))
   }
 
   function renderCompanyMarkers(parkName: string, companies: CompanyRecord[]) {
@@ -596,6 +897,7 @@ export function useEnterpriseL7Map() {
     const counts = countCompaniesByPark(companies)
     const legend: ParkLegendItem[] = []
     const focusName = selectedParkName.value
+    let parkIndex = 0
 
     for (const [parkName, color] of parkColorMap.entries()) {
       const count = counts.get(parkName) || 0
@@ -606,16 +908,17 @@ export function useEnterpriseL7Map() {
 
       const features = parkFeatures.filter(f => getParkName(f) === parkName)
       for (const feature of features) {
-        const extrusionHeight = focusName ? 0 : parkExtrusionHeight(parkName, count)
+        const extrusionHeight = parkExtrusionHeight(parkName, count)
+        const highlighted = isHighlightPark(parkName)
         createPolygonsForFeature(feature, {
           fillColor: color,
-          fillOpacity: focusName ? 0.72 : 0.58,
+          fillOpacity: focusName ? 0.72 : (highlighted ? 0.62 : 0.48),
           strokeColor: color,
-          strokeWeight: focusName ? 2.2 : 1.4,
-          strokeOpacity: 0.9,
+          strokeWeight: focusName ? 2 : (highlighted ? 1.6 : 1.2),
+          strokeOpacity: highlighted ? 0.85 : 0.75,
           extrusionHeight,
           wallColor: '#062038',
-          roofColor: `${color}dd`,
+          roofColor: color,
           zIndex: 30 + Math.min(40, Math.floor(count / 5)),
           cursor: 'pointer',
           extData: { parkName },
@@ -630,40 +933,14 @@ export function useEnterpriseL7Map() {
         })
       }
 
-      const [lng, lat] = centroidForPark(parkName)
-      const label = new AMap.Text({
-        text: shortName,
-        position: [lng, lat],
-        anchor: 'center',
-        zIndex: 200,
-        style: {
-          'background-color': 'rgba(10, 32, 64, 0.88)',
-          'border': '1px solid rgba(56, 189, 248, 0.4)',
-          'border-radius': '2px',
-          'color': '#e8f4ff',
-          'font-size': '10px',
-          'font-weight': '500',
-          'padding': '2px 6px',
-          'text-align': 'center',
-          'line-height': '1.3',
-          'white-space': 'nowrap',
-          'box-shadow': '0 2px 10px rgba(37, 99, 235, 0.25)',
-          'cursor': 'pointer',
-        },
-      })
-      label.setMap(map)
-      label.on?.('click', (e: any) => {
-        e?.originEvent?.stopPropagation?.()
-        e?.originEvent?.preventDefault?.()
-        deferSelectPark(parkName, true)
-      })
-      parkLabels.push(label)
+      createParkCallout(parkName, shortName, color, parkIndex)
+      parkIndex += 1
     }
 
     parkLegend.value = legend.sort((a, b) => b.count - a.count)
 
     if (focusName) {
-      renderCompanyMarkers(focusName, companies)
+      // 选中园区：保持 3D，不展示企业坐标点
       if (fit) {
         requestAnimationFrame(() => {
           if (prevFocus === null) saveOverviewView()
@@ -671,12 +948,19 @@ export function useEnterpriseL7Map() {
           releaseMapDrag()
         })
       } else {
-        if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH_FLAT)
-        if (typeof map.setRotation === 'function') map.setRotation(MAP_ROTATION_FLAT)
+        if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH)
+        if (typeof map.setRotation === 'function') map.setRotation(MAP_ROTATION)
       }
     } else if (fit) {
       restoreOverviewView()
       releaseMapDrag()
+    }
+
+    // 选中园区时只保留该园区波纹，返回全览再恢复全部
+    try {
+      startMapRipple(focusName)
+    } catch (e) {
+      console.warn('更新园区波纹失败', e)
     }
   }
 
@@ -709,6 +993,7 @@ export function useEnterpriseL7Map() {
 
       AMap = amapApi
       await ensureMapPlugins(AMap)
+      await loadLoca(amapKey)
       destroyMap()
 
       parkFeatures = parkAreas.features ?? []
@@ -800,6 +1085,7 @@ export function useEnterpriseL7Map() {
   }
 
   function destroyMap() {
+    stopMapRipple()
     hideCompanyHoverLabel()
     companyHoverText = null
     clearOverlays(companyMarkers)
