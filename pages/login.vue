@@ -12,7 +12,7 @@
             <circle cx="20" cy="20" r="4.5" fill="none" stroke="currentColor" stroke-width="1" />
           </svg>
         </div>
-        <h1 class="login-brand-title">智知云 · 产业情报中心</h1>
+        <h1 class="login-brand-title">企业服务 · 产业情报中心</h1>
         <p class="login-brand-sub">Industrial Intelligence Platform</p>
 
         <div class="login-features">

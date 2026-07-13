@@ -16,20 +16,21 @@
         </div>
       </div>
       <nav class="topbar-nav">
-        <NuxtLink
+        <a
           v-for="item in navItems"
           :key="item.path"
-          :to="item.path"
+          :href="item.path"
           class="nav-link"
-          :class="{ active: route.path === item.path }"
+          :class="{ active: !item.openInNewTab && route.path === item.path }"
+          :target="item.openInNewTab ? '_blank' : undefined"
+          :rel="item.openInNewTab ? 'noopener noreferrer' : undefined"
+          @click="onNavClick($event, item)"
         >
           <UIcon :name="item.icon" class="size-4" />
           <span>{{ item.name }}</span>
-        </NuxtLink>
+        </a>
       </nav>
     </div>
-
-    <div class="flex-1" />
 
     <!-- 右侧工具区 -->
     <div class="topbar-right">
@@ -112,17 +113,22 @@ const userInitials = computed(() => user.value?.name?.slice(0, 1) || user.value?
 
 const navItems = computed(() => {
   const items = [
-    { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
-    { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
-    { path: '/enterprise-screen', name: '企业大屏', icon: 'i-lucide-monitor-dot' },
-    { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
+    { path: '/', name: '产业图谱', icon: 'i-lucide-network', openInNewTab: false },
+    { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map', openInNewTab: false },
+    { path: '/enterprise-screen', name: '企业大屏', icon: 'i-lucide-monitor-dot', openInNewTab: false },
+    { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper', openInNewTab: false },
   ]
   if (hydrated.value && isAdmin.value) {
-    items.push({ path: '/admin/data-update', name: '数据更新', icon: 'i-lucide-database-zap' })
+    items.push({ path: '/admin/data-update', name: '数据更新', icon: 'i-lucide-database-zap', openInNewTab: false })
   }
   return items
 })
 
+function onNavClick(event: MouseEvent, item: { path: string, openInNewTab: boolean }) {
+  if (item.openInNewTab) return
+  event.preventDefault()
+  if (route.path !== item.path) router.push(item.path)
+}
 const themeMenuItems = computed(() => [
   [
     {
@@ -187,16 +193,19 @@ onMounted(() => {
   padding: 0 20px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 50;
   gap: 16px;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
   gap: 24px;
+  min-width: 0;
+  flex: 1;
 }
 
 .topbar-brand {
@@ -204,6 +213,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .brand-icon {
@@ -247,6 +257,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.topbar-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-link {
@@ -260,6 +276,8 @@ onMounted(() => {
   color: var(--text-muted);
   text-decoration: none;
   transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .nav-link:hover {
   color: var(--text);
@@ -274,6 +292,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .theme-toggle-btn {

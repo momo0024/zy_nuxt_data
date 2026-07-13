@@ -64,7 +64,6 @@ const authStore = useAuthStore()
 const NAV_ITEMS: NavItem[] = [
   { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
   { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
-  { path: '/enterprise-screen', name: '企业大屏', icon: 'i-lucide-monitor-dot' },
   { path: '/news-center', name: '新闻中心', icon: 'i-lucide-newspaper' },
   { path: '/admin/data-update', name: '数据更新', icon: 'i-lucide-database-zap' },
   // { path: '/settings', name: '系统设置', icon: 'i-lucide-settings-2' },
@@ -148,6 +147,8 @@ function closeTab(path: string) {
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .tab-item {
@@ -203,6 +204,8 @@ function closeTab(path: string) {
   flex: 1;
   overflow: auto;
   background: var(--bg);
-  padding: 0;
+  padding: 16px 20px;
+  position: relative;
+  z-index: 1;
 }
 </style>

@@ -4,9 +4,9 @@
   </div>
 </template>
 
-<style>
+<style scoped>
 .blank-layout {
   min-height: 100vh;
-  background: #060d1c;
+  background: #0c1522;
 }
 </style>

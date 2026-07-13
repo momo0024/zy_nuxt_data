@@ -1,237 +1,142 @@
 <template>
   <ClientOnly>
-    <div class="gs-screen">
-      <!-- 背景层：极淡星纹 + 顶部/底部装饰线 -->
-      <div class="gs-bg" aria-hidden="true">
-        <div class="gs-bg-grain" />
-        <div class="gs-bg-vignette" />
-      </div>
-
-      <!-- 四角装饰印章 -->
-      <span class="gs-corner gs-corner-tl" aria-hidden="true" />
-      <span class="gs-corner gs-corner-tr" aria-hidden="true" />
-      <span class="gs-corner gs-corner-bl" aria-hidden="true" />
-      <span class="gs-corner gs-corner-br" aria-hidden="true" />
+    <div class="es-screen">
+      <div class="es-bg" aria-hidden="true" />
 
       <!-- 顶部标题栏 -->
-      <header class="gs-header">
-        <div class="gs-header-left">
-          <div class="gs-seal">
-            <svg viewBox="0 0 40 40" class="gs-seal-svg" aria-hidden="true">
-              <rect x="1" y="1" width="38" height="38" rx="2" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.6" />
-              <rect x="6" y="6" width="28" height="28" rx="1" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.4" />
-              <path d="M13 20 h14 M20 13 v14" stroke="currentColor" stroke-width="1" />
-              <circle cx="20" cy="20" r="4.5" fill="none" stroke="currentColor" stroke-width="1" />
-            </svg>
-          </div>
-          <div class="gs-header-title">
-            <p class="gs-header-org">智知云 · 产业情报中心</p>
-            <p class="gs-header-eng">EAST LAKE HIGH-TECH ZONE INTELLIGENCE</p>
-          </div>
-        </div>
+      <header class="es-header">
+        <h1 class="es-title">产业态势总览</h1>
 
-        <div class="gs-header-center">
-          <div class="gs-title-line" />
-          <h1 class="gs-title">光谷高新区 · 产业态势总览</h1>
-          <div class="gs-title-line" />
-          <p class="gs-title-sub">
-            东湖高新技术开发区
-            <span class="gs-title-sep" />
-            期次
-            <span class="gs-title-value">{{ reportPeriod }}</span>
-            <span class="gs-title-sep" />
-            共 <span class="gs-title-value">{{ companies.length }}</span> 家在册企业
-          </p>
-        </div>
-
-        <div class="gs-header-right">
-          <div class="gs-clock">
-            <div class="gs-clock-time">{{ currentTime }}</div>
-            <div class="gs-clock-date">
-              {{ currentDate }}
-              <span class="gs-sep-dot" />
-              {{ weekDay }}
-            </div>
-          </div>
-          <div class="gs-sync">
-            <span class="gs-sync-dot" />
-            数据同步
-            <strong>{{ syncTime }}</strong>
-          </div>
-        </div>
+        <nav class="es-header-nav">
+          <a
+            v-for="link in screenNavLinks"
+            :key="link.path"
+            :href="link.path"
+            class="es-nav-link"
+            @click="onScreenNavClick($event, link)"
+          >
+            <UIcon :name="link.icon" class="size-3.5" />
+            <span>{{ link.name }}</span>
+          </a>
+        </nav>
       </header>
 
-      <!-- 主体三栏 -->
-      <main class="gs-body">
+      <!-- 主体两栏：左面板 + 地图 -->
+      <main class="es-body">
         <!-- 左栏 -->
-        <aside class="gs-col gs-left">
+        <aside class="es-col es-left">
           <!-- 01 核心指标 -->
-          <section class="gs-panel">
-            <div class="gs-panel-head">
-              <h2>核心指标</h2>
+          <section class="es-panel">
+            <div class="es-panel-head">
+              <h2>总览</h2>
             </div>
-            <div class="gs-metrics">
+            <div class="es-metrics">
               <article
                 v-for="metric in metrics"
                 :key="metric.key"
-                class="gs-metric"
+                class="es-metric"
                 :class="{ active: activeMetric === metric.key }"
               >
-                <div class="gs-metric-head">
-                  <span class="gs-metric-label">{{ metric.label }}</span>
-                  <span class="gs-metric-unit">{{ metric.unit }}</span>
+                <div class="es-metric-head">
+                  <span class="es-metric-label">{{ metric.label }}</span>
+                  <span class="es-metric-unit">{{ metric.unit }}</span>
                 </div>
-                <div class="gs-metric-value">{{ metric.value }}</div>
-                <div class="gs-metric-hint">{{ metric.hint }}</div>
+                <div class="es-metric-value">{{ metric.value }}</div>
+                <div class="es-metric-hint">{{ metric.hint }}</div>
               </article>
             </div>
           </section>
 
-          <!-- 02 产业集群分布 -->
-          <section class="gs-panel gs-panel-flex">
-            <div class="gs-panel-head">
+          <!-- 02 产业集群分布（子类） -->
+          <section class="es-panel es-panel-flex">
+            <div class="es-panel-head">
               <h2>产业集群分布</h2>
-              <span class="gs-panel-tag">{{ filteredCompanies.length }} 家</span>
+              <span class="es-panel-tag">{{ filteredCompanies.length }} 家 · {{ industryTabs.length }} 类</span>
             </div>
-            <VChart class="gs-chart" :option="industryOption" autoresize />
+            <div class="es-chart-scroll">
+              <ul class="es-industry-list">
+                <li
+                  v-for="(item, idx) in industryTabs"
+                  :key="item.name"
+                  class="es-industry-row"
+                >
+                  <span class="es-industry-label" :title="item.name">{{ item.name }}</span>
+                  <div class="es-industry-bar-wrap">
+                    <div
+                      class="es-industry-bar"
+                      :class="{ top: idx < 3 }"
+                      :style="{ width: `${(item.count / industryMaxCount) * 100}%` }"
+                    />
+                  </div>
+                  <span class="es-industry-count">{{ item.count }}</span>
+                </li>
+              </ul>
+            </div>
           </section>
 
-          <!-- 03 重点企业名录 -->
-          <section class="gs-panel gs-panel-flex">
-            <div class="gs-panel-head">
-              <h2>重点企业名录</h2>
-              <span class="gs-panel-tag">TOP {{ topCompanies.length }}</span>
-            </div>
-            <div class="gs-companies">
-              <div
-                v-for="company in topCompanies"
-                :key="company.id"
-                class="gs-company"
-                :class="{ active: selectedCompany?.id === company.id }"
-                @click="selectCompany(company)"
-              >
-                <span class="gs-company-rank">{{ company.rank }}</span>
-                <div class="gs-company-body">
-                  <strong>{{ company.company_name }}</strong>
-                  <small>{{ company.chain_name || company.product_type || '综合服务' }}</small>
-                </div>
-                <div class="gs-company-score">
-                  <span>{{ Math.round(scoreOf(company)) }}</span>
-                  <small>评分</small>
-                </div>
-              </div>
-            </div>
+          <!-- 03 重点企业名录（暂隐藏）
+          <section class="es-panel es-panel-flex">
+            ...
           </section>
+          -->
         </aside>
 
         <!-- 中央地图 -->
-        <section class="gs-center">
-          <div class="gs-stage">
-            <div ref="mapContainerRef" class="gs-stage-canvas" />
+        <section class="es-center">
+          <div class="es-stage">
+            <div ref="mapContainerRef" class="es-stage-canvas" />
 
-            <!-- 地图加载 -->
-            <div v-if="!mapReady" class="gs-stage-loading">
-              <span class="gs-loader" />
+            <div v-if="!mapReady" class="es-stage-loading">
+              <span class="es-loader" />
               <span>地图渲染中</span>
             </div>
 
-            <!-- 左上：园区分布图例 -->
-            <div class="gs-legend">
-              <span class="gs-legend-title">园区分布</span>
-              <div class="gs-legend-items">
-                <span
+            <div class="es-legend">
+              <span class="es-legend-title">园区分布</span>
+              <div class="es-legend-items">
+                <button
                   v-for="item in parkLegend"
                   :key="item.name"
-                  class="gs-legend-item"
+                  type="button"
+                  class="es-legend-item"
+                  :class="{ active: selectedParkName === item.name }"
+                  @click="selectPark(item.name)"
                 >
-                  <span class="gs-legend-dot" :style="{ background: item.color }" />
-                  {{ item.shortName }} · {{ item.count }}
-                </span>
+                  <span class="es-legend-dot" :style="{ background: item.color }" />
+                  {{ item.shortName }} {{ item.count }}
+                </button>
               </div>
+              <button
+                v-if="selectedParkName"
+                type="button"
+                class="es-legend-reset"
+                @click="selectPark(null)"
+              >
+                返回全览
+              </button>
             </div>
-
           </div>
         </section>
 
-        <!-- 右栏 -->
-        <aside class="gs-col gs-right">
-          <!-- 04 产业结构 -->
-          <section class="gs-panel gs-panel-flex">
-            <div class="gs-panel-head">
-              <h2>产业结构评估</h2>
-              <span class="gs-panel-tag">五维</span>
-            </div>
-            <VChart class="gs-chart" :option="chainOption" autoresize />
-          </section>
-
-          <!-- 05 来源结构 -->
-          <section class="gs-panel">
-            <div class="gs-panel-head">
-              <h2>企业来源</h2>
-            </div>
-            <div class="gs-bars">
-              <div
-                v-for="bar in sourceBars"
-                :key="bar.label"
-                class="gs-bar"
-              >
-                <div class="gs-bar-info">
-                  <span class="gs-bar-label">{{ bar.label }}</span>
-                  <span class="gs-bar-value">{{ bar.value }} <small>{{ bar.percent }}%</small></span>
-                </div>
-                <div class="gs-bar-track">
-                  <div class="gs-bar-fill" :style="{ width: bar.percent + '%' }" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- 06 新闻动态 -->
-          <section class="gs-panel gs-panel-flex">
-            <div class="gs-panel-head">
-              <h2>新闻动态</h2>
-              <span class="gs-panel-tag">{{ newsPanelTag }}</span>
-            </div>
-            <div class="gs-events">
-              <div v-if="newsLoading" class="gs-events-empty">加载新闻中</div>
-              <div v-else-if="!newsList.length" class="gs-events-empty">暂无新闻</div>
-              <template v-else>
-                <a
-                  v-for="item in newsList"
-                  :key="item.id"
-                  class="gs-event gs-event-link"
-                  :href="item.url || undefined"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  @click.prevent="openNews(item)"
-                >
-                  <div class="gs-event-time">
-                    <strong>{{ item.time || '--:--' }}</strong>
-                    <small>{{ formatNewsDate(item.date) }}</small>
-                  </div>
-                  <div class="gs-event-body">
-                    <strong>{{ item.source || '资讯' }}</strong>
-                    <p>{{ item.title }}</p>
-                  </div>
-                </a>
-              </template>
-            </div>
-          </section>
+        <!-- 右栏（暂隐藏：产业结构评估 / 企业来源 / 新闻动态）
+        <aside class="es-col es-right">
+          ...
         </aside>
+        -->
       </main>
 
       <!-- 底栏 · 数据来源与版权 -->
-      <footer class="gs-footer">
-        <span>数据来源 · 光谷高新区经济信息中心 / 天眼查 / 企查查 / 国家知识产权局</span>
-        <span class="gs-footer-sep" />
-        <span>更新频率 · 每 4 小时</span>
-        <span class="gs-footer-sep" />
-        <span>版本 · 智知云 产业情报中心</span>
-      </footer>
+<!--      <footer class="es-footer">-->
+<!--        <span>数据来源 · 光谷高新区经济信息中心 / 天眼查 / 企查查 / 国家知识产权局</span>-->
+<!--        <span class="es-footer-sep" />-->
+<!--        <span>更新频率 · 每 4 小时</span>-->
+<!--        <span class="es-footer-sep" />-->
+<!--        <span>版本 · 企业服务 产业情报中心</span>-->
+<!--      </footer>-->
 
       <!-- 全屏加载 -->
-      <div v-if="loading" class="gs-loading">
-        <span class="gs-loader" />
+      <div v-if="loading" class="es-loading">
+        <span class="es-loader" />
         <span>加载企业数据</span>
       </div>
     </div>
@@ -240,15 +145,19 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import type { CompanyRecord } from '~/types/company'
 import { fetchCompanies } from '~/types/company'
 import { newsRequest } from '~/utils/request'
 
-definePageMeta({ layout: 'blank', middleware: ['auth'], keepalive: true, ssr: false })
+definePageMeta({ layout: 'blank', middleware: ['auth'], keepalive: false, ssr: false })
 
 type SourceFilter = 'all' | 'listed' | 'native' | 'attract'
-type MetricKey = 'scale' | 'listed' | 'patent' | 'active'
+type MetricKey = 'scale' | 'listed' | 'native' | 'attract'
+
+const screenNavLinks = [
+  { path: '/', name: '产业图谱', icon: 'i-lucide-network' },
+  { path: '/geo-screen', name: '企业地图', icon: 'i-lucide-map' },
+]
 
 interface NewsItem {
   id: string
@@ -259,7 +168,6 @@ interface NewsItem {
   url: string
 }
 
-const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
 
 const fallbackCompanies: CompanyRecord[] = [
   makeCompany('武汉光电工程技术研究院', '激光光电', '核心器件', 114.42, 30.505, 88, 0, '本土培育'),
@@ -285,17 +193,22 @@ const companies = ref<CompanyRecord[]>(fallbackCompanies)
 const selectedCompany = ref<CompanyRecord | null>(null)
 const sourceFilter = ref<SourceFilter>('all')
 const activeIndustry = ref('all')
-const activeMetric = ref<MetricKey>('scale')
-const now = ref(new Date())
+const activeMetric = ref<MetricKey | null>(null)
 const syncStamp = ref(new Date())
 const newsList = ref<NewsItem[]>([])
 const newsLoading = ref(false)
-let clockTimer: ReturnType<typeof setInterval> | null = null
+
+function onScreenNavClick(event: MouseEvent, link: typeof screenNavLinks[number]) {
+  event.preventDefault()
+  navigateTo(link.path)
+}
 
 const {
   mapContainerRef,
   mapReady,
   parkLegend,
+  selectedParkName,
+  selectPark,
   initMap,
   updateCompanies,
   highlightCompany,
@@ -318,8 +231,8 @@ const topCompanies = computed(() => [...filteredCompanies.value]
 
 const industryTabs = computed(() => {
   const counter = new Map<string, number>()
-  for (const company of companies.value) {
-    const name = industryName(company)
+  for (const company of filteredCompanies.value) {
+    const name = productSubName(company)
     counter.set(name, (counter.get(name) || 0) + 1)
   }
   return Array.from(counter, ([name, count]) => ({ name, color: colorForName(name), count }))
@@ -333,14 +246,17 @@ const totalPatents = computed(() => filteredCompanies.value.reduce((s, c) => s +
 
 const metrics = computed(() => {
   const list = filteredCompanies.value
-  const patents = list.reduce((sum, c) => sum + patentCount(c), 0)
   const listed = list.filter(c => c.company_traded === 1).length
+  const native = nativeCount.value
+  const attract = attractCount.value
   const listedRate = list.length ? Math.round((listed / list.length) * 1000) / 10 : 0
+  const nativeRate = list.length ? Math.round((native / list.length) * 1000) / 10 : 0
+  const attractRate = list.length ? Math.round((attract / list.length) * 1000) / 10 : 0
   return [
-    { key: 'scale' as const, label: '企业总数', unit: '家', value: list.length.toLocaleString(), hint: '当前筛选范围' },
+    { key: 'scale' as const, label: '企业总数', unit: '家', value: list.length.toLocaleString(), hint: '' },
     { key: 'listed' as const, label: '上市公司', unit: '家', value: listed.toString(), hint: `资本化率 ${listedRate}%` },
-    { key: 'patent' as const, label: '知识产权', unit: '件', value: patents.toLocaleString(), hint: '专利总量' },
-    { key: 'active' as const, label: '综合评分', unit: '分', value: averageScore(list).toString(), hint: '均值口径' },
+    { key: 'native' as const, label: '本土培育', unit: '家', value: native.toString(), hint: `占比 ${nativeRate}%` },
+    { key: 'attract' as const, label: '招商引资', unit: '家', value: attract.toString(), hint: `占比 ${attractRate}%` },
   ]
 })
 
@@ -358,92 +274,43 @@ const sourceBars = computed(() => {
   ]
 })
 
-const currentDate = computed(() => {
-  const d = now.value
-  return `${d.getFullYear()} 年 ${String(d.getMonth() + 1).padStart(2, '0')} 月 ${String(d.getDate()).padStart(2, '0')} 日`
-})
-const currentTime = computed(() => now.value.toLocaleTimeString('zh-CN', { hour12: false }))
-const weekDay = computed(() => WEEKDAYS[now.value.getDay()])
-const syncTime = computed(() => syncStamp.value.toLocaleTimeString('zh-CN', { hour12: false }).slice(0, 5))
-const reportPeriod = computed(() => {
-  const d = syncStamp.value
-  const q = Math.floor(d.getMonth() / 3) + 1
-  return `${d.getFullYear()}-Q${q}`
-})
-
-// ECharts · 产业集群横条
-const industryOption = computed(() => {
-  const items = industryTabs.value.slice(0, 8)
-  return {
-    backgroundColor: 'transparent',
-    grid: { left: 10, right: 22, top: 8, bottom: 8, containLabel: true },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(198, 164, 100, 0.06)' } },
-      backgroundColor: 'rgba(10, 20, 40, 0.94)',
-      borderColor: 'rgba(198, 164, 100, 0.32)',
-      borderWidth: 1,
-      textStyle: { color: '#f5f2e8', fontSize: 12 },
-    },
-    xAxis: { type: 'value', show: false },
-    yAxis: {
-      type: 'category',
-      inverse: true,
-      data: items.map(i => i.name),
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: '#c8cee0', fontSize: 12 },
-    },
-    series: [{
-      type: 'bar',
-      data: items.map((i, idx) => ({
-        value: i.count,
-        itemStyle: {
-          color: idx === 0
-            ? { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [
-                { offset: 0, color: 'rgba(224, 192, 132, 0.9)' },
-                { offset: 1, color: 'rgba(198, 164, 100, 0.7)' },
-              ] }
-            : 'rgba(200, 206, 224, 0.28)',
-        },
-      })),
-      barWidth: 8,
-      showBackground: true,
-      backgroundStyle: { color: 'rgba(245, 242, 232, 0.04)' },
-      itemStyle: { borderRadius: [0, 2, 2, 0] },
-      label: {
-        show: true,
-        position: 'right',
-        color: '#f5f2e8',
-        fontSize: 12,
-        fontFamily: 'DIN Alternate, ui-monospace, monospace',
-        formatter: '{c}',
-      },
-    }],
-  }
+const industryMaxCount = computed(() => {
+  const counts = industryTabs.value.map(i => i.count)
+  return counts.length ? Math.max(...counts) : 1
 })
 
 // ECharts · 产业结构雷达
 const chainOption = computed(() => {
   const list = filteredCompanies.value
+  const total = list.length || 1
   const native = list.filter(c => String(c.tag_name || '').includes('本土')).length
   const attract = list.filter(c => String(c.tag_name || '').includes('招商')).length
   const listed = list.filter(c => c.company_traded === 1).length
+  const avgPatent = list.reduce((s, c) => s + patentCount(c), 0) / total
+  const values = [
+    Math.min(100, Math.round(avgPatent / 3 + 35)),
+    Math.min(100, Math.round((listed / total) * 100 + 20)),
+    Math.min(100, Math.round((attract / total) * 100 + 25)),
+    Math.min(100, Math.round((native / total) * 100 + 30)),
+    Math.min(100, Math.round(averageScore(list))),
+  ]
   return {
     backgroundColor: 'transparent',
+    animationDuration: 1400,
+    animationEasing: 'cubicOut' as const,
     tooltip: {
-      backgroundColor: 'rgba(10, 20, 40, 0.94)',
-      borderColor: 'rgba(198, 164, 100, 0.32)',
-      textStyle: { color: '#f5f2e8', fontSize: 12 },
+      backgroundColor: 'rgba(12, 32, 64, 0.94)',
+      borderColor: 'rgba(56, 189, 248, 0.35)',
+      textStyle: { color: '#e8f4ff', fontSize: 12 },
     },
     radar: {
-      center: ['50%', '54%'],
-      radius: '68%',
+      center: ['50%', '52%'],
+      radius: '62%',
       splitNumber: 4,
-      axisName: { color: '#c8cee0', fontSize: 12, padding: [2, 4] },
-      axisLine: { lineStyle: { color: 'rgba(245, 242, 232, 0.12)' } },
-      splitLine: { lineStyle: { color: 'rgba(245, 242, 232, 0.09)' } },
-      splitArea: { areaStyle: { color: ['rgba(198, 164, 100, 0.02)', 'rgba(245, 242, 232, 0.015)'] } },
+      axisName: { color: '#9ec5e8', fontSize: 11, padding: [2, 4] },
+      axisLine: { lineStyle: { color: 'rgba(56, 189, 248, 0.15)' } },
+      splitLine: { lineStyle: { color: 'rgba(56, 189, 248, 0.1)' } },
+      splitArea: { areaStyle: { color: ['rgba(56, 189, 248, 0.04)', 'rgba(37, 99, 235, 0.03)'] } },
       indicator: [
         { name: '创新', max: 100 },
         { name: '资本', max: 100 },
@@ -457,17 +324,12 @@ const chainOption = computed(() => {
       symbol: 'circle',
       symbolSize: 5,
       data: [{
-        value: [
-          averageScore(list),
-          Math.min(100, listed * 18 + 28),
-          Math.min(100, attract * 14 + 30),
-          Math.min(100, native * 10 + 36),
-          Math.min(100, list.length * 3 + 42),
-        ],
-        areaStyle: { color: 'rgba(198, 164, 100, 0.14)' },
-        lineStyle: { color: '#e0c084', width: 1.4 },
-        itemStyle: { color: '#e0c084', borderColor: '#f5f2e8', borderWidth: 1 },
+        value: values,
+        areaStyle: { color: 'rgba(56, 189, 248, 0.18)' },
+        lineStyle: { color: '#38bdf8', width: 1.6 },
+        itemStyle: { color: '#38bdf8', borderColor: '#e8f4ff', borderWidth: 1 },
       }],
+      animationDuration: 1600,
     }],
   }
 })
@@ -476,6 +338,11 @@ const newsPanelTag = computed(() => {
   if (newsLoading.value) return '加载中'
   if (!newsList.value.length) return '暂无数据'
   return `最新 ${newsList.value.length} 条`
+})
+
+const newsScrollItems = computed(() => {
+  if (!newsList.value.length) return []
+  return [...newsList.value, ...newsList.value]
 })
 
 function parseNewsDateParts(isoTime: string): { date: string, time: string } {
@@ -549,8 +416,15 @@ function industryName(company: CompanyRecord) {
   return clean(company.chain_name) || clean(company.product_type) || clean(company.company_industry) || '综合服务'
 }
 
+function productSubName(company: CompanyRecord) {
+  return clean(company.product_type)
+    || clean(company.product)
+    || clean(company.company_industry)
+    || industryName(company)
+}
+
 function colorForName(name: string) {
-  const palette = ['#c6a464', '#e0c084', '#b7935a', '#8fa4c4', '#a86b56', '#6e8bb0', '#c9b98a', '#7d92a8']
+  const palette = ['#38bdf8', '#60a5fa', '#2563eb', '#22d3ee', '#0ea5e9', '#7dd3fc', '#4ade80', '#a78bfa']
   let hash = 0
   for (const char of name) hash = (hash + char.charCodeAt(0)) % palette.length
   return palette[hash]
@@ -670,439 +544,360 @@ onMounted(async () => {
   await Promise.all([loadCompanies(), loadNews()])
   await nextTick()
   initMap(filteredCompanies.value)
-  clockTimer = setInterval(() => { now.value = new Date() }, 1000)
 })
 
 onUnmounted(() => {
-  if (clockTimer) clearInterval(clockTimer)
   destroyMap()
 })
 </script>
 
 <style scoped>
 /* ============================================================
-   政务藏青金 · 智知云 产业情报大屏
-   Palette:  #0a1428 深藏青 / #c6a464 冷金 / #f5f2e8 象牙 / #c25a5a 备红
+   科技亮蓝 · 产业情报大屏
+   Palette:  #0c2040 亮蓝底 / #38bdf8 天蓝 / #e8f4ff 冰白
    ============================================================ */
-.gs-screen {
-  --gs-bg-deep: #060d1c;
-  --gs-bg: #0a1428;
-  --gs-bg-elev: #0e1a34;
-  --gs-panel: rgba(14, 26, 52, 0.72);
-  --gs-panel-solid: #10203f;
-  --gs-hair: rgba(200, 206, 224, 0.09);
-  --gs-hair-strong: rgba(200, 206, 224, 0.18);
-  --gs-gold: #c6a464;
-  --gs-gold-soft: #e0c084;
-  --gs-gold-line: rgba(198, 164, 100, 0.42);
-  --gs-crimson: #c25a5a;
-  --gs-text-strong: #f5f2e8;
-  --gs-text: #c8cee0;
-  --gs-text-mute: #7a8299;
-  --gs-text-dim: #5b647c;
-  --gs-mono: 'DIN Alternate', 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
+.es-screen {
+  --es-bg-deep: #0c1522;
+  --es-bg: #121c2b;
+  --es-bg-elev: #182536;
+  --es-panel: #152033;
+  --es-panel-solid: #152033;
+  --es-hair: rgba(148, 163, 184, 0.14);
+  --es-hair-strong: rgba(148, 163, 184, 0.24);
+  --es-accent: #4f8fbf;
+  --es-accent-soft: #6ea6ce;
+  --es-accent-deep: #3a6f96;
+  --es-accent-line: rgba(79, 143, 191, 0.45);
+  --es-gold: var(--es-accent);
+  --es-gold-soft: var(--es-accent-soft);
+  --es-gold-line: var(--es-accent-line);
+  --es-crimson: #e07a7a;
+  --es-text-strong: #e6edf5;
+  --es-text: #b5c3d4;
+  --es-text-mute: #8a9bb0;
+  --es-text-dim: #6b7c90;
+  --es-mono: 'DIN Alternate', 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
 
   position: fixed;
   inset: 0;
   overflow: hidden;
-  color: var(--gs-text);
-  background: var(--gs-bg-deep);
+  color: var(--es-text);
+  background: var(--es-bg-deep);
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
   font-feature-settings: 'tnum';
   display: grid;
-  grid-template-rows: 96px 1fr 32px;
-  padding: 18px 22px 6px;
+  grid-template-rows: 56px 1fr;
+  padding: 10px 16px 10px;
 }
 
 /* ============ 背景 ============ */
-.gs-bg {
+.es-bg {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(198, 164, 100, 0.09), transparent 45%),
-    radial-gradient(ellipse at 15% 100%, rgba(30, 60, 120, 0.18), transparent 55%),
-    radial-gradient(ellipse at 85% 100%, rgba(30, 60, 120, 0.14), transparent 55%),
-    linear-gradient(180deg, #060d1c 0%, #0a1428 50%, #060d1c 100%);
+  background: linear-gradient(180deg, #0c1522 0%, #121c2b 100%);
 }
-
-.gs-bg-grain {
-  position: absolute;
-  inset: 0;
-  opacity: 0.32;
-  background-image:
-    linear-gradient(rgba(198, 164, 100, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(198, 164, 100, 0.028) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse at center, black 0%, transparent 78%);
-}
-
-.gs-bg-vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
-}
-
-/* ============ 四角装饰印章 ============ */
-.gs-corner {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--gs-gold);
-  opacity: 0.55;
-  z-index: 3;
-}
-.gs-corner-tl { top: 10px; left: 12px; border-right: 0; border-bottom: 0; }
-.gs-corner-tr { top: 10px; right: 12px; border-left: 0; border-bottom: 0; }
-.gs-corner-bl { bottom: 10px; left: 12px; border-right: 0; border-top: 0; }
-.gs-corner-br { bottom: 10px; right: 12px; border-left: 0; border-top: 0; }
 
 /* ============ 顶部标题栏 ============ */
-.gs-header {
+.es-header {
   position: relative;
   z-index: 2;
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr) auto minmax(260px, 1fr);
-  align-items: center;
-  gap: 24px;
-  padding: 0 8px;
-  border-bottom: 1px solid var(--gs-hair);
-}
-
-.gs-header-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: space-between;
+  min-height: 48px;
+  height: 48px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--es-hair);
 }
 
-.gs-seal {
-  width: 44px;
-  height: 44px;
-  color: var(--gs-gold);
-  flex-shrink: 0;
-}
-.gs-seal-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.gs-header-title {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.gs-header-org {
+.es-title {
   margin: 0;
-  color: var(--gs-text-strong);
-  font-size: 14px;
+  color: var(--es-text-strong);
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-}
-.gs-header-eng {
-  margin: 0;
-  color: var(--gs-text-dim);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.24em;
-  font-family: var(--gs-mono);
-}
-
-.gs-header-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.gs-title-line {
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent 0%, var(--gs-gold-line) 20%, var(--gs-gold) 50%, var(--gs-gold-line) 80%, transparent 100%);
-}
-.gs-title {
-  margin: 0;
-  color: var(--gs-text-strong);
-  font-size: clamp(22px, 2.4vw, 32px);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-align: center;
-  white-space: nowrap;
-  text-shadow: 0 0 24px rgba(198, 164, 100, 0.18);
-}
-.gs-title-sub {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--gs-text-mute);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-}
-.gs-title-sep {
-  width: 3px;
-  height: 3px;
-  background: var(--gs-gold);
-  opacity: 0.7;
-  transform: rotate(45deg);
-}
-.gs-title-value {
-  color: var(--gs-gold-soft);
-  font-family: var(--gs-mono);
-  font-weight: 600;
-  padding: 0 2px;
-}
-
-.gs-header-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 18px;
-}
-
-.gs-clock {
-  text-align: right;
-  min-width: 156px;
-}
-.gs-clock-time {
-  color: var(--gs-text-strong);
-  font-family: var(--gs-mono);
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
   letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
-.gs-clock-date {
-  margin-top: 4px;
+
+.es-header-nav {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  color: var(--gs-text-mute);
-  font-size: 11px;
-  letter-spacing: 0.05em;
 }
-.gs-sep-dot {
-  width: 3px;
-  height: 3px;
-  background: var(--gs-text-dim);
-  border-radius: 50%;
-}
-
-.gs-sync {
+.es-nav-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--gs-hair-strong);
-  color: var(--gs-text-mute);
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--es-hair);
+  background: transparent;
+  color: var(--es-text-mute);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
-.gs-sync strong {
-  color: var(--gs-gold-soft);
-  font-family: var(--gs-mono);
-  font-weight: 600;
-  margin-left: 4px;
+.es-nav-link:hover {
+  color: var(--es-text-strong);
+  border-color: var(--es-hair-strong);
+  background: rgba(255, 255, 255, 0.03);
 }
-.gs-sync-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--gs-gold);
-  border-radius: 50%;
-  box-shadow: 0 0 6px var(--gs-gold);
+.es-nav-link.active {
+  color: var(--es-text-strong);
+  border-color: var(--es-accent-line);
+  background: rgba(79, 143, 191, 0.12);
 }
 
-/* ============ 主体三栏 ============ */
-.gs-body {
+/* ============ 主体两栏 ============ */
+.es-body {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(300px, 22%) 1fr minmax(300px, 22%);
-  gap: 18px;
+  grid-template-columns: minmax(300px, 28%) 1fr;
+  gap: 14px;
   min-height: 0;
-  padding: 18px 4px 4px;
+  padding: 12px 0 0;
 }
 
-.gs-col {
+.es-col {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   min-height: 0;
   min-width: 0;
-  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1.15fr);
+}
+.es-left {
+  grid-template-rows: auto minmax(0, 1fr);
+  position: relative;
+  z-index: 2;
 }
 
 /* ============ 面板通用 ============ */
-.gs-panel {
+.es-panel {
   position: relative;
   min-width: 0;
   min-height: 0;
-  border: 1px solid var(--gs-hair);
-  background:
-    linear-gradient(180deg, rgba(198, 164, 100, 0.025) 0%, transparent 30%),
-    var(--gs-panel);
-  backdrop-filter: blur(6px);
+  border: 1px solid var(--es-hair);
+  background: var(--es-panel);
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
+  padding: 10px;
 }
 
-.gs-panel::before,
-.gs-panel::after {
-  content: '';
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border: 1px solid var(--gs-gold);
-  opacity: 0.7;
-}
-.gs-panel::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
-.gs-panel::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
-
-.gs-panel-flex {
+.es-panel-flex {
   flex: 1;
   min-height: 0;
+  padding: 10px;
 }
 
-.gs-panel-head {
+.es-panel-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 40px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--gs-hair);
+  height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--es-hair);
   flex-shrink: 0;
 }
-.gs-panel-idx {
-  color: var(--gs-gold);
-  font-family: var(--gs-mono);
+.es-panel-idx {
+  color: var(--es-accent);
+  font-family: var(--es-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+.es-panel-head h2 {
+  margin: 0;
+  color: var(--es-text-strong);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
 }
-.gs-panel-head h2 {
-  margin: 0;
-  color: var(--gs-text-strong);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-}
-.gs-panel-tag {
+.es-panel-tag {
   margin-left: auto;
-  color: var(--gs-text-dim);
+  color: var(--es-text-dim);
   font-size: 11px;
-  letter-spacing: 0.06em;
-  font-family: var(--gs-mono);
+  font-family: var(--es-mono);
 }
 
 /* ============ 01 · 核心指标 ============ */
-.gs-metrics {
+.es-metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1px;
-  background: var(--gs-hair);
+  background: var(--es-hair);
   padding: 1px;
 }
-.gs-metric {
-  padding: 14px 16px 12px;
-  background: var(--gs-panel-solid);
-  transition: background 0.4s ease;
+.es-metric {
+  padding: 12px 14px 10px;
+  background: var(--es-panel-solid);
+  transition: background 0.2s ease;
   position: relative;
 }
-.gs-metric.active {
-  background: linear-gradient(180deg, rgba(198, 164, 100, 0.12) 0%, var(--gs-panel-solid) 100%);
+.es-metric.active {
+  background: rgba(79, 143, 191, 0.1);
 }
-.gs-metric.active::before {
+.es-metric.active::before {
   content: '';
   position: absolute;
   left: 0;
   top: 12px;
   bottom: 12px;
   width: 2px;
-  background: var(--gs-gold);
+  background: var(--es-accent);
 }
-.gs-metric-head {
+.es-metric-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 6px;
   margin-bottom: 8px;
 }
-.gs-metric-label {
-  color: var(--gs-text-mute);
+.es-metric-label {
+  color: var(--es-text-mute);
   font-size: 12px;
-  letter-spacing: 0.08em;
 }
-.gs-metric-unit {
-  color: var(--gs-text-dim);
+.es-metric-unit {
+  color: var(--es-text-dim);
   font-size: 10px;
-  letter-spacing: 0.06em;
 }
-.gs-metric-value {
-  color: var(--gs-text-strong);
-  font-family: var(--gs-mono);
-  font-size: 28px;
-  font-weight: 700;
+.es-metric-value {
+  color: var(--es-text-strong);
+  font-family: var(--es-mono);
+  font-size: 24px;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.02em;
 }
-.gs-metric.active .gs-metric-value {
-  color: var(--gs-gold-soft);
-  text-shadow: 0 0 20px rgba(224, 192, 132, 0.4);
+.es-metric.active .es-metric-value {
+  color: var(--es-accent-soft);
 }
-.gs-metric-hint {
+.es-metric-hint {
   margin-top: 6px;
-  color: var(--gs-text-dim);
+  color: var(--es-text-dim);
   font-size: 11px;
-  letter-spacing: 0.02em;
+}
+
+.es-panel-chart {
+  min-height: 220px;
 }
 
 /* ============ 02 · 图表通用 ============ */
-.gs-chart {
+.es-chart-scroll {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 6px 8px;
+}
+.es-chart-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.es-chart-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 2px;
+}
+.es-industry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.es-industry-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+.es-industry-label {
+  color: #8a9bb0;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+.es-industry-bar-wrap {
+  height: 7px;
+  background: rgba(148, 163, 184, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.es-industry-bar {
+  height: 100%;
+  background: rgba(79, 143, 191, 0.35);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.es-industry-bar.top {
+  background: #6ea6ce;
+}
+.es-industry-count {
+  color: #b5c3d4;
+  font-size: 11px;
+  font-family: var(--es-mono);
+  text-align: right;
+}
+.es-chart {
+  flex: 1;
+  min-height: 180px;
   width: 100%;
   padding: 10px 6px 8px;
 }
+.es-chart-industry {
+  flex: none;
+  min-height: 0;
+  padding: 0;
+}
+.es-chart-radar {
+  min-height: 200px;
+}
 
 /* ============ 03 · 企业名录 ============ */
-.gs-companies {
+.es-companies {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 6px 8px 8px;
 }
-.gs-company {
+.es-company {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 56px;
   align-items: center;
   gap: 10px;
   padding: 9px 8px;
-  border-bottom: 1px solid var(--gs-hair);
+  border-bottom: 1px solid var(--es-hair);
   transition: background 0.3s ease;
   cursor: pointer;
 }
-.gs-company:hover {
+.es-company:hover {
   background: rgba(198, 164, 100, 0.05);
 }
-.gs-company:last-child { border-bottom: 0; }
-.gs-company.active {
+.es-company:last-child { border-bottom: 0; }
+.es-company.active {
   background: linear-gradient(90deg, rgba(198, 164, 100, 0.14) 0%, transparent 100%);
 }
-.gs-company-rank {
-  color: var(--gs-gold);
-  font-family: var(--gs-mono);
+.es-company-rank {
+  color: var(--es-gold);
+  font-family: var(--es-mono);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-.gs-company.active .gs-company-rank {
-  color: var(--gs-gold-soft);
+.es-company.active .es-company-rank {
+  color: var(--es-gold-soft);
 }
-.gs-company-body { min-width: 0; }
-.gs-company-body strong {
+.es-company-body { min-width: 0; }
+.es-company-body strong {
   display: block;
-  color: var(--gs-text-strong);
+  color: var(--es-text-strong);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -1110,265 +905,339 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.gs-company-body small {
+.es-company-body small {
   display: block;
   margin-top: 2px;
-  color: var(--gs-text-dim);
+  color: var(--es-text-dim);
   font-size: 11px;
   letter-spacing: 0.04em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.gs-company-score {
+.es-company-score {
   text-align: right;
-  border-left: 1px solid var(--gs-hair);
+  border-left: 1px solid var(--es-hair);
   padding-left: 10px;
 }
-.gs-company-score span {
+.es-company-score span {
   display: block;
-  color: var(--gs-gold-soft);
-  font-family: var(--gs-mono);
+  color: var(--es-gold-soft);
+  font-family: var(--es-mono);
   font-size: 18px;
   font-weight: 600;
   line-height: 1;
 }
-.gs-company-score small {
+.es-company-score small {
   display: block;
   margin-top: 2px;
-  color: var(--gs-text-dim);
+  color: var(--es-text-dim);
   font-size: 10px;
   letter-spacing: 0.06em;
 }
 
 /* ============ 中央地图 ============ */
-.gs-center {
+.es-center {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   height: 100%;
+  position: relative;
+  z-index: 5;
 }
 
 /* 地图舞台 */
-.gs-stage {
+.es-stage {
   position: relative;
   flex: 1;
   min-height: 0;
   height: 100%;
-  border: 1px solid var(--gs-hair-strong);
+  border: 1px solid var(--es-hair);
+  border-radius: 6px;
   overflow: hidden;
-  background: #050a14;
+  background: #0a111c;
+  z-index: 5;
 }
-.gs-stage::before,
-.gs-stage::after {
-  content: '';
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--gs-gold);
-  z-index: 4;
-  pointer-events: none;
-}
-.gs-stage::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
-.gs-stage::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
 
-.gs-stage-canvas {
+.es-stage-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
-.gs-stage-canvas :deep(canvas) {
+.es-stage-canvas :deep(canvas) {
   outline: none;
 }
-.gs-stage-canvas :deep(.amap-logo),
-.gs-stage-canvas :deep(.amap-copyright) {
+.es-stage-canvas :deep(.amap-logo),
+.es-stage-canvas :deep(.amap-copyright),
+.es-stage-canvas :deep(.amap-scalecontrol) {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
 }
+.es-stage-canvas :deep(.amap-control),
+.es-stage-canvas :deep(.amap-ctrl-list),
+.es-stage-canvas :deep(.amap-toolbar),
+.es-stage-canvas :deep(.amap-controlbar) {
+  z-index: 120 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  /* 避免页面字体/字偶间距把控件图标压成小点 */
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-feature-settings: normal !important;
+  font-variant-numeric: normal !important;
+  letter-spacing: normal !important;
+  line-height: normal !important;
+}
+.es-stage-canvas :deep(.amap-controlbar) {
+  transform: scale(0.5) !important;
+  transform-origin: top right !important;
+}
+.es-stage-canvas :deep(.amap-toolbar) {
+  transform: scale(0.5) !important;
+  transform-origin: bottom right !important;
+}
+.es-stage-canvas :deep(.amap-toolbar),
+.es-stage-canvas :deep(.amap-toolbar *) {
+  box-sizing: content-box !important;
+  font-feature-settings: normal !important;
+}
+.es-stage-canvas :deep(.amap-controlbar),
+.es-stage-canvas :deep(.amap-controlbar *) {
+  box-sizing: content-box !important;
+  font-feature-settings: normal !important;
+}
+.es-stage-canvas :deep(.amap-toolbar .amap-zoom-plus),
+.es-stage-canvas :deep(.amap-toolbar .amap-zoom-minus),
+.es-stage-canvas :deep(.amap-ctrl-zoom-in),
+.es-stage-canvas :deep(.amap-ctrl-zoom-out) {
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  text-align: center !important;
+  color: #1f2937 !important;
+}
 
-.gs-stage-loading {
+.es-stage-loading {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  color: var(--gs-text-mute);
+  color: var(--es-text-mute);
   font-size: 13px;
-  letter-spacing: 0.08em;
-  background: rgba(6, 13, 28, 0.86);
+  background: rgba(12, 21, 34, 0.88);
   z-index: 10;
   gap: 12px;
 }
-.gs-stage-loading span:last-child {
+.es-stage-loading span:last-child {
   margin-top: 54px;
 }
 
-.gs-loader {
+.es-loader {
   position: absolute;
-  width: 34px;
-  height: 34px;
-  border: 1.5px solid rgba(198, 164, 100, 0.16);
-  border-top-color: var(--gs-gold);
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--es-hair);
+  border-top-color: var(--es-accent);
   border-radius: 50%;
-  animation: gs-spin 1s linear infinite;
+  animation: es-spin 1s linear infinite;
 }
 
 /* 左上：园区分布图例 */
-.gs-legend {
+.es-legend {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   z-index: 5;
-  padding: 7px 10px;
-  border: 1px solid var(--gs-hair-strong);
-  background: rgba(6, 13, 28, 0.82);
-  backdrop-filter: blur(10px);
+  padding: 8px 10px;
+  border: 1px solid var(--es-hair);
+  border-radius: 6px;
+  background: rgba(18, 28, 43, 0.92);
   max-width: 168px;
 }
-.gs-legend-title {
+.es-legend-title {
   display: block;
-  color: var(--gs-text-dim);
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  margin-bottom: 5px;
-  font-family: var(--gs-mono);
+  color: var(--es-text-dim);
+  font-size: 11px;
+  margin-bottom: 6px;
 }
-.gs-legend-items {
+.es-legend-items {
   display: grid;
   gap: 3px;
 }
-.gs-legend-item {
+.es-legend-item {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: var(--gs-text);
+  color: var(--es-text);
   font-size: 10px;
   letter-spacing: 0.02em;
   line-height: 1.3;
   white-space: nowrap;
+  width: 100%;
+  margin: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  opacity: 0.88;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
-.gs-legend-dot {
+.es-legend-item:hover {
+  opacity: 1;
+  color: var(--es-text-strong);
+}
+.es-legend-item.active {
+  opacity: 1;
+  color: var(--es-accent);
+}
+.es-legend-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
+.es-legend-reset {
+  margin-top: 6px;
+  padding: 4px 0 0;
+  border: 0;
+  border-top: 1px solid var(--es-hair);
+  background: transparent;
+  color: var(--es-text-mute);
+  font-size: 11px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.es-legend-reset:hover {
+  color: var(--es-text-strong);
+}
 
 /* ============ 05 · 来源结构条 ============ */
-.gs-bars {
+.es-bars {
   padding: 14px 16px 14px;
   display: grid;
   gap: 14px;
 }
-.gs-bar-info {
+.es-bar-info {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 6px;
 }
-.gs-bar-label {
-  color: var(--gs-text);
+.es-bar-label {
+  color: var(--es-text);
   font-size: 12px;
   letter-spacing: 0.06em;
 }
-.gs-bar-value {
-  color: var(--gs-text-strong);
-  font-family: var(--gs-mono);
+.es-bar-value {
+  color: var(--es-text-strong);
+  font-family: var(--es-mono);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-.gs-bar-value small {
-  color: var(--gs-gold-soft);
+.es-bar-value small {
+  color: var(--es-gold-soft);
   font-size: 11px;
   margin-left: 4px;
 }
-.gs-bar-track {
+.es-bar-track {
   height: 4px;
-  background: var(--gs-hair);
+  background: var(--es-hair);
   overflow: hidden;
 }
-.gs-bar-fill {
+.es-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--gs-gold) 0%, var(--gs-gold-soft) 100%);
+  background: linear-gradient(90deg, var(--es-accent-deep) 0%, var(--es-accent) 100%);
   transition: width 0.6s ease;
 }
 
 /* ============ 06 · 新闻动态 ============ */
-.gs-events {
+.es-events {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 6px 12px 12px;
+  position: relative;
 }
-.gs-events-empty {
+.es-events:hover .es-events-track {
+  animation-play-state: paused;
+}
+.es-events-track {
+  display: grid;
+  gap: 0;
+  animation: es-news-scroll 36s linear infinite;
+}
+.es-events-empty {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 120px;
-  color: var(--gs-text-dim);
+  color: var(--es-text-dim);
   font-size: 12px;
   letter-spacing: 0.06em;
 }
-.gs-event {
+.es-event {
   display: grid;
   grid-template-columns: 56px 1fr;
   gap: 12px;
   padding: 10px 4px 10px 8px;
-  border-bottom: 1px solid var(--gs-hair);
+  border-bottom: 1px solid var(--es-hair);
   align-items: flex-start;
 }
-.gs-event:last-child { border-bottom: 0; }
-.gs-event-link {
+.es-event:last-child { border-bottom: 0; }
+.es-event-link {
   text-decoration: none;
   color: inherit;
   cursor: pointer;
   transition: background 0.2s ease;
 }
-.gs-event-link:hover {
-  background: rgba(198, 164, 100, 0.04);
+.es-event-link:hover {
+  background: rgba(56, 189, 248, 0.06);
 }
-.gs-event-time {
-  border-right: 1px solid var(--gs-gold-line);
+.es-event-time {
+  border-right: 1px solid var(--es-gold-line);
   padding-right: 8px;
   text-align: right;
 }
-.gs-event-time strong {
+.es-event-time strong {
   display: block;
-  color: var(--gs-gold-soft);
-  font-family: var(--gs-mono);
+  color: var(--es-gold-soft);
+  font-family: var(--es-mono);
   font-size: 14px;
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.02em;
 }
-.gs-event-time small {
+.es-event-time small {
   display: block;
   margin-top: 3px;
-  color: var(--gs-text-dim);
+  color: var(--es-text-dim);
   font-size: 10px;
   letter-spacing: 0.06em;
-  font-family: var(--gs-mono);
+  font-family: var(--es-mono);
 }
-.gs-event-body strong {
+.es-event-body strong {
   display: block;
-  color: var(--gs-text-strong);
+  color: var(--es-text-strong);
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
-.gs-event-body p {
+.es-event-body p {
   margin: 4px 0 0;
-  color: var(--gs-text-mute);
+  color: var(--es-text-mute);
   font-size: 11px;
   line-height: 1.55;
   letter-spacing: 0.02em;
 }
 
 /* ============ 底栏 ============ */
-.gs-footer {
+.es-footer {
   position: relative;
   z-index: 2;
   display: flex;
@@ -1377,68 +1246,73 @@ onUnmounted(() => {
   gap: 14px;
   height: 32px;
   padding: 0 24px;
-  color: var(--gs-text-dim);
+  color: var(--es-text-dim);
   font-size: 11px;
   letter-spacing: 0.08em;
-  border-top: 1px solid var(--gs-hair);
+  border-top: 1px solid var(--es-hair);
 }
-.gs-footer-sep {
+.es-footer-sep {
   width: 3px;
   height: 3px;
-  background: var(--gs-gold);
+  background: var(--es-gold);
   opacity: 0.6;
   transform: rotate(45deg);
 }
 
 /* ============ 加载遮罩 ============ */
-.gs-loading {
+.es-loading {
   position: fixed;
   inset: 0;
   z-index: 100;
   display: grid;
   place-items: center;
   gap: 14px;
-  color: var(--gs-text-mute);
+  color: var(--es-text-mute);
   font-size: 13px;
-  letter-spacing: 0.08em;
-  background: rgba(6, 13, 28, 0.9);
-  backdrop-filter: blur(8px);
+  background: rgba(12, 21, 34, 0.92);
 }
-.gs-loading span:last-child {
+.es-loading span:last-child {
   margin-top: 52px;
 }
 
 /* ============ 滚动条 ============ */
-.gs-companies::-webkit-scrollbar,
-.gs-events::-webkit-scrollbar { width: 3px; }
-.gs-companies::-webkit-scrollbar-thumb,
-.gs-events::-webkit-scrollbar-thumb {
-  background: var(--gs-gold-line);
+.es-companies::-webkit-scrollbar,
+.es-events::-webkit-scrollbar { width: 3px; }
+.es-companies::-webkit-scrollbar-thumb,
+.es-events::-webkit-scrollbar-thumb {
+  background: var(--es-hair-strong);
 }
 
-/* ============ 动画 ============ */
-@keyframes gs-spin { to { transform: rotate(360deg); } }
+@keyframes es-spin { to { transform: rotate(360deg); } }
+@keyframes es-news-scroll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .es-events-track {
+    animation: none;
+  }
+}
 
 /* ============ 响应式（大屏 ≥ 1440px 为设计基准） ============ */
 @media (max-width: 1400px) {
-  .gs-title { font-size: 24px; }
-  .gs-metric-value { font-size: 24px; }
-  .gs-body { grid-template-columns: minmax(280px, 24%) 1fr minmax(280px, 24%); gap: 14px; }
+  .es-title { font-size: 18px; }
+  .es-metric-value { font-size: 22px; }
+  .es-body { grid-template-columns: minmax(280px, 32%) 1fr; gap: 12px; }
 }
 
 @media (max-width: 1180px) {
-  .gs-screen { padding: 12px 14px 4px; grid-template-rows: 96px 1fr 32px; }
-  .gs-body { grid-template-columns: 1fr; padding: 12px 0; }
-  .gs-col { grid-template-rows: none; }
-  .gs-stage { min-height: 460px; }
-  .gs-header { grid-template-columns: auto 1fr auto; gap: 12px; }
-  .gs-header-center { gap: 4px; }
-  .gs-title { font-size: 20px; white-space: normal; }
+  .es-screen { padding: 8px 12px 8px; grid-template-rows: 52px 1fr; }
+  .es-body { grid-template-columns: 1fr; padding: 10px 0 0; }
+  .es-col { grid-template-rows: none; }
+  .es-stage { min-height: 460px; }
+  .es-title { font-size: 17px; white-space: normal; }
 }
 
 @media (max-width: 720px) {
-  .gs-screen { padding: 8px 10px 4px; }
-  .gs-header-center { display: none; }
-  .gs-footer { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
+  .es-screen { padding: 8px 10px 8px; }
+  .es-title { font-size: 16px; }
+  .es-footer { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
 }
 </style>

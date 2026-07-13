@@ -703,6 +703,13 @@ onMounted(() => {
   document.addEventListener('fullscreenchange', onFsChange)
 })
 
+onActivated(() => {
+  nextTick(() => {
+    invalidateSize()
+    window.dispatchEvent(new Event('resize'))
+  })
+})
+
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', onFsChange)
   destroyMap()
@@ -845,8 +852,9 @@ function hasStrengthData(c: CompanyRecord): boolean {
   position: relative;
   display: flex;
   flex-direction: column;
-  margin: -24px;
-  height: calc(100vh - 90px);
+  margin: 0;
+  /* topbar 56 + tabbar ~40 + page padding 32 */
+  height: calc(100vh - 128px);
   min-height: 480px;
   overflow: hidden;
   background: var(--bg);

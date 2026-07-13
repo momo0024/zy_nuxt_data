@@ -403,7 +403,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, onBeforeUnmount, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, onBeforeUnmount, onActivated, watch } from 'vue'
 import { request } from '~/utils/request'
 import type { CompanyRecord } from '~/types/company'
 import VChart from 'vue-echarts'
@@ -1042,6 +1042,13 @@ watch([() => viewMode.value, () => chainPhases.value, chainMindMapRef], () => {
 })
 
 onMounted(() => window.addEventListener('resize', resizeChainMindMap))
+onActivated(() => {
+  nextTick(() => {
+    chartsReady.value = true
+    resizeChainMindMap()
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 onUnmounted(() => {
   window.removeEventListener('resize', resizeChainMindMap)
   if (chainMindMapInstance) {
@@ -1242,7 +1249,7 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0px 22px 10px;
+  padding: 12px 22px 10px;
   flex-wrap: wrap;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
