@@ -45,21 +45,30 @@ const BREATH_TEXTURE = 'https://a.amap.com/Loca/static/loca-v2/demos/images/brea
 const BREATH_TEXTURE_ALT = 'https://a.amap.com/Loca/static/loca-v2/demos/images/breath_yellow.png'
 
 const PARK_PALETTE = [
-  '#5b8fb8', // 钢蓝
-  '#7a9e8e', // 灰绿
-  '#c49a6a', // 沙褐
-  '#9b7eb8', // 灰紫
-  '#6b8cae', // 板岩蓝
-  '#a88b7a', // 陶土
-  '#8a9bb0', // 冷灰蓝
-  '#7e9a72', // 橄榄绿
+  '#6fa3cc', // 浅钢蓝
+  '#8fb5a3', // 浅灰绿
+  '#d4ad7a', // 浅沙褐
+  '#b094cc', // 浅灰紫
+  '#7fa0c0', // 浅板岩蓝
+  '#bc9a88', // 浅陶土
+  '#9fadc2', // 浅冷灰蓝
+  '#94b088', // 浅橄榄绿
 ]
 
-/** 相邻园区易混淆时单独指定色（低饱和，仍保持区分） */
+/** 相邻园区易混淆时单独指定色（略提亮，仍保持低饱和） */
 const PARK_COLOR_OVERRIDES: Record<string, string> = {
-  '光谷未来科技城': '#c97b8a', // 灰玫
-  '光谷智能制造产业园': '#c9b05a', // 暗金
-  '光谷生物城': '#5a9e82', // 墨绿
+  '光谷未来科技城': '#da8f9c', // 浅灰玫
+  '光谷智能制造产业园': '#d9c070', // 浅暗金
+  '光谷生物城': '#6db396', // 浅墨绿
+}
+
+function brightenHex(hex: string, amount = 0.28): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  const mix = (c: number) => Math.min(255, Math.round(c + (255 - c) * amount))
+  return `#${mix(r).toString(16).padStart(2, '0')}${mix(g).toString(16).padStart(2, '0')}${mix(b).toString(16).padStart(2, '0')}`
 }
 
 function isHighlightPark(parkName: string) {
@@ -338,11 +347,32 @@ export function useEnterpriseL7Map() {
     const anchor = centroidForPark(parkName)
     const { path, labelPos, textAnchor } = calloutLayoutForPark(parkName, anchor, index)
 
+    const accent = brightenHex(color, 0.38)
+    const soft = brightenHex(color, 0.18)
+
+    // 底层柔边：略粗、低透明，让折线在深色底上更干净
+    const glow = new AMap.Polyline({
+      path,
+      strokeColor: soft,
+      strokeWeight: 3.2,
+      strokeOpacity: 0.28,
+      strokeStyle: 'solid',
+      lineJoin: 'round',
+      lineCap: 'round',
+      zIndex: 196,
+      bubble: true,
+      cursor: 'pointer',
+    })
+    glow.setMap(map)
+    attachParkSelectHandler(glow, parkName)
+    parkLabels.push(glow)
+
+    // 主引线：细实线 + 圆角折点
     const line = new AMap.Polyline({
       path,
-      strokeColor: color,
-      strokeWeight: 1.2,
-      strokeOpacity: 0.88,
+      strokeColor: accent,
+      strokeWeight: 1.15,
+      strokeOpacity: 0.92,
       strokeStyle: 'solid',
       lineJoin: 'round',
       lineCap: 'round',
@@ -355,42 +385,93 @@ export function useEnterpriseL7Map() {
     parkLabels.push(line)
 
     if (AMap.CircleMarker) {
-      const dot = new AMap.CircleMarker({
+      // 锚点外环
+      const ring = new AMap.CircleMarker({
         center: anchor,
-        radius: 2.5,
-        strokeColor: '#ffffff',
-        strokeWeight: 1,
-        strokeOpacity: 0.9,
-        fillColor: color,
-        fillOpacity: 1,
+        radius: 5,
+        strokeColor: accent,
+        strokeWeight: 1.2,
+        strokeOpacity: 0.75,
+        fillColor: '#0b1a2c',
+        fillOpacity: 0.55,
         zIndex: 199,
         bubble: true,
         cursor: 'pointer',
       })
-      dot.setMap(map)
-      attachParkSelectHandler(dot, parkName)
-      parkLabels.push(dot)
+      ring.setMap(map)
+      attachParkSelectHandler(ring, parkName)
+      parkLabels.push(ring)
+
+      // 锚点芯点
+      const core = new AMap.CircleMarker({
+        center: anchor,
+        radius: 2.2,
+        strokeColor: '#f4f8fc',
+        strokeWeight: 0.8,
+        strokeOpacity: 0.9,
+        fillColor: accent,
+        fillOpacity: 1,
+        zIndex: 200,
+        bubble: true,
+        cursor: 'pointer',
+      })
+      core.setMap(map)
+      attachParkSelectHandler(core, parkName)
+      parkLabels.push(core)
+
+      // 标签端小端点，收住折线
+      const tip = new AMap.CircleMarker({
+        center: labelPos,
+        radius: 1.6,
+        strokeColor: accent,
+        strokeWeight: 0,
+        strokeOpacity: 0,
+        fillColor: accent,
+        fillOpacity: 0.95,
+        zIndex: 200,
+        bubble: true,
+        cursor: 'pointer',
+      })
+      tip.setMap(map)
+      attachParkSelectHandler(tip, parkName)
+      parkLabels.push(tip)
     }
+
+    const isLeft = textAnchor.includes('left')
+    const isRight = textAnchor.includes('right')
+    const isBottom = textAnchor.includes('bottom')
+    const isTop = textAnchor.includes('top')
+
+    const labelStyle: Record<string, string> = {
+      'background-color': 'rgba(12, 24, 40, 0.92)',
+      'border': `1px solid ${accent}88`,
+      'border-radius': '3px',
+      'color': '#eef5fb',
+      'font-size': '11px',
+      'font-weight': '500',
+      'letter-spacing': '0.02em',
+      'padding': isLeft ? '3px 10px 3px 8px' : isRight ? '3px 8px 3px 10px' : '3px 10px',
+      'text-align': 'center',
+      'line-height': '1.35',
+      'white-space': 'nowrap',
+      'box-shadow': '0 4px 14px rgba(0, 0, 0, 0.28)',
+      'cursor': 'pointer',
+    }
+    if (isLeft) labelStyle['border-left'] = `2px solid ${accent}`
+    if (isRight) labelStyle['border-right'] = `2px solid ${accent}`
 
     const label = new AMap.Text({
       text: shortName,
       position: labelPos,
       anchor: textAnchor,
-      zIndex: 200,
-      style: {
-        'background-color': 'rgba(10, 32, 64, 0.9)',
-        'border': `1px solid ${color}99`,
-        'border-radius': '2px',
-        'color': '#e8f4ff',
-        'font-size': '10px',
-        'font-weight': '500',
-        'padding': '2px 6px',
-        'text-align': 'center',
-        'line-height': '1.3',
-        'white-space': 'nowrap',
-        'box-shadow': '0 2px 8px rgba(0, 0, 0, 0.25)',
-        'cursor': 'pointer',
-      },
+      offset: (AMap as any).Pixel
+        ? new (AMap as any).Pixel(
+          isLeft ? 6 : isRight ? -6 : 0,
+          isBottom ? -6 : isTop ? 6 : 0,
+        )
+        : [0, 0],
+      zIndex: 210,
+      style: labelStyle,
     })
     label.setMap(map)
     attachParkSelectHandler(label, parkName)
@@ -576,13 +657,9 @@ export function useEnterpriseL7Map() {
       }
     })
     breathLayers = []
-    try {
-      loca?.animate?.stop?.()
-    } catch {
-      // ignore
-    }
     if (destroyContainer) {
       try {
+        loca?.animate?.stop?.()
         loca?.destroy?.()
       } catch {
         // ignore
@@ -630,8 +707,8 @@ export function useEnterpriseL7Map() {
     // 主波纹：标注线起点
     const parkLayer = new window.Loca.ScatterLayer({
       loca,
-      zIndex: 9,
-      opacity: 0.72,
+      zIndex: 120,
+      opacity: 0.82,
       visible: true,
       zooms: [10, 20],
     })
@@ -652,8 +729,8 @@ export function useEnterpriseL7Map() {
     // 次级波纹：同一起点，节奏错开
     const sparkLayer = new window.Loca.ScatterLayer({
       loca,
-      zIndex: 10,
-      opacity: 0.45,
+      zIndex: 121,
+      opacity: 0.55,
       visible: true,
       zooms: [11, 20],
     })
@@ -671,7 +748,13 @@ export function useEnterpriseL7Map() {
     loca.add(sparkLayer)
     breathLayers.push(sparkLayer)
 
-    loca.animate.start()
+    requestAnimationFrame(() => {
+      try {
+        loca?.animate?.start?.()
+      } catch (e) {
+        console.warn('启动园区波纹动画失败', e)
+      }
+    })
   }
 
   function applyMapView(targetCenter: [number, number], fitRegion = false) {
@@ -912,10 +995,10 @@ export function useEnterpriseL7Map() {
         const highlighted = isHighlightPark(parkName)
         createPolygonsForFeature(feature, {
           fillColor: color,
-          fillOpacity: focusName ? 0.72 : (highlighted ? 0.62 : 0.48),
-          strokeColor: color,
-          strokeWeight: focusName ? 2 : (highlighted ? 1.6 : 1.2),
-          strokeOpacity: highlighted ? 0.85 : 0.75,
+          fillOpacity: focusName ? 0.76 : (highlighted ? 0.66 : 0.54),
+          strokeColor: brightenHex(color, 0.18),
+          strokeWeight: focusName ? 2 : (highlighted ? 1.6 : 1.3),
+          strokeOpacity: highlighted ? 0.9 : 0.82,
           extrusionHeight,
           wallColor: '#062038',
           roofColor: color,
@@ -1050,6 +1133,9 @@ export function useEnterpriseL7Map() {
       map.on('complete', () => {
         settleOverviewView(center)
         mapReady.value = true
+        requestAnimationFrame(() => {
+          startMapRipple(selectedParkName.value)
+        })
       })
 
       setTimeout(() => {
@@ -1057,6 +1143,7 @@ export function useEnterpriseL7Map() {
           settleOverviewView(center)
           mapReady.value = true
         }
+        startMapRipple(selectedParkName.value)
       }, 2500)
     } catch (e) {
       console.error('地图初始化失败', e)
