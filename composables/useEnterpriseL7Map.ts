@@ -82,6 +82,7 @@ export function useEnterpriseL7Map() {
   }
 
   let overviewViewState: MapViewState | null = null
+  let overviewViewSettled = false
 
   /** 全览：轻微倾斜；选中园区：平面俯视 */
   const MAP_PITCH = 30
@@ -359,13 +360,15 @@ export function useEnterpriseL7Map() {
       return
     }
     const { center, zoom, pitch, rotation } = overviewViewState
-    map.setZoomAndCenter(zoom, center, false, 0)
+    map.setZoomAndCenter(zoom, center, true, 0)
     if (typeof map.setPitch === 'function') map.setPitch(pitch)
     if (typeof map.setRotation === 'function') map.setRotation(rotation)
   }
 
   function settleOverviewView(targetCenter: [number, number]) {
+    if (!map || overviewViewSettled) return
     applyMapView(targetCenter, true)
+    overviewViewSettled = true
     requestAnimationFrame(() => {
       requestAnimationFrame(() => saveOverviewView())
     })
@@ -377,14 +380,14 @@ export function useEnterpriseL7Map() {
       // 框住高新区后略再拉近一点
       const fitTargets = [...zonePolygons, ...zoneLines]
       if (fitTargets.length) {
-        map.setFitView(fitTargets, false, [40, 40, 40, 40], MAP_FIT_MAX_ZOOM)
+        map.setFitView(fitTargets, true, [40, 40, 40, 40], MAP_FIT_MAX_ZOOM)
         const z = typeof map.getZoom === 'function' ? Number(map.getZoom()) : MAP_ZOOM
         map.setZoom(Math.min(z + 0.25, MAP_FIT_MAX_ZOOM))
       } else {
-        map.setZoomAndCenter(MAP_ZOOM, targetCenter, false, 0)
+        map.setZoomAndCenter(MAP_ZOOM, targetCenter, true, 0)
       }
     } else {
-      map.setZoomAndCenter(MAP_ZOOM, targetCenter, false, 0)
+      map.setZoomAndCenter(MAP_ZOOM, targetCenter, true, 0)
     }
     // setFitView 会清掉俯仰/旋转，随后强制恢复
     if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH)
@@ -393,7 +396,7 @@ export function useEnterpriseL7Map() {
 
   function applyParkFocusView() {
     if (!map || !parkPolygons.length) return
-    map.setFitView(parkPolygons, false, [64, 64, 64, 64], MAP_PARK_FIT_MAX_ZOOM)
+    map.setFitView(parkPolygons, true, [64, 64, 64, 64], MAP_PARK_FIT_MAX_ZOOM)
     if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH_FLAT)
     if (typeof map.setRotation === 'function') map.setRotation(MAP_ROTATION_FLAT)
   }
@@ -456,9 +459,9 @@ export function useEnterpriseL7Map() {
     const minLng = Math.min(...lngs)
     const maxLng = Math.max(...lngs)
     const t = maxLng > minLng ? (lng - minLng) / (maxLng - minLng) : 0.5
-    // 右侧（东）更高，左侧（西）更矮；企业数只做轻微加成
-    const base = 1800 + t * 9000
-    return Math.max(1800, Math.min(12000, base + count * 12))
+    // 右侧略高，保持适度高度差与可见突起
+    const base = 900 + t * 2200
+    return Math.max(900, Math.min(4200, base + count * 6))
   }
 
   function renderCompanyMarkers(parkName: string, companies: CompanyRecord[]) {
@@ -758,19 +761,16 @@ export function useEnterpriseL7Map() {
         deferSelectPark(null, true)
       })
 
-      // 框住区域后恢复俯仰与旋转，并记录全览视角供返回时还原
-      settleOverviewView(center)
-
+      overviewViewSettled = false
       map.on('complete', () => {
-        mapReady.value = true
         settleOverviewView(center)
-        setTimeout(() => settleOverviewView(center), 200)
+        mapReady.value = true
       })
 
       setTimeout(() => {
         if (!mapReady.value && map) {
-          mapReady.value = true
           settleOverviewView(center)
+          mapReady.value = true
         }
       }, 2500)
     } catch (e) {
@@ -814,6 +814,7 @@ export function useEnterpriseL7Map() {
     selectedParkName.value = null
     latestCompanies = []
     overviewViewState = null
+    overviewViewSettled = false
     if (map) {
       map.destroy()
       map = null

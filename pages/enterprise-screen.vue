@@ -65,8 +65,12 @@
                     <div
                       class="es-industry-bar"
                       :class="{ top: idx < 3 }"
-                      :style="{ width: `${(item.count / industryMaxCount) * 100}%` }"
+                      :style="{ width: `${item.percent}%` }"
                     />
+                    <span
+                      class="es-industry-pct"
+                      :style="{ left: `calc(${item.percent}% + 4px)` }"
+                    >{{ item.percent }}%</span>
                   </div>
                   <span class="es-industry-count">{{ item.count }}</span>
                 </li>
@@ -230,12 +234,18 @@ const topCompanies = computed(() => [...filteredCompanies.value]
   .map((company, index) => ({ ...company, rank: String(index + 1).padStart(2, '0') })))
 
 const industryTabs = computed(() => {
+  const total = filteredCompanies.value.length || 1
   const counter = new Map<string, number>()
   for (const company of filteredCompanies.value) {
     const name = productSubName(company)
     counter.set(name, (counter.get(name) || 0) + 1)
   }
-  return Array.from(counter, ([name, count]) => ({ name, color: colorForName(name), count }))
+  return Array.from(counter, ([name, count]) => ({
+    name,
+    color: colorForName(name),
+    count,
+    percent: Math.round((count / total) * 1000) / 10,
+  }))
     .sort((a, b) => b.count - a.count)
 })
 
@@ -274,10 +284,6 @@ const sourceBars = computed(() => {
   ]
 })
 
-const industryMaxCount = computed(() => {
-  const counts = industryTabs.value.map(i => i.count)
-  return counts.length ? Math.max(...counts) : 1
-})
 
 // ECharts · 产业结构雷达
 const chainOption = computed(() => {
@@ -825,19 +831,35 @@ onUnmounted(() => {
   cursor: default;
 }
 .es-industry-bar-wrap {
-  height: 7px;
+  position: relative;
+  height: 16px;
   background: rgba(148, 163, 184, 0.08);
   border-radius: 2px;
-  overflow: hidden;
+  overflow: visible;
 }
 .es-industry-bar {
-  height: 100%;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 7px;
+  transform: translateY(-50%);
   background: rgba(79, 143, 191, 0.35);
   border-radius: 2px;
   transition: width 0.4s ease;
 }
 .es-industry-bar.top {
   background: #6ea6ce;
+}
+.es-industry-pct {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9eb3c8;
+  font-size: 10px;
+  font-family: var(--es-mono);
+  white-space: nowrap;
+  line-height: 1;
+  pointer-events: none;
 }
 .es-industry-count {
   color: #b5c3d4;
