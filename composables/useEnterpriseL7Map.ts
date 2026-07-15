@@ -101,6 +101,11 @@ export function useEnterpriseL7Map() {
   let zoneCenter: [number, number] = [114.475, 30.50]
   let mapControls: any[] = []
   let suppressMapClick = false
+  let onParkSelectHandler: ((parkName: string | null) => void) | undefined
+
+  function onParkSelect(handler: (parkName: string | null) => void) {
+    onParkSelectHandler = handler
+  }
 
   type MapViewState = {
     center: [number, number]
@@ -978,6 +983,7 @@ export function useEnterpriseL7Map() {
     } else {
       selectedParkName.value = parkName
     }
+    onParkSelectHandler?.(selectedParkName.value)
     renderParks(latestCompanies, fit, prevFocus)
   }
 
@@ -1215,6 +1221,7 @@ export function useEnterpriseL7Map() {
     parkLegend,
     selectedParkName,
     selectPark,
+    onParkSelect,
     initMap,
     updateCompanies,
     setParkApiList,

@@ -120,14 +120,14 @@ export function normalizeTypeInfoList(list: CompanyTypeInfoItem[] | undefined | 
 
 export async function fetchParkChain(parkId?: number): Promise<CompanyApiListResponse<CompanyStatItem[]>> {
   const res = await request.get<CompanyStatItem[]>('/company/ParkChain', {
-    params: parkId ? { park_id: parkId } : {},
+    params: parkId != null && parkId > 0 ? { park_id: parkId } : {},
   })
   return res.data as unknown as CompanyApiListResponse<CompanyStatItem[]>
 }
 
 export async function fetchCompanyTypeInfo(parkId?: number): Promise<CompanyApiListResponse<CompanyTypeInfoItem[]>> {
   const res = await request.get<CompanyTypeInfoItem[]>('/company/typeInfo', {
-    params: parkId ? { park_id: parkId } : {},
+    params: parkId != null && parkId > 0 ? { park_id: parkId } : {},
   })
   return res.data as unknown as CompanyApiListResponse<CompanyTypeInfoItem[]>
 }

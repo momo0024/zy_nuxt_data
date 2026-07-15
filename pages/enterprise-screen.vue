@@ -53,7 +53,7 @@
               <h2>产业集群分布</h2>
               <span class="es-panel-tag">
                 <template v-if="panelStatsLoading">加载中</template>
-                <template v-else-if="!industryTabs.length">暂无数据</template>
+                <template v-else-if="showIndustryEmpty">暂无数据</template>
                 <template v-else>{{ industryTotal }} 家 · {{ industryTabs.length }} 类</template>
               </span>
             </div>
@@ -61,7 +61,7 @@
               <span class="es-loader" />
               <span>加载中</span>
             </div>
-            <div v-else-if="!industryTabs.length" class="es-panel-empty">
+            <div v-else-if="showIndustryEmpty" class="es-panel-empty">
               <div class="es-panel-empty-line" />
               <span>暂无数据</span>
               <div class="es-panel-empty-line" />
@@ -102,7 +102,7 @@
               <h2>产业公司性质分布</h2>
               <span class="es-panel-tag">
                 <template v-if="panelStatsLoading">加载中</template>
-                <template v-else-if="!natureTabs.length">暂无数据</template>
+                <template v-else-if="showNatureEmpty">暂无数据</template>
                 <template v-else>{{ natureTabs.length }} 类</template>
               </span>
             </div>
@@ -110,17 +110,22 @@
               <span class="es-loader" />
               <span>加载中</span>
             </div>
-            <div v-else-if="!natureTabs.length" class="es-panel-empty es-panel-empty-chart">
+            <div v-else-if="showNatureEmpty" class="es-panel-empty es-panel-empty-chart">
               <div class="es-panel-empty-line" />
               <span>暂无数据</span>
               <div class="es-panel-empty-line" />
             </div>
             <VChart
               v-else-if="chartsReady"
+              :key="`nature-${activeParkId ?? 'all'}-${natureTabs.length}`"
               class="es-chart es-chart-nature"
               :option="natureOption"
               autoresize
             />
+            <div v-else class="es-panel-empty es-panel-empty-chart">
+              <span class="es-loader" />
+              <span>加载中</span>
+            </div>
           </section>
 
           <!-- 04 重点企业名录（暂隐藏）
@@ -256,6 +261,8 @@ const parkList = ref<ParkInfo[]>([])
 const activeParkId = ref<number | null>(null)
 const parkChainStats = ref<{ name: string, count: number }[]>([])
 const typeInfoStats = ref<{ name: string, count: number }[]>([])
+let globalChainStats: { name: string, count: number }[] = []
+let globalTypeStats: { name: string, count: number }[] = []
 const selectedCompany = ref<CompanyRecord | null>(null)
 const sourceFilter = ref<SourceFilter>('all')
 const activeIndustry = ref('all')
@@ -276,6 +283,7 @@ const {
   parkLegend,
   selectedParkName,
   selectPark,
+  onParkSelect,
   initMap,
   updateCompanies,
   setParkApiList,
@@ -308,6 +316,9 @@ const industryTabs = computed(() => {
 })
 
 const industryTotal = computed(() => parkChainStats.value.reduce((sum, item) => sum + item.count, 0))
+
+const showIndustryEmpty = computed(() => !panelStatsLoading.value && industryTabs.value.length === 0)
+const showNatureEmpty = computed(() => !panelStatsLoading.value && natureTabs.value.length === 0)
 
 const listedCount = computed(() => filteredCompanies.value.filter(c => c.company_traded === 1).length)
 const nativeCount = computed(() => filteredCompanies.value.filter(c => String(c.tag_name || '').includes('本土')).length)
@@ -657,6 +668,15 @@ function makeCompany(
   }
 }
 
+function isSameStatList(
+  a: { name: string, count: number }[],
+  b: { name: string, count: number }[],
+): boolean {
+  if (a.length !== b.length) return false
+  if (!a.length) return true
+  return a.every((item, index) => item.name === b[index]?.name && item.count === b[index]?.count)
+}
+
 async function loadParkList() {
   try {
     const res = await fetchParkList()
@@ -684,17 +704,35 @@ async function loadPanelStats(parkId?: number | null) {
     if (selectedParkName.value && (parkId == null || parkId <= 0)) {
       return
     }
+    // 园区企业数为 0 时，左侧统计强制空态（避免接口仍返回全量数据）
+    if (selectedParkName.value && parkId && parkId > 0) {
+      const park = parkList.value.find(p => p.park_id === parkId)
+      if (park && (Number(park.num) || 0) === 0) {
+        return
+      }
+    }
     const queryParkId = parkId && parkId > 0 ? parkId : undefined
     const [chainRes, typeRes] = await Promise.all([
       fetchParkChain(queryParkId),
       fetchCompanyTypeInfo(queryParkId),
     ])
-    if (chainRes.code === 0) {
-      parkChainStats.value = normalizeCompanyStatList(chainRes.data)
+    let chainStats = chainRes.code === 0 ? normalizeCompanyStatList(chainRes.data) : []
+    let typeStats = typeRes.code === 0 ? normalizeTypeInfoList(typeRes.data) : []
+    if (queryParkId) {
+      // 接口未按园区过滤、仍返回全量时，与全览基线相同则视为该园无统计
+      if (globalChainStats.length && isSameStatList(chainStats, globalChainStats)) {
+        chainStats = []
+      }
+      if (globalTypeStats.length && isSameStatList(typeStats, globalTypeStats)) {
+        typeStats = []
+      }
     }
-    if (typeRes.code === 0) {
-      typeInfoStats.value = normalizeTypeInfoList(typeRes.data)
+    else {
+      globalChainStats = chainStats
+      globalTypeStats = typeStats
     }
+    parkChainStats.value = chainStats
+    typeInfoStats.value = typeStats
   } catch (e) {
     console.error('获取左侧统计失败:', e)
     parkChainStats.value = []
@@ -730,8 +768,8 @@ watch([filteredCompanies, mapReady], () => {
   }
 })
 
-watch(selectedParkName, async () => {
-  syncActiveParkFromMap(selectedParkName.value)
+onParkSelect(async (parkName) => {
+  syncActiveParkFromMap(parkName)
   await loadPanelStats(activeParkId.value)
 })
 
