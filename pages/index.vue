@@ -1042,7 +1042,10 @@ watch([() => viewMode.value, () => chainPhases.value, chainMindMapRef], () => {
 })
 
 onMounted(() => window.addEventListener('resize', resizeChainMindMap))
-onActivated(() => {
+onActivated(async () => {
+  if (!chainList.value.length) {
+    await refreshIndexPage()
+  }
   nextTick(() => {
     chartsReady.value = true
     resizeChainMindMap()
@@ -1126,9 +1129,9 @@ const typeChartOption = computed(() =>
   buildBarOption(globalTypeList.value.map(d => ({ name: d.park_name, value: d.num, id: d.type_id })), '#a78bfa')
 )
 
-usePageInit(() => {
-  fetchChainData()
-  fetchGlobalCharts()
+const { refresh: refreshIndexPage } = usePageInit(async () => {
+  await fetchChainData()
+  await fetchGlobalCharts()
 })
 
 watch(highlightedSearchHits, ({ productIds }) => {

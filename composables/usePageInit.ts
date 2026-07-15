@@ -16,19 +16,37 @@ export function resetPageInit(path: string) {
  */
 export function usePageInit(init: () => void | Promise<void>) {
   const route = useRoute()
+  let initPromise: Promise<void> | null = null
 
-  const runInit = async () => {
+  const runInit = async (force = false) => {
     const path = route.path
-    if (initializedPaths.has(path)) return
-    initializedPaths.add(path)
-    await init()
+    if (!force && initializedPaths.has(path)) return
+    if (initPromise) return initPromise
+
+    initPromise = (async () => {
+      try {
+        await init()
+        initializedPaths.add(path)
+      } catch (e) {
+        initializedPaths.delete(path)
+        console.error(`[usePageInit] 初始化失败: ${path}`, e)
+        throw e
+      } finally {
+        initPromise = null
+      }
+    })()
+
+    return initPromise
   }
 
-  onMounted(runInit)
-  onActivated(runInit)
+  onMounted(() => { runInit() })
+  onActivated(() => { runInit() })
   onUnmounted(() => resetPageInit(route.path))
 
-  return { reset: () => resetPageInit(route.path) }
+  return {
+    reset: () => resetPageInit(route.path),
+    refresh: () => runInit(true),
+  }
 }
 
 /** 登出时调用，清除所有初始化标记 */

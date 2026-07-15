@@ -1,4 +1,5 @@
 import type { CompanyRecord } from '~/types/company'
+import { matchParkId, type ParkInfo } from '~/composables/useGeoAmapMap'
 
 type GeoGeometry = {
   type?: string
@@ -16,7 +17,7 @@ type GeoFeatureCollection = {
 
 export type ParkLegendItem = {
   name: string
-  shortName: string
+  displayName: string
   color: string
   count: number
 }
@@ -95,6 +96,7 @@ export function useEnterpriseL7Map() {
   let companyHoverText: any = null
   let parkFeatures: GeoFeature[] = []
   let parkColorMap = new Map<string, string>()
+  let parkApiList: ParkInfo[] = []
   let latestCompanies: CompanyRecord[] = []
   let zoneCenter: [number, number] = [114.475, 30.50]
   let mapControls: any[] = []
@@ -125,8 +127,16 @@ export function useEnterpriseL7Map() {
     return String(feature.properties?.park_name || feature.properties?.Layer || '').trim()
   }
 
-  function shortParkName(name: string): string {
-    return name.replace(/^光谷/, '') || name
+  function resolveParkApiItem(geoParkName: string): ParkInfo | null {
+    if (!parkApiList.length) return null
+    const parkId = matchParkId(geoParkName, parkApiList)
+    return parkId != null
+      ? parkApiList.find(p => p.park_id === parkId) ?? null
+      : null
+  }
+
+  function displayParkName(geoParkName: string): string {
+    return resolveParkApiItem(geoParkName)?.park_name ?? geoParkName
   }
 
   function polygonRing(geoData: GeoFeatureCollection): number[][] {
@@ -215,19 +225,21 @@ export function useEnterpriseL7Map() {
     return getParkName(best)
   }
 
-  function countCompaniesByPark(companies: CompanyRecord[]): Map<string, number> {
+  /** 企业数优先用 /company/park 接口 num，不再按坐标落入地理范围统计 */
+  function countCompaniesByPark(_companies: CompanyRecord[]): Map<string, number> {
     const counts = new Map<string, number>()
-    for (const name of parkColorMap.keys()) counts.set(name, 0)
-
-    for (const company of companies) {
-      const lng = Number(company.company_longitude)
-      const lat = Number(company.company_latitude)
-      if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue
-      const parkName = findParkNameAt(lng, lat)
-      if (!parkName) continue
-      counts.set(parkName, (counts.get(parkName) || 0) + 1)
+    for (const name of parkColorMap.keys()) {
+      const item = resolveParkApiItem(name)
+      counts.set(name, Number(item?.num) || 0)
     }
     return counts
+  }
+
+  function setParkApiList(list: ParkInfo[]) {
+    parkApiList = Array.isArray(list) ? list : []
+    if (map && parkColorMap.size) {
+      renderParks(latestCompanies, Boolean(selectedParkName.value), selectedParkName.value)
+    }
   }
 
   function centroidForPark(parkName: string): [number, number] {
@@ -341,7 +353,7 @@ export function useEnterpriseL7Map() {
     })
   }
 
-  function createParkCallout(parkName: string, shortName: string, color: string, index: number) {
+  function createParkCallout(parkName: string, displayName: string, color: string, index: number) {
     if (!map || !AMap) return
 
     const anchor = centroidForPark(parkName)
@@ -461,7 +473,7 @@ export function useEnterpriseL7Map() {
     if (isRight) labelStyle['border-right'] = `2px solid ${accent}`
 
     const label = new AMap.Text({
-      text: shortName,
+      text: displayName,
       position: labelPos,
       anchor: textAnchor,
       offset: (AMap as any).Pixel
@@ -984,8 +996,8 @@ export function useEnterpriseL7Map() {
 
     for (const [parkName, color] of parkColorMap.entries()) {
       const count = counts.get(parkName) || 0
-      const shortName = shortParkName(parkName)
-      legend.push({ name: parkName, shortName, color, count })
+      const displayName = displayParkName(parkName)
+      legend.push({ name: parkName, displayName, color, count })
 
       if (focusName && focusName !== parkName) continue
 
@@ -1016,7 +1028,7 @@ export function useEnterpriseL7Map() {
         })
       }
 
-      createParkCallout(parkName, shortName, color, parkIndex)
+      createParkCallout(parkName, displayName, color, parkIndex)
       parkIndex += 1
     }
 
@@ -1051,6 +1063,7 @@ export function useEnterpriseL7Map() {
     companies: CompanyRecord[],
     _onCompanyClick?: (c: CompanyRecord) => void,
     _onCompanyHover?: (c: CompanyRecord | null) => void,
+    parkInfos?: ParkInfo[],
   ) {
     mapReady.value = false
 
@@ -1081,6 +1094,9 @@ export function useEnterpriseL7Map() {
 
       parkFeatures = parkAreas.features ?? []
       parkColorMap = buildParkColorMap(parkFeatures)
+      if (parkInfos?.length) {
+        parkApiList = parkInfos
+      }
 
       const bounds = boundsFromZone(zoneData)
       const center = bounds ? centerFromBounds(bounds) : [114.475, 30.50] as [number, number]
@@ -1122,7 +1138,6 @@ export function useEnterpriseL7Map() {
       }
 
       renderParks(companies, false)
-      addMapControls()
 
       map.on('click', () => {
         if (suppressMapClick || !selectedParkName.value) return
@@ -1202,6 +1217,7 @@ export function useEnterpriseL7Map() {
     selectPark,
     initMap,
     updateCompanies,
+    setParkApiList,
     highlightCompany,
     flyToCompany,
     destroyMap,

@@ -460,7 +460,6 @@ const {
   setCompanyLabelVisible,
   updateMaskColor,
   invalidateSize,
-  isInZone,
   showAllMapCompanies,
   showFilteredCompanies,
   setParkMapCompanies,
@@ -600,14 +599,9 @@ const filteredCompanies = computed(() => {
   }
   const region = selectedRegion.value
   const q = companySearch.value.trim().toLowerCase()
-  // 搜索时不过滤区域，显示全部企业；未搜索时按当前区域过滤
-  if (!q) {
-    if (region?.type === 'zone') {
-      list = list.filter(c => isInZone({ lat: c.company_latitude, lng: c.company_longitude }))
-    }
-    if (region?.type === 'city') {
-      list = list.filter(c => c.company_city === region.name)
-    }
+  // 不再按高新区地理范围过滤企业数；仅城市按名称匹配
+  if (!q && region?.type === 'city') {
+    list = list.filter(c => c.company_city === region.name)
   }
   if (q) {
     list = list.filter(c =>
@@ -697,13 +691,16 @@ async function initGeoScreenPage() {
   }
 }
 
-usePageInit(initGeoScreenPage)
+const { refresh: refreshGeoScreen } = usePageInit(initGeoScreenPage)
 
 onMounted(() => {
   document.addEventListener('fullscreenchange', onFsChange)
 })
 
-onActivated(() => {
+onActivated(async () => {
+  if (!allCompanies.value.length) {
+    await refreshGeoScreen()
+  }
   nextTick(() => {
     invalidateSize()
     window.dispatchEvent(new Event('resize'))

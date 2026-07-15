@@ -51,9 +51,22 @@
           <section class="es-panel es-panel-flex">
             <div class="es-panel-head">
               <h2>产业集群分布</h2>
-              <span class="es-panel-tag">{{ industryTotal }} 家 · {{ industryTabs.length }} 类</span>
+              <span class="es-panel-tag">
+                <template v-if="panelStatsLoading">加载中</template>
+                <template v-else-if="!industryTabs.length">暂无数据</template>
+                <template v-else>{{ industryTotal }} 家 · {{ industryTabs.length }} 类</template>
+              </span>
             </div>
-            <div class="es-chart-scroll">
+            <div v-if="panelStatsLoading" class="es-panel-empty">
+              <span class="es-loader" />
+              <span>加载中</span>
+            </div>
+            <div v-else-if="!industryTabs.length" class="es-panel-empty">
+              <div class="es-panel-empty-line" />
+              <span>暂无数据</span>
+              <div class="es-panel-empty-line" />
+            </div>
+            <div v-else class="es-chart-scroll">
               <ul class="es-industry-list">
                 <li
                   v-for="(item, idx) in industryTabs"
@@ -77,7 +90,7 @@
                       :style="{ left: `calc(${item.percent}% + 4px)` }"
                     >{{ item.percent }}%</span>
                   </div>
-                  <span class="es-industry-count">{{ item.count }}</span>
+                  <span class="es-industry-count">{{ item.count }}家</span>
                 </li>
               </ul>
             </div>
@@ -87,10 +100,23 @@
           <section class="es-panel es-panel-nature">
             <div class="es-panel-head">
               <h2>产业公司性质分布</h2>
-              <span class="es-panel-tag">{{ natureTabs.length }} 类</span>
+              <span class="es-panel-tag">
+                <template v-if="panelStatsLoading">加载中</template>
+                <template v-else-if="!natureTabs.length">暂无数据</template>
+                <template v-else>{{ natureTabs.length }} 类</template>
+              </span>
+            </div>
+            <div v-if="panelStatsLoading" class="es-panel-empty es-panel-empty-chart">
+              <span class="es-loader" />
+              <span>加载中</span>
+            </div>
+            <div v-else-if="!natureTabs.length" class="es-panel-empty es-panel-empty-chart">
+              <div class="es-panel-empty-line" />
+              <span>暂无数据</span>
+              <div class="es-panel-empty-line" />
             </div>
             <VChart
-              v-if="chartsReady"
+              v-else-if="chartsReady"
               class="es-chart es-chart-nature"
               :option="natureOption"
               autoresize
@@ -115,7 +141,7 @@
             </div>
 
             <div class="es-legend">
-              <span class="es-legend-title">园区分布</span>
+              <span class="es-legend-title">园区分布(企业数)</span>
               <div class="es-legend-items">
                 <button
                   v-for="item in parkLegend"
@@ -126,7 +152,8 @@
                   @click="selectPark(item.name)"
                 >
                   <span class="es-legend-dot" :style="{ background: item.color }" />
-                  {{ item.shortName }} {{ item.count }}
+                  <span class="es-legend-name">{{ item.displayName }}</span>
+                  <span class="es-legend-count" :style="{ color: item.color }">{{ item.count }}家</span>
                 </button>
               </div>
               <button
@@ -179,6 +206,7 @@ import {
   normalizeTypeInfoList,
 } from '~/types/company'
 import { matchParkId, type ParkInfo } from '~/composables/useGeoAmapMap'
+import { resetPageInit } from '~/composables/usePageInit'
 import { newsRequest } from '~/utils/request'
 
 definePageMeta({ layout: 'blank', middleware: ['auth'], keepalive: false, ssr: false })
@@ -238,6 +266,7 @@ const newsLoading = ref(false)
 
 function onScreenNavClick(event: MouseEvent, link: typeof screenNavLinks[number]) {
   event.preventDefault()
+  resetPageInit(link.path)
   navigateTo(link.path)
 }
 
@@ -249,6 +278,7 @@ const {
   selectPark,
   initMap,
   updateCompanies,
+  setParkApiList,
   highlightCompany,
   flyToCompany,
   destroyMap,
@@ -294,7 +324,8 @@ const metrics = computed(() => {
   const attractRate = list.length ? Math.round((attract / list.length) * 1000) / 10 : 0
   return [
     { key: 'scale' as const, label: '企业总数', unit: '家', value: list.length.toLocaleString(), hint: '' },
-    { key: 'listed' as const, label: '上市公司', unit: '家', value: listed.toString(), hint: `资本化率 ${listedRate}%` },
+    // { key: 'listed' as const, label: '上市公司', unit: '家', value: listed.toString(), hint: `资本化率 ${listedRate}%` },
+    { key: 'listed' as const, label: '上市公司', unit: '家', value: listed.toString(), hint: `` },
     { key: 'native' as const, label: '本土培育', unit: '家', value: native.toString(), hint: `占比 ${nativeRate}%` },
     { key: 'attract' as const, label: '招商引资', unit: '家', value: attract.toString(), hint: `占比 ${attractRate}%` },
   ]
@@ -322,18 +353,22 @@ const natureOption = computed(() => {
   return {
     backgroundColor: 'transparent',
     animationDuration: 600,
-    grid: { left: 8, right: 12, top: 20, bottom: 8, containLabel: true },
+    grid: { left: 8, right: 12, top: 24, bottom: 8, containLabel: true },
     tooltip: {
       trigger: 'axis',
+      axisPointer: { type: 'shadow' },
       backgroundColor: 'rgba(21, 32, 51, 0.96)',
       borderColor: 'rgba(148, 163, 184, 0.28)',
       borderWidth: 1,
       textStyle: { color: '#e6edf5', fontSize: 12 },
+      formatter: (params: any) => {
+        const p = Array.isArray(params) ? params[0] : params
+        return `${p?.name || ''}<br/>${p?.marker || ''}${p?.value ?? 0} 家`
+      },
     },
     xAxis: {
       type: 'category',
       data: items.map(i => i.name),
-      boundaryGap: false,
       axisLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.25)' } },
       axisTick: { show: false },
       axisLabel: {
@@ -354,14 +389,10 @@ const natureOption = computed(() => {
       splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.1)', type: 'dashed' } },
     },
     series: [{
-      type: 'line',
+      type: 'bar',
       data: items.map(i => i.count),
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 6,
-      lineStyle: { width: 2.2, color: '#7eb3d6' },
-      itemStyle: { color: '#7eb3d6', borderColor: '#edf3f9', borderWidth: 1.5 },
-      areaStyle: {
+      barMaxWidth: 22,
+      itemStyle: {
         color: {
           type: 'linear',
           x: 0,
@@ -369,10 +400,11 @@ const natureOption = computed(() => {
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: 'rgba(126, 179, 214, 0.32)' },
-            { offset: 1, color: 'rgba(126, 179, 214, 0.02)' },
+            { offset: 0, color: '#7eb3d6' },
+            { offset: 1, color: 'rgba(95, 158, 200, 0.35)' },
           ],
         },
+        borderRadius: [3, 3, 0, 0],
       },
       label: {
         show: true,
@@ -380,6 +412,7 @@ const natureOption = computed(() => {
         color: '#b5c3d4',
         fontSize: 10,
         fontFamily: 'DIN Alternate, ui-monospace, monospace',
+        formatter: '{c}家',
       },
     }],
   }
@@ -631,30 +664,36 @@ async function loadParkList() {
       parkList.value = res.data.map(item => ({
         park_id: item.park_id,
         park_name: item.park_name,
+        num: Number(item.num) || 0,
       }))
+      setParkApiList(parkList.value)
     }
   } catch (e) {
     console.error('获取园区列表失败:', e)
     parkList.value = []
+    setParkApiList([])
   }
 }
 
-async function loadPanelStats(parkId?: number) {
+async function loadPanelStats(parkId?: number | null) {
   panelStatsLoading.value = true
+  parkChainStats.value = []
+  typeInfoStats.value = []
   try {
+    // 已选中园区但匹配不到 park_id：直接空态，禁止回退拉全量统计
+    if (selectedParkName.value && (parkId == null || parkId <= 0)) {
+      return
+    }
+    const queryParkId = parkId && parkId > 0 ? parkId : undefined
     const [chainRes, typeRes] = await Promise.all([
-      fetchParkChain(parkId),
-      fetchCompanyTypeInfo(parkId),
+      fetchParkChain(queryParkId),
+      fetchCompanyTypeInfo(queryParkId),
     ])
     if (chainRes.code === 0) {
       parkChainStats.value = normalizeCompanyStatList(chainRes.data)
-    } else {
-      parkChainStats.value = []
     }
     if (typeRes.code === 0) {
       typeInfoStats.value = normalizeTypeInfoList(typeRes.data)
-    } else {
-      typeInfoStats.value = []
     }
   } catch (e) {
     console.error('获取左侧统计失败:', e)
@@ -691,18 +730,19 @@ watch([filteredCompanies, mapReady], () => {
   }
 })
 
-watch(selectedParkName, async (parkName) => {
-  syncActiveParkFromMap(parkName)
-  await loadPanelStats(activeParkId.value ?? undefined)
+watch(selectedParkName, async () => {
+  syncActiveParkFromMap(selectedParkName.value)
+  await loadPanelStats(activeParkId.value)
 })
 
 onMounted(async () => {
-  await Promise.all([loadCompanies(), loadNews(), loadParkList()])
+  // 右栏「新闻动态」暂隐藏，不再请求 zy-news，避免本地未起 news 服务时刷 Network Error
+  await Promise.all([loadCompanies(), loadParkList()])
   syncActiveParkFromMap(selectedParkName.value)
-  await loadPanelStats(activeParkId.value ?? undefined)
+  await loadPanelStats(activeParkId.value)
   await nextTick()
   chartsReady.value = true
-  initMap(filteredCompanies.value)
+  await initMap(filteredCompanies.value, undefined, undefined, parkList.value)
 })
 
 onUnmounted(() => {
@@ -893,6 +933,28 @@ onUnmounted(() => {
   min-height: 160px;
 }
 
+.es-panel-empty {
+  flex: 1;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 12px;
+  color: var(--es-text-mute);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+.es-panel-empty-line {
+  width: 36px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(95, 158, 200, 0.45), transparent);
+}
+.es-panel-empty-chart {
+  min-height: 140px;
+}
+
 .es-panel-head {
   display: flex;
   align-items: center;
@@ -1017,7 +1079,7 @@ onUnmounted(() => {
 }
 .es-industry-row {
   display: grid;
-  grid-template-columns: 118px minmax(0, 1fr) 34px;
+  grid-template-columns: 110px minmax(0, 1fr) 48px;
   align-items: center;
   gap: 10px;
   min-height: 24px;
@@ -1360,6 +1422,17 @@ onUnmounted(() => {
   flex-shrink: 0;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
+.es-legend-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.es-legend-count {
+  flex-shrink: 0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
 .es-legend-reset {
   margin-top: 8px;
   padding: 6px 4px 0;
@@ -1566,7 +1639,7 @@ onUnmounted(() => {
   .es-title { font-size: 18px; }
   .es-metric-value { font-size: 22px; }
   .es-body { grid-template-columns: minmax(260px, 34%) 1fr; gap: 12px; }
-  .es-industry-row { grid-template-columns: 96px minmax(0, 1fr) 28px; }
+  .es-industry-row { grid-template-columns: 90px minmax(0, 1fr) 42px; }
 }
 
 @media (max-width: 1180px) {
@@ -1593,6 +1666,6 @@ onUnmounted(() => {
   .es-left { grid-template-rows: auto minmax(200px, 260px) minmax(160px, 200px); }
   .es-stage { min-height: 360px; }
   .es-footer { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
-  .es-industry-row { grid-template-columns: 80px minmax(0, 1fr) 28px; gap: 6px; }
+  .es-industry-row { grid-template-columns: 76px minmax(0, 1fr) 40px; gap: 6px; }
 }
 </style>

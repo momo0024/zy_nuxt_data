@@ -8,6 +8,7 @@ export type RegionSelectPayload =
 export interface ParkInfo {
   park_id: number
   park_name: string
+  num?: number
 }
 
 export function matchParkId(layerName: string, parks: ParkInfo[]): number | null {
@@ -746,8 +747,12 @@ export function useGeoAmapMap() {
 
   function focusPark(parkId: number | null, name: string, unmappedIndex?: number) {
     const validParkId = parkId && parkId > 0 ? parkId : null
+    const targetUnmappedIndex = validParkId ? null : (unmappedIndex ?? null)
+    const isSamePark = validParkId
+      ? focusedParkId === validParkId
+      : focusedUnmappedParkIndex === targetUnmappedIndex
     focusedParkId = validParkId
-    focusedUnmappedParkIndex = validParkId ? null : (unmappedIndex ?? null)
+    focusedUnmappedParkIndex = targetUnmappedIndex
     quickView.value = 'zone'
     setBlurFocus('zone')
     if (validParkId) {
@@ -760,7 +765,9 @@ export function useGeoAmapMap() {
     }
     applyParkStyles()
     refreshMarkers([])
-    onRegionSelect?.({ type: 'park', park_id: validParkId ?? 0, name })
+    if (!isSamePark) {
+      onRegionSelect?.({ type: 'park', park_id: validParkId ?? 0, name })
+    }
   }
 
   function showAllMapCompanies() {
@@ -1109,8 +1116,6 @@ map.on('zoomend', () => {
         }
       }),
     }
-
-    const zoneCompanies = filterCompaniesInZone(companies, zoneGcj02)
 
     map = new AMap.Map(mapContainerRef.value, {
       center: [WUHAN_CENTER[1], WUHAN_CENTER[0]],
