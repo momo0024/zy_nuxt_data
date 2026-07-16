@@ -6,12 +6,15 @@
       <div class="gs-toolbar" @click="closeMenus">
         <div class="gs-toolbar-left">
           <span class="gs-title-icon">
-            <UIcon name="i-lucide-map-pin" class="size-[15px]" />
+            <UIcon name="i-lucide-map-pinned" class="size-[17px]" />
           </span>
-          <span class="gs-title">企业地图</span>
-          <span class="gs-breadcrumb">
-            <span class="gs-crumb-badge">{{ companyTotal }} 家</span>
-          </span>
+          <div class="gs-title-block">
+            <div class="gs-title-row">
+              <span class="gs-title">企业地图</span>
+              <span class="gs-crumb-badge">{{ companyTotal }} 家</span>
+            </div>
+            <span class="gs-subtitle">ENTERPRISE · GEO INSIGHT</span>
+          </div>
         </div>
         <div class="gs-toolbar-right">
           <!-- 区域选择下拉 -->
@@ -52,11 +55,10 @@
 
           <!-- 统计浮层 (左上) -->
           <div class="gs-stats-overlay">
-            <div class="gs-stat">
+            <div class="gs-stat gs-stat-total">
               <div class="gs-stat-num">{{ companyTotal }}</div>
               <div class="gs-stat-lbl">企业总数</div>
             </div>
-            <div class="gs-stat-sep" />
             <button
               type="button"
               class="gs-stat gs-stat-clickable gs-stat-listed"
@@ -66,7 +68,6 @@
               <div class="gs-stat-num">{{ listedCount }}</div>
               <div class="gs-stat-lbl">上市公司</div>
             </button>
-            <div class="gs-stat-sep" />
             <button
               type="button"
               class="gs-stat gs-stat-clickable gs-stat-native"
@@ -76,7 +77,6 @@
               <div class="gs-stat-num">{{ nativeCount }}</div>
               <div class="gs-stat-lbl">本土培育</div>
             </button>
-            <div class="gs-stat-sep" />
             <button
               type="button"
               class="gs-stat gs-stat-clickable gs-stat-attract"
@@ -101,8 +101,16 @@
                 <span>非上市公司</span>
               </div>
             </div>
-            <span class="gs-legend-title gs-legend-title-gap">可点击区域</span>
+            <span class="gs-legend-title gs-legend-title-gap">边界范围</span>
             <div class="gs-legend-items">
+              <div class="gs-legend-item">
+                <span class="gs-legend-swatch gs-swatch-province" />
+                <span>湖北省</span>
+              </div>
+              <div class="gs-legend-item">
+                <span class="gs-legend-swatch gs-swatch-wuhan" />
+                <span>武汉市</span>
+              </div>
               <div class="gs-legend-item">
                 <span class="gs-legend-swatch gs-swatch-zone" />
                 <span>高新区园区</span>
@@ -343,6 +351,11 @@
                     <UIcon name="i-lucide-layers" class="size-3.5" />
                     <span class="cd-strength-meta-label">企业类别</span>
                     <span class="cd-strength-meta-value">{{ detailCompany.val_org_type }}</span>
+                  </div>
+                  <div v-if="hasHonrs(detailCompany)" class="cd-strength-meta-item cd-honors-meta">
+                    <UIcon name="i-lucide-award" class="size-3.5" />
+                    <span class="cd-strength-meta-label">荣誉</span>
+                    <span class="cd-strength-meta-value cd-honors-meta-text">{{ detailCompany.honrs }}</span>
                   </div>
                 </div>
               </div>
@@ -837,8 +850,14 @@ function closeDetail() {
   scopeExpanded.value = false
 }
 
+function hasHonrs(c: CompanyRecord | null): boolean {
+  if (!c) return false
+  const text = String(c.honrs ?? '').trim()
+  return Boolean(text && text !== '-')
+}
+
 function hasStrengthData(c: CompanyRecord): boolean {
-  return !!(c.company_score || (c.above_scale || c.above_scale === 0) || (c.remark && c.remark !== '-') || c.authorized_patents_count || c.authorized_invention_patents_count || c.national_standards_count || c.participated_standards_count || (c.company_financing_round && c.company_financing_round !== '-') || (c.latest_financing_date && c.latest_financing_date !== '-') || (c.company_scale && c.company_scale !== '-') || (c.company_nature && c.company_nature !== '-') || (c.val_org_type && c.val_org_type !== '-'))
+  return !!(hasHonrs(c) || c.company_score || (c.above_scale || c.above_scale === 0) || (c.remark && c.remark !== '-') || c.authorized_patents_count || c.authorized_invention_patents_count || c.national_standards_count || c.participated_standards_count || (c.company_financing_round && c.company_financing_round !== '-') || (c.latest_financing_date && c.latest_financing_date !== '-') || (c.company_scale && c.company_scale !== '-') || (c.company_nature && c.company_nature !== '-') || (c.val_org_type && c.val_org_type !== '-'))
 }
 
 </script>
@@ -867,12 +886,14 @@ function hasStrengthData(c: CompanyRecord): boolean {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 46px;
-  min-height: 46px;
-  padding: 0 16px;
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  height: 54px;
+  min-height: 54px;
+  padding: 0 18px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--surface) 99%, transparent),
+    color-mix(in srgb, var(--surface) 92%, transparent));
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
   z-index: 10;
   flex-shrink: 0;
   transition: background 0.3s ease, border-color 0.3s ease;
@@ -880,38 +901,62 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .gs-toolbar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 11px;
 }
 .gs-title-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: color-mix(in srgb, var(--primary) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
-  border-radius: 7px;
-  color: var(--primary);
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--primary) 90%, #0891b2),
+    color-mix(in srgb, var(--primary) 48%, #22d3ee));
+  border: 1px solid color-mix(in srgb, #22d3ee 45%, var(--primary));
+  border-radius: 10px;
+  color: #fff;
+  box-shadow:
+    0 4px 14px color-mix(in srgb, var(--primary) 38%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
-.gs-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-strong);
-  letter-spacing: 0.5px;
+.gs-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.gs-breadcrumb {
+.gs-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--text-muted);
-  font-size: 13px;
+  gap: 8px;
+}
+.gs-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(92deg,
+    var(--text-strong) 0%,
+    color-mix(in srgb, var(--primary) 82%, var(--text-strong)) 55%,
+    #0891b2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--text-strong);
+}
+.gs-subtitle {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: color-mix(in srgb, var(--primary) 55%, var(--text-muted));
+  text-transform: uppercase;
+  line-height: 1;
 }
 .gs-crumb-badge {
   display: inline-flex;
   align-items: center;
   padding: 1px 9px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: var(--font-display);
   background: color-mix(in srgb, var(--primary) 12%, transparent);
   color: var(--primary);
   border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
@@ -1051,6 +1096,12 @@ function hasStrengthData(c: CompanyRecord): boolean {
   inset: 0;
   z-index: 0;
 }
+.gs-map-container :deep(.amap-logo),
+.gs-map-container :deep(.amap-copyright) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
 
 /* ── 地图统计浮层等其余样式保留 ─── */
 .gs-loading-overlay {
@@ -1071,41 +1122,49 @@ function hasStrengthData(c: CompanyRecord): boolean {
 
 /* ── 地图区 ────────────────────────────────────────────── */
 .gs-map-wrap {
+  --gs-overlay-w: 210px;
   flex: 1;
   position: relative;
   overflow: hidden;
-  background: var(--bg, #f8f9fc);
+  background:
+    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--primary) 6%, transparent), transparent 60%),
+    var(--bg, #f8f9fc);
   transition: background 0.3s ease;
 }
 /* ── 统计浮层 ──────────────────────────────────────────── */
 .gs-stats-overlay {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  align-items: center;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 5px 2px;
+  top: 14px;
+  left: 14px;
+  width: var(--gs-overlay-w);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-radius: 12px;
+  padding: 10px;
   z-index: 410;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 .gs-map-toggle {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 14px;
+  right: 14px;
+  width: var(--gs-overlay-w);
+  height: 42px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 8px 10px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  padding: 0 14px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-radius: 12px;
   z-index: 410;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 .gs-toggle-label {
   font-size: 12px;
@@ -1117,38 +1176,39 @@ function hasStrengthData(c: CompanyRecord): boolean {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 10px;
+  justify-content: center;
+  gap: 2px;
+  padding: 7px 6px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface-alt) 65%, transparent);
+  border: 1px solid transparent;
+}
+.gs-stat-total {
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-alt));
+  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
 }
 .gs-stat-num {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
   font-family: var(--font-display);
   color: var(--primary);
-  line-height: 1.15;
+  line-height: 1.1;
 }
 .gs-stat-lbl {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
-  margin-top: 2px;
   white-space: nowrap;
 }
-.gs-stat-sep {
-  width: 1px;
-  height: 22px;
-  background: var(--border);
-}
 .gs-stat-clickable {
-  border: none;
-  background: transparent;
   cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 .gs-stat-clickable:hover {
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--primary) 9%, var(--surface-alt));
 }
-.gs-stat-active {
-  background: color-mix(in srgb, var(--primary) 12%, transparent);
+.gs-stat-clickable:active {
+  transform: translateY(0);
 }
 .gs-stat-native .gs-stat-num {
   color: #10b981;
@@ -1159,9 +1219,23 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .gs-stat-attract .gs-stat-num {
   color: #7c3aed;
 }
-.gs-stat-native.gs-stat-active .gs-stat-lbl,
-.gs-stat-listed.gs-stat-active .gs-stat-lbl,
-.gs-stat-attract.gs-stat-active .gs-stat-lbl {
+.gs-stat-active {
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface-alt));
+}
+.gs-stat-listed.gs-stat-active {
+  border-color: color-mix(in srgb, #ef4444 45%, transparent);
+  background: color-mix(in srgb, #ef4444 12%, var(--surface-alt));
+}
+.gs-stat-native.gs-stat-active {
+  border-color: color-mix(in srgb, #10b981 45%, transparent);
+  background: color-mix(in srgb, #10b981 12%, var(--surface-alt));
+}
+.gs-stat-attract.gs-stat-active {
+  border-color: color-mix(in srgb, #7c3aed 45%, transparent);
+  background: color-mix(in srgb, #7c3aed 12%, var(--surface-alt));
+}
+.gs-stat-active .gs-stat-lbl {
   font-weight: 600;
   color: var(--text-strong);
 }
@@ -1169,41 +1243,46 @@ function hasStrengthData(c: CompanyRecord): boolean {
 /* ── 图例 ──────────────────────────────────────────────── */
 .gs-legend {
   position: absolute;
-  bottom: 10px;
-  left: 10px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 5px 8px;
+  bottom: 14px;
+  left: 14px;
+  width: var(--gs-overlay-w);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-radius: 12px;
+  padding: 11px 13px;
   z-index: 410;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 .gs-legend-title {
   display: block;
   font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 3px;
+  margin-bottom: 6px;
 }
 .gs-legend-title-gap {
-  margin-top: 6px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 .gs-legend-items {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-top: 2px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
 }
 .gs-legend-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 10px;
+  gap: 6px;
+  font-size: 10.5px;
   color: var(--text);
 }
 .gs-legend-swatch {
-  width: 11px;
-  height: 8px;
+  width: 13px;
+  height: 9px;
   border-radius: 2px;
   flex-shrink: 0;
 }
@@ -1227,20 +1306,20 @@ function hasStrengthData(c: CompanyRecord): boolean {
 }
 .gs-swatch-province {
   background: transparent;
-  border: 2px solid #4a9eff;
+  border: 2px dashed #2f7cf6;
 }
 .gs-swatch-city {
   background: #fed7aa;
   border: 2px solid #ea580c;
 }
 .gs-swatch-wuhan {
-  background: transparent;
-  border: 2.5px solid #2dd4bf;
-  box-shadow: 0 0 6px rgba(45, 212, 191, 0.45);
+  background: color-mix(in srgb, #22d3ee 14%, transparent);
+  border: 2.5px solid #06b6d4;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.5);
 }
 .gs-swatch-zone {
   background: transparent;
-  border: 3px dashed #7c3aed;
+  border: 2.5px solid #ea580c;
 }
 
 /* ── 加载中 ─────────────────────────────────────────────── */
@@ -1822,6 +1901,17 @@ function hasStrengthData(c: CompanyRecord): boolean {
   background: var(--border);
   margin-left: 8px;
   vertical-align: middle;
+}
+.cd-honors-meta {
+  flex: 0 0 100%;
+  align-items: flex-start;
+}
+.cd-honors-meta-text {
+  flex: 1;
+  font-weight: 500;
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: normal;
 }
 
 /* ── 抽屉列表核心指标行 ─────────────────────────── */

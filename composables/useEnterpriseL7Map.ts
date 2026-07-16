@@ -46,22 +46,53 @@ const BREATH_TEXTURE = 'https://a.amap.com/Loca/static/loca-v2/demos/images/brea
 const BREATH_TEXTURE_ALT = 'https://a.amap.com/Loca/static/loca-v2/demos/images/breath_yellow.png'
 
 const PARK_PALETTE = [
-  '#6fa3cc', // 浅钢蓝
-  '#8fb5a3', // 浅灰绿
-  '#d4ad7a', // 浅沙褐
-  '#b094cc', // 浅灰紫
-  '#7fa0c0', // 浅板岩蓝
-  '#bc9a88', // 浅陶土
-  '#9fadc2', // 浅冷灰蓝
-  '#94b088', // 浅橄榄绿
+  '#38bdf8', // sky-400
+  '#60a5fa', // blue-400
+  '#2563eb', // blue-600
+  '#22d3ee', // cyan-400
+  '#0ea5e9', // sky-500
+  '#7dd3fc', // sky-300
+  '#4f8ef7',
+  '#5b9bd5',
 ]
 
-/** 相邻园区易混淆时单独指定色（略提亮，仍保持低饱和） */
+/** 8 大园区固定配色，确保彼此区分明显 */
 const PARK_COLOR_OVERRIDES: Record<string, string> = {
-  '光谷未来科技城': '#da8f9c', // 浅灰玫
-  '光谷智能制造产业园': '#d9c070', // 浅暗金
-  '光谷生物城': '#6db396', // 浅墨绿
+  '光谷中华科技产业园': '#3b82f6',
+  '光谷未来科技城': '#22d3ee',
+  '光谷生物城': '#10b981',
+  '光谷光电子信息产业园': '#f59e0b',
+  '光谷中心城': '#8b5cf6',
+  '光谷现代服务业园': '#f43f5e',
+  '光谷智能制造产业园': '#06b6d4',
 }
+
+/** 园区边界线默认宽度 */
+const PARK_LINE_WIDTH = 2.2
+/** 园区边界线悬停/选中宽度 */
+const PARK_LINE_WIDTH_ACTIVE = 4.2
+/** 园区边界线默认透明度 */
+const PARK_LINE_OPACITY = 0.9
+/** 园区边界线悬停/选中透明度 */
+const PARK_LINE_OPACITY_ACTIVE = 1
+/** 园区边界线悬停时 zIndex */
+const PARK_LINE_Z_HOVER = 520
+/** 园区边界线默认 zIndex */
+const PARK_LINE_Z_NORMAL = 500
+/** 园区悬停时 3D 抬升高度（凸起效果） */
+const PARK_HOVER_ALTITUDE = 3200
+
+/** 地图图层 zIndex */
+const MAP_LAYER_Z = {
+  city: 8,
+  zone: 18,
+  park: 22,
+  heatmap: 120,
+  companyMarker: 320,
+  parkLabel: 380,
+  mask: 400,
+  hoverLabel: 410,
+} as const
 
 function brightenHex(hex: string, amount = 0.28): string {
   const h = hex.replace('#', '')
@@ -76,8 +107,20 @@ function isHighlightPark(parkName: string) {
   return parkName in PARK_COLOR_OVERRIDES
 }
 
+/** 柱状热力图配色：低→高 蓝→青→黄→红 */
+function heatColumnColor(ratio: number, band: 'top' | 'bottom'): string {
+  let rgb: [number, number, number]
+  if (ratio < 0.2) rgb = [14, 165, 233]        // sky-500
+  else if (ratio < 0.45) rgb = [34, 211, 238]  // cyan-400
+  else if (ratio < 0.65) rgb = [125, 211, 252] // sky-300
+  else if (ratio < 0.82) rgb = [253, 224, 71]  // yellow-300
+  else rgb = [248, 113, 113]                    // red-400
+  const alpha = band === 'bottom' ? 0.12 : 0.92
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`
+}
+
 /**
- * 企业大屏地图：高德 AMap 3D + 高新区园区边界 + 各园区企业数标注
+ * 企业大屏地图：高德 AMap 3D + 热力图 + Loca 3D 光柱 / 城市亮点
  */
 export function useEnterpriseL7Map() {
   const config = useRuntimeConfig()
@@ -85,20 +128,43 @@ export function useEnterpriseL7Map() {
   const mapReady = ref(false)
   const parkLegend = ref<ParkLegendItem[]>([])
   const selectedParkName = ref<string | null>(null)
+  const hoveredParkName = ref<string | null>(null)
 
   let AMap: AMapLike | null = null
   let map: any = null
+  /** 武汉市轮廓，用于默认视野 */
+  let cityPolygons: any[] = []
+  /** 遮住武汉市以外区域 */
+  let maskPolygons: any[] = []
+  let wuhanOuterRings: number[][][] = []
+  /** 高新区高亮面 */
   let zonePolygons: any[] = []
   let zoneLines: any[] = []
+  /** 高新区聚焦遮罩（区外压暗虚化）+ 区界清晰发光边 */
+  let zoneFocusMask: any[] = []
+  /** 湖北省各地市边界线（省域范围高亮，绘制于遮罩之上） */
+  let provinceLines: any[] = []
+  /** 湖北省外轮廓（省界高亮） */
+  let provinceOutline: any[] = []
+  const HUBEI_NAME = '湖北省'
   let parkPolygons: any[] = []
+  let parkLines: any[] = []
+  let parkHoverPolygons: any[] = []
+  /** 园区透明命中面：用于在园区内部也能触发鼠标悬停 */
+  let parkHitPolygons: any[] = []
   let parkLabels: any[] = []
   let companyMarkers: any[] = []
   let companyHoverText: any = null
+  let heatmapLayer: any = null
+  /** 高新区漂浮透明立体板块（Loca PolygonLayer） */
+  let zoneBoardLayer: any = null
+  let companyGlowLayers: any[] = []
+  let companyPrismLayer: any = null
   let parkFeatures: GeoFeature[] = []
   let parkColorMap = new Map<string, string>()
   let parkApiList: ParkInfo[] = []
   let latestCompanies: CompanyRecord[] = []
-  let zoneCenter: [number, number] = [114.475, 30.50]
+  let zoneCenter: [number, number] = [114.3055, 30.5928]
   let mapControls: any[] = []
   let suppressMapClick = false
   let onParkSelectHandler: ((parkName: string | null) => void) | undefined
@@ -119,14 +185,21 @@ export function useEnterpriseL7Map() {
   let loca: any = null
   let breathLayers: any[] = []
 
-  /** 全览：轻微倾斜；选中园区：平面俯视 */
-  const MAP_PITCH = 30
+  /** 全览：武汉市尽量铺满视口；选中园区再拉近 */
+  const MAP_PITCH = 50
   const MAP_PITCH_FLAT = 0
   const MAP_ROTATION = 12
   const MAP_ROTATION_FLAT = 0
-  const MAP_ZOOM = 13.2
-  const MAP_FIT_MAX_ZOOM = 14.0
+  const MAP_ZOOM = 12.4
+  const MAP_FIT_MAX_ZOOM = 15.8
+  /** setFitView: [top, right, bottom, left]；左留白更大，全览时武汉视觉略偏右 */
+  const MAP_FIT_PADDING: [number, number, number, number] = [64, 300, 180, 400]
   const MAP_PARK_FIT_MAX_ZOOM = 15.2
+  const MAP_PARK_FIT_PADDING: [number, number, number, number] = [72, 200, 160, 200]
+  /** 默认全览直接聚焦八大园区范围，让园区居中并自适应屏幕 */
+  const MAP_ZONE_FIT_MAX_ZOOM = 16
+  const MAP_ZONE_FIT_PADDING: [number, number, number, number] = [80, 80, 80, 80]
+  const WUHAN_NAME = '武汉市'
 
   function getParkName(feature: GeoFeature): string {
     return String(feature.properties?.park_name || feature.properties?.Layer || '').trim()
@@ -293,63 +366,6 @@ export function useEnterpriseL7Map() {
     return [[minLng, minLat], [maxLng, maxLat]]
   }
 
-  function calloutLayoutForPark(
-    parkName: string,
-    anchor: [number, number],
-    index: number,
-  ): { path: [number, number][]; labelPos: [number, number]; textAnchor: string } {
-    const [lng, lat] = anchor
-    const [cx, cy] = zoneCenter
-    let dx = lng - cx
-    let dy = lat - cy
-    const len = Math.hypot(dx, dy) || 1
-    dx /= len
-    dy /= len
-
-    // 轻微错开方向，减少相邻标签重叠
-    const angleOffset = ((index % 7) - 3) * 0.18
-    const cos = Math.cos(angleOffset)
-    const sin = Math.sin(angleOffset)
-    const ndx = dx * cos - dy * sin
-    const ndy = dx * sin + dy * cos
-
-    const bounds = boundsForPark(parkName)
-    let stub = 0.012
-    let arm = 0.022
-    if (bounds) {
-      const [[minLng, minLat], [maxLng, maxLat]] = bounds
-      const span = Math.max(maxLng - minLng, maxLat - minLat)
-      stub = Math.max(0.008, Math.min(0.02, span * 0.7))
-      arm = Math.max(0.014, Math.min(0.032, span * 1.15))
-    }
-
-    // 折线：锚点 → 折点 → 标签（L 形，先短伸出再拐向外侧）
-    const preferHorizontal = Math.abs(ndx) >= Math.abs(ndy)
-    const sx = Math.sign(ndx) || 1
-    const sy = Math.sign(ndy) || 1
-    let elbow: [number, number]
-    let labelPos: [number, number]
-    let textAnchor: string
-
-    if (preferHorizontal) {
-      // 先竖直伸出，再水平指向标签
-      elbow = [lng, lat + sy * stub]
-      labelPos = [lng + sx * arm, elbow[1]]
-      textAnchor = sx > 0 ? 'middle-left' : 'middle-right'
-    } else {
-      // 先水平伸出，再竖直指向标签
-      elbow = [lng + sx * stub, lat]
-      labelPos = [elbow[0], lat + sy * arm]
-      textAnchor = sy > 0 ? 'bottom-center' : 'top-center'
-    }
-
-    return {
-      path: [anchor, elbow, labelPos],
-      labelPos,
-      textAnchor,
-    }
-  }
-
   function attachParkSelectHandler(overlay: any, parkName: string) {
     overlay.on?.('click', (e: any) => {
       e?.originEvent?.stopPropagation?.()
@@ -358,137 +374,34 @@ export function useEnterpriseL7Map() {
     })
   }
 
-  function createParkCallout(parkName: string, displayName: string, color: string, index: number) {
+  function createParkInlineLabel(parkName: string, displayName: string, color: string) {
     if (!map || !AMap) return
 
-    const anchor = centroidForPark(parkName)
-    const { path, labelPos, textAnchor } = calloutLayoutForPark(parkName, anchor, index)
-
-    const accent = brightenHex(color, 0.38)
-    const soft = brightenHex(color, 0.18)
-
-    // 底层柔边：略粗、低透明，让折线在深色底上更干净
-    const glow = new AMap.Polyline({
-      path,
-      strokeColor: soft,
-      strokeWeight: 3.2,
-      strokeOpacity: 0.28,
-      strokeStyle: 'solid',
-      lineJoin: 'round',
-      lineCap: 'round',
-      zIndex: 196,
-      bubble: true,
-      cursor: 'pointer',
-    })
-    glow.setMap(map)
-    attachParkSelectHandler(glow, parkName)
-    parkLabels.push(glow)
-
-    // 主引线：细实线 + 圆角折点
-    const line = new AMap.Polyline({
-      path,
-      strokeColor: accent,
-      strokeWeight: 1.15,
-      strokeOpacity: 0.92,
-      strokeStyle: 'solid',
-      lineJoin: 'round',
-      lineCap: 'round',
-      zIndex: 198,
-      bubble: true,
-      cursor: 'pointer',
-    })
-    line.setMap(map)
-    attachParkSelectHandler(line, parkName)
-    parkLabels.push(line)
-
-    if (AMap.CircleMarker) {
-      // 锚点外环
-      const ring = new AMap.CircleMarker({
-        center: anchor,
-        radius: 5,
-        strokeColor: accent,
-        strokeWeight: 1.2,
-        strokeOpacity: 0.75,
-        fillColor: '#0b1a2c',
-        fillOpacity: 0.55,
-        zIndex: 199,
-        bubble: true,
-        cursor: 'pointer',
-      })
-      ring.setMap(map)
-      attachParkSelectHandler(ring, parkName)
-      parkLabels.push(ring)
-
-      // 锚点芯点
-      const core = new AMap.CircleMarker({
-        center: anchor,
-        radius: 2.2,
-        strokeColor: '#f4f8fc',
-        strokeWeight: 0.8,
-        strokeOpacity: 0.9,
-        fillColor: accent,
-        fillOpacity: 1,
-        zIndex: 200,
-        bubble: true,
-        cursor: 'pointer',
-      })
-      core.setMap(map)
-      attachParkSelectHandler(core, parkName)
-      parkLabels.push(core)
-
-      // 标签端小端点，收住折线
-      const tip = new AMap.CircleMarker({
-        center: labelPos,
-        radius: 1.6,
-        strokeColor: accent,
-        strokeWeight: 0,
-        strokeOpacity: 0,
-        fillColor: accent,
-        fillOpacity: 0.95,
-        zIndex: 200,
-        bubble: true,
-        cursor: 'pointer',
-      })
-      tip.setMap(map)
-      attachParkSelectHandler(tip, parkName)
-      parkLabels.push(tip)
-    }
-
-    const isLeft = textAnchor.includes('left')
-    const isRight = textAnchor.includes('right')
-    const isBottom = textAnchor.includes('bottom')
-    const isTop = textAnchor.includes('top')
-
-    const labelStyle: Record<string, string> = {
-      'background-color': 'rgba(12, 24, 40, 0.92)',
-      'border': `1px solid ${accent}88`,
-      'border-radius': '3px',
-      'color': '#eef5fb',
-      'font-size': '11px',
-      'font-weight': '500',
-      'letter-spacing': '0.02em',
-      'padding': isLeft ? '3px 10px 3px 8px' : isRight ? '3px 8px 3px 10px' : '3px 10px',
-      'text-align': 'center',
-      'line-height': '1.35',
-      'white-space': 'nowrap',
-      'box-shadow': '0 4px 14px rgba(0, 0, 0, 0.28)',
-      'cursor': 'pointer',
-    }
-    if (isLeft) labelStyle['border-left'] = `2px solid ${accent}`
-    if (isRight) labelStyle['border-right'] = `2px solid ${accent}`
+    const center = centroidForPark(parkName)
+    const accent = brightenHex(color, 0.42)
 
     const label = new AMap.Text({
       text: displayName,
-      position: labelPos,
-      anchor: textAnchor,
-      offset: (AMap as any).Pixel
-        ? new (AMap as any).Pixel(
-          isLeft ? 6 : isRight ? -6 : 0,
-          isBottom ? -6 : isTop ? 6 : 0,
-        )
-        : [0, 0],
-      zIndex: 210,
-      style: labelStyle,
+      position: center,
+      anchor: 'center',
+      zIndex: MAP_LAYER_Z.parkLabel,
+      style: {
+        'background-color': 'transparent',
+        'border': 'none',
+        'border-width': '0',
+        'box-shadow': 'none',
+        'padding': '0',
+        'color': '#f0f9ff',
+        'font-size': '12px',
+        'font-weight': '700',
+        'letter-spacing': '0.04em',
+        'text-align': 'center',
+        'line-height': '1.3',
+        'white-space': 'nowrap',
+        'text-shadow': `0 0 6px rgba(2, 12, 28, 0.95), 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 14px ${accent}aa`,
+        'cursor': 'pointer',
+        'pointer-events': 'auto',
+      },
     })
     label.setMap(map)
     attachParkSelectHandler(label, parkName)
@@ -569,6 +482,362 @@ export function useEnterpriseL7Map() {
     })
   }
 
+  function rebuildWuhanMask() {
+    if (!map || !AMap || !wuhanOuterRings.length) return
+    clearOverlays(maskPolygons)
+    const worldRing: [number, number][] = [
+      [-180, -85], [180, -85], [180, 85], [-180, 85],
+    ]
+    try {
+      const mask = new AMap.Polygon({
+        path: [worldRing, ...wuhanOuterRings],
+        fillColor: '#0a2a45',
+        fillOpacity: 0.52,
+        strokeColor: 'transparent',
+        strokeWeight: 0,
+        strokeOpacity: 0,
+        zIndex: 400,
+        bubble: false,
+        cursor: 'default',
+      })
+      mask.setMap(map)
+      maskPolygons.push(mask)
+    } catch (e) {
+      console.warn('武汉市遮罩创建失败', e)
+    }
+  }
+
+  function clearHeatmap() {
+    if (heatmapLayer) {
+      try {
+        loca?.remove?.(heatmapLayer)
+        heatmapLayer?.destroy?.()
+      } catch {
+        // ignore
+      }
+      heatmapLayer = null
+    }
+  }
+
+  function bringHeatmapToFront() {
+    try {
+      heatmapLayer?.show?.()
+    } catch {
+      // ignore
+    }
+  }
+
+  function buildCompanyPoints(companies: CompanyRecord[]) {
+    return companies
+      .map((c) => {
+        const lng = Number(c.company_longitude)
+        const lat = Number(c.company_latitude)
+        if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng < 70 || lat < 15) return null
+        if (wuhanOuterRings.length && !wuhanOuterRings.some(ring => pointInRing(lng, lat, ring))) {
+          return null
+        }
+        const score = Number(c.company_score)
+        const count = Number.isFinite(score) && score > 0
+          ? Math.max(1, Math.round(score / 25))
+          : 1
+        const height = Number.isFinite(score) && score > 0
+          ? Math.max(80, Math.round(score * 12))
+          : 80
+        const glow = Number.isFinite(score) && score > 0
+          ? Math.max(10, Math.round(score / 4))
+          : 10
+        return {
+          lng,
+          lat,
+          count,
+          height,
+          glow,
+          traded: c.company_traded === 1 ? 1 : 0,
+        }
+      })
+      .filter((p): p is {
+        lng: number
+        lat: number
+        count: number
+        height: number
+        glow: number
+        traded: number
+      } => Boolean(p))
+  }
+
+  /** 将企业点聚合到网格，生成柱状热力图数据（每格一根柱） */
+  function buildHeatColumnGeoJSON(companies: CompanyRecord[]) {
+    const points = buildCompanyPoints(companies)
+    const CELL = 0.006 // ≈ 600m 网格
+    const grid = new Map<string, { lng: number; lat: number; count: number }>()
+    for (const p of points) {
+      const gx = Math.round(p.lng / CELL)
+      const gy = Math.round(p.lat / CELL)
+      const key = `${gx}:${gy}`
+      const cur = grid.get(key) || { lng: gx * CELL, lat: gy * CELL, count: 0 }
+      cur.count += p.count
+      grid.set(key, cur)
+    }
+    const cells = [...grid.values()]
+    const maxCount = cells.reduce((m, c) => Math.max(m, c.count), 1)
+    return {
+      maxCount,
+      geojson: {
+        type: 'FeatureCollection',
+        features: cells.map((c, index) => ({
+          type: 'Feature',
+          properties: {
+            id: index,
+            count: c.count,
+            ratio: c.count / maxCount,
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [c.lng, c.lat],
+          },
+        })),
+      },
+    }
+  }
+
+  /** 柱状热力图：企业密度按网格聚合，用 Loca 3D 光柱表达（高度/颜色随密度） */
+  function renderHeatmap(companies: CompanyRecord[]) {
+    if (!map || !window.Loca) return
+    const container = ensureLocaContainer()
+    if (!container) return
+
+    clearHeatmap()
+    const { geojson } = buildHeatColumnGeoJSON(companies)
+    if (!geojson.features.length) return
+
+    heatmapLayer = new window.Loca.PrismLayer({
+      loca: container,
+      zIndex: MAP_LAYER_Z.heatmap,
+      opacity: 0.82,
+      visible: true,
+      zooms: [8, 20],
+      acceptLight: true,
+      hasSide: true,
+      cullface: 'none',
+    })
+    heatmapLayer.setSource(new window.Loca.GeoJSONSource({ data: geojson }))
+    heatmapLayer.setStyle({
+      unit: 'meter',
+      sideNumber: 4,
+      radius: 240,
+      altitude: 0,
+      height: (_i: number, feature: any) => {
+        const ratio = Number(feature?.properties?.ratio) || 0
+        return 120 + ratio * 1600
+      },
+      topColor: (_i: number, feature: any) => (
+        heatColumnColor(Number(feature?.properties?.ratio) || 0, 'top')
+      ),
+      sideTopColor: (_i: number, feature: any) => (
+        heatColumnColor(Number(feature?.properties?.ratio) || 0, 'top')
+      ),
+      sideBottomColor: (_i: number, feature: any) => (
+        heatColumnColor(Number(feature?.properties?.ratio) || 0, 'bottom')
+      ),
+    })
+    container.add(heatmapLayer)
+  }
+
+  function clearCompanyGlowLayer() {
+    companyGlowLayers.forEach((layer) => {
+      try {
+        loca?.remove?.(layer)
+        layer?.destroy?.()
+      } catch {
+        // ignore
+      }
+    })
+    companyGlowLayers = []
+
+    if (companyPrismLayer) {
+      try {
+        loca?.remove?.(companyPrismLayer)
+        companyPrismLayer?.destroy?.()
+      } catch {
+        // ignore
+      }
+      companyPrismLayer = null
+    }
+  }
+
+  function ensureLocaContainer() {
+    if (!map || !window.Loca) return null
+    if (!loca) {
+      loca = new window.Loca.Container({ map })
+    }
+    return loca
+  }
+
+  function clearZoneBoard() {
+    if (zoneBoardLayer) {
+      try {
+        loca?.remove?.(zoneBoardLayer)
+        zoneBoardLayer?.destroy?.()
+      } catch {
+        // ignore
+      }
+      zoneBoardLayer = null
+    }
+  }
+
+  /** 高新区漂浮边界：仅抬升描边，无顶面填充色 */
+  function renderZoneFloatingBoard(zoneData: GeoFeatureCollection) {
+    if (!map || !window.Loca) return
+    const container = ensureLocaContainer()
+    if (!container) return
+    const feature = zoneData.features?.[0]
+    if (!feature?.geometry || !window.Loca.PolygonLayer) return
+
+    clearZoneBoard()
+    const geojson = {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: feature.geometry }],
+    }
+
+    zoneBoardLayer = new window.Loca.PolygonLayer({
+      loca: container,
+      zIndex: 128,
+      opacity: 1,
+      visible: true,
+      cullface: 'none',
+      acceptLight: false,
+      hasSide: true,
+      hasBottom: false,
+      shininess: 1,
+    })
+    zoneBoardLayer.setSource(new window.Loca.GeoJSONSource({ data: geojson }))
+    zoneBoardLayer.setStyle({
+      topColor: 'rgba(0, 0, 0, 0)',
+      sideTopColor: 'rgba(165, 243, 252, 0.95)',
+      sideBottomColor: 'rgba(56, 189, 248, 0.7)',
+      altitude: 1800, // 漂浮高度
+      height: 14,     // 极薄侧壁，视觉上只剩边界线
+    })
+    container.add(zoneBoardLayer)
+  }
+
+  function buildCompanyGlowGeoJSON(companies: CompanyRecord[]) {
+    const points = buildCompanyPoints(companies)
+    return {
+      type: 'FeatureCollection',
+      features: points.map((p, index) => ({
+        type: 'Feature',
+        properties: {
+          id: index,
+          glow: p.glow,
+          height: p.height,
+          traded: p.traded,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [p.lng, p.lat],
+        },
+      })),
+    }
+  }
+
+  function renderCompanyGlowLayer(companies: CompanyRecord[]) {
+    if (!map || !window.Loca) return
+    const container = ensureLocaContainer()
+    if (!container) return
+
+    clearCompanyGlowLayer()
+    const geojson = buildCompanyGlowGeoJSON(companies)
+    if (!geojson.features.length) return
+
+    // 3D 光柱：按企业评分映射高度
+    if (window.Loca.PrismLayer) {
+      companyPrismLayer = new window.Loca.PrismLayer({
+        loca: container,
+        zIndex: 130,
+        opacity: 0.92,
+        visible: true,
+        zooms: [9, 20],
+        acceptLight: true,
+        hasSide: true,
+        cullface: 'none',
+      })
+      companyPrismLayer.setSource(new window.Loca.GeoJSONSource({ data: geojson }))
+      companyPrismLayer.setStyle({
+        unit: 'meter',
+        sideNumber: 4,
+        radius: 48,
+        altitude: 0,
+        height: (_i: number, feature: any) => {
+          const h = Number(feature?.properties?.height) || 80
+          return Math.min(2200, h)
+        },
+        topColor: (_i: number, feature: any) => (
+          Number(feature?.properties?.traded) === 1 ? '#fca5a5' : '#e0f2fe'
+        ),
+        sideTopColor: (_i: number, feature: any) => (
+          Number(feature?.properties?.traded) === 1 ? '#f87171' : '#7dd3fc'
+        ),
+        sideBottomColor: (_i: number, feature: any) => (
+          Number(feature?.properties?.traded) === 1 ? 'rgba(248, 113, 113, 0.15)' : 'rgba(56, 189, 248, 0.12)'
+        ),
+      })
+      container.add(companyPrismLayer)
+    }
+
+    // 贴地城市亮点光晕
+    const bloomLayer = new window.Loca.ScatterLayer({
+      loca: container,
+      zIndex: 125,
+      opacity: 0.9,
+      visible: true,
+      zooms: [8, 20],
+    })
+    bloomLayer.setSource(new window.Loca.GeoJSONSource({ data: geojson }))
+    bloomLayer.setStyle({
+      unit: 'px',
+      size: (_i: number, feature: any) => {
+        const glow = Number(feature?.properties?.glow) || 10
+        return [glow * 1.6, glow * 1.6]
+      },
+      borderWidth: 0,
+      texture: BREATH_TEXTURE,
+      duration: 0,
+      animate: false,
+    })
+    container.add(bloomLayer)
+    companyGlowLayers.push(bloomLayer)
+
+    // 内核亮点
+    const coreLayer = new window.Loca.ScatterLayer({
+      loca: container,
+      zIndex: 126,
+      opacity: 1,
+      visible: true,
+      zooms: [8, 20],
+    })
+    coreLayer.setSource(new window.Loca.GeoJSONSource({ data: geojson }))
+    coreLayer.setStyle({
+      unit: 'px',
+      size: (_i: number, feature: any) => {
+        const glow = Number(feature?.properties?.glow) || 10
+        const core = Math.max(4, Math.round(glow * 0.32))
+        return [core, core]
+      },
+      borderWidth: 0,
+      texture: BREATH_TEXTURE,
+      duration: 0,
+      animate: false,
+    })
+    container.add(coreLayer)
+    companyGlowLayers.push(coreLayer)
+  }
+
+  function refreshCompanyLayers() {
+    renderHeatmap(latestCompanies)
+    renderCompanyGlowLayer(latestCompanies)
+  }
+
   function addMapControls() {
     if (!map || !AMap) return
     clearMapControls()
@@ -576,22 +845,15 @@ export function useEnterpriseL7Map() {
     try {
       if (amapAny.ControlBar) {
         const controlBar = new amapAny.ControlBar({
-          position: { right: '12px', top: '12px' },
+          // 放底部，避开右下「产业公司性质分布」浮层
+          position: { right: '410px', bottom: '16px' },
           showZoomBar: true,
           showControlButton: true,
         })
         map.addControl(controlBar)
         mapControls.push(controlBar)
       }
-      if (amapAny.ToolBar) {
-        const toolBar = new amapAny.ToolBar({
-          position: { right: '20px', bottom: '28px' },
-          locate: false,
-          liteStyle: true,
-        })
-        map.addControl(toolBar)
-        mapControls.push(toolBar)
-      }
+      // 右下角 ToolBar 不展示，避免与「产业公司性质分布」重叠
     } catch (e) {
       console.warn('地图控件加载失败', e)
     }
@@ -727,14 +989,14 @@ export function useEnterpriseL7Map() {
       zIndex: 120,
       opacity: 0.82,
       visible: true,
-      zooms: [10, 20],
+      zooms: [8, 20],
     })
     parkLayer.setSource(new window.Loca.GeoJSONSource({
       data: buildBreathGeoJSON(points),
     }))
     parkLayer.setStyle({
       unit: 'meter',
-      size: [2600, 2600],
+      size: [4200, 4200],
       borderWidth: 0,
       texture: BREATH_TEXTURE,
       duration: 1400,
@@ -749,14 +1011,14 @@ export function useEnterpriseL7Map() {
       zIndex: 121,
       opacity: 0.55,
       visible: true,
-      zooms: [11, 20],
+      zooms: [9, 20],
     })
     sparkLayer.setSource(new window.Loca.GeoJSONSource({
       data: buildBreathGeoJSON(points),
     }))
     sparkLayer.setStyle({
       unit: 'meter',
-      size: [1400, 1400],
+      size: [2200, 2200],
       borderWidth: 0,
       texture: BREATH_TEXTURE_ALT,
       duration: 1000,
@@ -776,16 +1038,36 @@ export function useEnterpriseL7Map() {
 
   function applyMapView(targetCenter: [number, number], fitRegion = false) {
     if (!map) return
-    if (fitRegion) {
-      // 框住高新区后略再拉近一点
-      const fitTargets = [...zonePolygons, ...zoneLines]
-      if (fitTargets.length) {
-        map.setFitView(fitTargets, true, [24, 24, 24, 24], MAP_FIT_MAX_ZOOM)
-        const z = typeof map.getZoom === 'function' ? Number(map.getZoom()) : MAP_ZOOM
-        map.setZoom(Math.min(z + 0.65, MAP_FIT_MAX_ZOOM))
+    if (fitRegion && parkFeatures.length) {
+      // 优先以八大园区边界自适应居中
+      const parkPaths: number[][][] = []
+      for (const f of parkFeatures) {
+        if (f.geometry?.type === 'Polygon') {
+          parkPaths.push((f.geometry.coordinates as number[][][])[0])
+        } else if (f.geometry?.type === 'MultiPolygon') {
+          for (const poly of (f.geometry.coordinates as number[][][][])) {
+            parkPaths.push(poly[0])
+          }
+        }
+      }
+      if (parkPaths.length && AMap) {
+        const fitPolygons = parkPaths.map(path => new AMap.Polygon({
+          path,
+          fillOpacity: 0,
+          strokeOpacity: 0,
+          bubble: true,
+        }))
+        map.setFitView(fitPolygons, true, MAP_ZONE_FIT_PADDING, MAP_ZONE_FIT_MAX_ZOOM)
+        clearOverlays(fitPolygons)
       } else {
         map.setZoomAndCenter(MAP_ZOOM, targetCenter, true, 0)
       }
+    } else if (fitRegion && zonePolygons.length) {
+      map.setFitView(zonePolygons, true, MAP_ZONE_FIT_PADDING, MAP_ZONE_FIT_MAX_ZOOM)
+    } else if (fitRegion && cityPolygons.length) {
+      map.setFitView(cityPolygons, true, MAP_FIT_PADDING, MAP_FIT_MAX_ZOOM)
+    } else if (fitRegion) {
+      map.setZoomAndCenter(MAP_ZOOM, targetCenter, true, 0)
     } else {
       map.setZoomAndCenter(MAP_ZOOM, targetCenter, true, 0)
     }
@@ -795,8 +1077,8 @@ export function useEnterpriseL7Map() {
   }
 
   function applyParkFocusView() {
-    if (!map || !parkPolygons.length) return
-    map.setFitView(parkPolygons, true, [64, 64, 64, 64], MAP_PARK_FIT_MAX_ZOOM)
+    if (!map || !parkLines.length) return
+    map.setFitView(parkLines, true, MAP_PARK_FIT_PADDING, MAP_PARK_FIT_MAX_ZOOM)
     // 选中园区后仍保持 3D 俯仰与旋转
     if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH)
     if (typeof map.setRotation === 'function') map.setRotation(MAP_ROTATION)
@@ -854,15 +1136,49 @@ export function useEnterpriseL7Map() {
     return company.company_traded === 1 ? '#ef4444' : '#10b981'
   }
 
-  function parkExtrusionHeight(parkName: string, count: number): number {
-    const [lng] = centroidForPark(parkName)
-    const lngs = [...parkColorMap.keys()].map(name => centroidForPark(name)[0])
-    const minLng = Math.min(...lngs)
-    const maxLng = Math.max(...lngs)
-    const t = maxLng > minLng ? (lng - minLng) / (maxLng - minLng) : 0.5
-    // 右侧略高，保持可见突起与区域高度差
-    const base = 1000 + t * 3000
-    return Math.max(1000, Math.min(5200, base + count * 8))
+  function setParkLineActive(parkName: string | null) {
+    parkLines.forEach((line) => {
+      const name = line.getExtData?.()?.parkName
+      const active = name === parkName
+      const color = line.getExtData?.()?.color
+      line.setOptions({
+        strokeWeight: active ? PARK_LINE_WIDTH_ACTIVE : PARK_LINE_WIDTH,
+        strokeOpacity: active ? PARK_LINE_OPACITY_ACTIVE : PARK_LINE_OPACITY,
+        zIndex: active ? PARK_LINE_Z_HOVER : PARK_LINE_Z_NORMAL,
+        strokeColor: active ? brightenHex(color, 0.45) : color,
+      })
+    })
+  }
+
+  function clearParkHoverPolygons() {
+    clearOverlays(parkHoverPolygons)
+  }
+
+  function showParkHoverPolygon(parkName: string) {
+    if (!map || !AMap) return
+    clearParkHoverPolygons()
+    const color = parkColorMap.get(parkName)
+    if (!color) return
+    const features = parkFeatures.filter(f => getParkName(f) === parkName)
+    features.forEach((feature) => {
+      createPolygonsForFeature(feature, {
+        fillColor: 'transparent',
+        fillOpacity: 0,
+        strokeColor: 'transparent',
+        strokeWeight: 0,
+        strokeOpacity: 0,
+        extrusionHeight: PARK_HOVER_ALTITUDE,
+        wallColor: color,
+        roofColor: 'transparent',
+        zIndex: MAP_LAYER_Z.park + 10,
+        cursor: 'pointer',
+        bubble: false,
+        extData: { parkName, hover: true },
+      }).forEach((polygon) => {
+        polygon.setMap(map)
+        parkHoverPolygons.push(polygon)
+      })
+    })
   }
 
   function renderCompanyMarkers(parkName: string, companies: CompanyRecord[]) {
@@ -946,6 +1262,31 @@ export function useEnterpriseL7Map() {
     return []
   }
 
+  function linePathsFromFeature(feature: GeoFeature): number[][][] {
+    if (!feature.geometry) return []
+    const geometry = feature.geometry
+    if (geometry.type === 'Polygon') {
+      const coords = geometry.coordinates as number[][][]
+      return [coords[0]].filter(Boolean)
+    }
+    if (geometry.type === 'MultiPolygon') {
+      return (geometry.coordinates as number[][][][])
+        .map(poly => poly[0])
+        .filter(ring => Array.isArray(ring) && ring.length > 0)
+    }
+    return []
+  }
+
+  function createParkBoundaryLines(feature: GeoFeature, options: Record<string, unknown>) {
+    if (!AMap || !feature.geometry) return []
+    return linePathsFromFeature(feature).map(path => new AMap.Polyline({
+      path,
+      showDir: false,
+      isOutline: false,
+      ...options,
+    }))
+  }
+
   function releaseMapDrag() {
     if (!map || typeof window === 'undefined') return
     try {
@@ -992,14 +1333,16 @@ export function useEnterpriseL7Map() {
 
     latestCompanies = companies
     clearOverlays(parkPolygons)
+    clearOverlays(parkLines)
+    clearParkHoverPolygons()
+    clearOverlays(parkHitPolygons)
     clearOverlays(parkLabels)
     clearCompanyMarkers()
 
     const counts = countCompaniesByPark(companies)
     const legend: ParkLegendItem[] = []
     const focusName = selectedParkName.value
-    let parkIndex = 0
-
+    hoveredParkName.value = focusName
     for (const [parkName, color] of parkColorMap.entries()) {
       const count = counts.get(parkName) || 0
       const displayName = displayParkName(parkName)
@@ -1009,33 +1352,60 @@ export function useEnterpriseL7Map() {
 
       const features = parkFeatures.filter(f => getParkName(f) === parkName)
       for (const feature of features) {
-        const extrusionHeight = parkExtrusionHeight(parkName, count)
-        const highlighted = isHighlightPark(parkName)
-        createPolygonsForFeature(feature, {
-          fillColor: color,
-          fillOpacity: focusName ? 0.76 : (highlighted ? 0.66 : 0.54),
-          strokeColor: brightenHex(color, 0.18),
-          strokeWeight: focusName ? 2 : (highlighted ? 1.6 : 1.3),
-          strokeOpacity: highlighted ? 0.9 : 0.82,
-          extrusionHeight,
-          wallColor: '#062038',
-          roofColor: color,
-          zIndex: 30 + Math.min(40, Math.floor(count / 5)),
+        const active = focusName === parkName
+        // 园区轮廓线：无填充，纯边界线
+        createParkBoundaryLines(feature, {
+          strokeColor: active ? brightenHex(color, 0.45) : color,
+          strokeWeight: active ? PARK_LINE_WIDTH_ACTIVE : PARK_LINE_WIDTH,
+          strokeOpacity: active ? PARK_LINE_OPACITY_ACTIVE : PARK_LINE_OPACITY,
+          zIndex: active ? PARK_LINE_Z_HOVER : PARK_LINE_Z_NORMAL,
           cursor: 'pointer',
-          extData: { parkName },
-        }).forEach((polygon) => {
-          polygon.setMap(map)
-          polygon.on('click', (e: any) => {
+          bubble: false,
+          extData: { parkName, color },
+        }).forEach((line) => {
+          line.setMap(map)
+          line.on('click', (e: any) => {
             e?.originEvent?.stopPropagation?.()
             e?.originEvent?.preventDefault?.()
             deferSelectPark(parkName, true)
           })
-          parkPolygons.push(polygon)
+          parkLines.push(line)
+        })
+
+        // 园区透明命中面：填充透明但可接收鼠标事件，鼠标在园区内部也能高亮边界
+        createPolygonsForFeature(feature, {
+          fillColor: 'transparent',
+          fillOpacity: 0,
+          strokeColor: 'transparent',
+          strokeWeight: 0,
+          strokeOpacity: 0,
+          zIndex: active ? PARK_LINE_Z_HOVER - 5 : PARK_LINE_Z_NORMAL - 5,
+          cursor: 'pointer',
+          bubble: false,
+          extData: { parkName, color, hit: true },
+        }).forEach((hit) => {
+          hit.setMap(map)
+          hit.on('click', (e: any) => {
+            e?.originEvent?.stopPropagation?.()
+            e?.originEvent?.preventDefault?.()
+            deferSelectPark(parkName, true)
+          })
+          hit.on('mouseover', () => {
+            hoveredParkName.value = parkName
+            setParkLineActive(parkName)
+            showParkHoverPolygon(parkName)
+          })
+          hit.on('mouseout', () => {
+            if (selectedParkName.value === parkName) return
+            hoveredParkName.value = null
+            setParkLineActive(selectedParkName.value)
+            clearParkHoverPolygons()
+          })
+          parkHitPolygons.push(hit)
         })
       }
 
-      createParkCallout(parkName, displayName, color, parkIndex)
-      parkIndex += 1
+      createParkInlineLabel(parkName, displayName, color)
     }
 
     parkLegend.value = legend.sort((a, b) => b.count - a.count)
@@ -1047,22 +1417,19 @@ export function useEnterpriseL7Map() {
           if (prevFocus === null) saveOverviewView()
           applyParkFocusView()
           releaseMapDrag()
+          refreshCompanyLayers()
         })
       } else {
         if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH)
         if (typeof map.setRotation === 'function') map.setRotation(MAP_ROTATION)
+        refreshCompanyLayers()
       }
     } else if (fit) {
       restoreOverviewView()
       releaseMapDrag()
     }
 
-    // 选中园区时只保留该园区波纹，返回全览再恢复全部
-    try {
-      startMapRipple(focusName)
-    } catch (e) {
-      console.warn('更新园区波纹失败', e)
-    }
+    refreshCompanyLayers()
   }
 
   async function initMap(
@@ -1087,15 +1454,22 @@ export function useEnterpriseL7Map() {
         return
       }
 
-      const [amapApi, zoneData, parkAreas] = await Promise.all([
+      const [amapApi, citiesData, regionData, zoneData, parkAreas] = await Promise.all([
         loadAmap(amapKey, securityCode),
+        fetch('/geo/hubei-cities_gcj02.json').then(r => r.json()) as Promise<GeoFeatureCollection>,
+        fetch('/geo/region_gcj02.json').then(r => r.json()) as Promise<GeoFeatureCollection>,
         fetch('/geo/高新区范围_gcj02.json').then(r => r.json()) as Promise<GeoFeatureCollection>,
         fetch('/geo/park_areas_gcj02.json').then(r => r.json()) as Promise<GeoFeatureCollection>,
       ])
 
       AMap = amapApi
       await ensureMapPlugins(AMap)
-      await loadLoca(amapKey)
+      // Loca 城市亮光图层（避免 Vite 下 @antv/l7-maps 的 amap-jsapi-loader 默认导出错误）
+      try {
+        await loadLoca(amapKey)
+      } catch (e) {
+        console.warn('Loca 加载失败，企业亮光点将不可用', e)
+      }
       destroyMap()
 
       parkFeatures = parkAreas.features ?? []
@@ -1104,10 +1478,16 @@ export function useEnterpriseL7Map() {
         parkApiList = parkInfos
       }
 
-      const bounds = boundsFromZone(zoneData)
-      const center = bounds ? centerFromBounds(bounds) : [114.475, 30.50] as [number, number]
+      const wuhanFeature = (citiesData.features ?? []).find(
+        f => String(f.properties?.name || '') === WUHAN_NAME,
+      ) ?? null
+      const zoneBounds = boundsFromZone(zoneData)
+      const center = wuhanFeature?.properties?.centroid
+        ? [Number((wuhanFeature.properties as any).centroid[0]), Number((wuhanFeature.properties as any).centroid[1])] as [number, number]
+        : zoneBounds
+          ? centerFromBounds(zoneBounds)
+          : [114.3055, 30.5928] as [number, number]
       zoneCenter = center
-      const ring = polygonRing(zoneData)
 
       selectedParkName.value = null
       latestCompanies = companies
@@ -1122,41 +1502,180 @@ export function useEnterpriseL7Map() {
         rotateEnable: false,
         zoomEnable: true,
         dragEnable: true,
-        mapStyle: 'amap://styles/dark',
-        showLabel: false,
+        mapStyle: 'amap://styles/darkblue',
+        // 显示道路、路名、建筑与 POI（接近商圈大屏视觉）
+        features: ['bg', 'road', 'building', 'point'],
+        showLabel: true,
         showBuildingBlock: true,
-        skyColor: '#1a4070',
+        skyColor: '#0a2740',
         resizeEnable: true,
       })
+      map.setFeatures?.(['bg', 'road', 'building', 'point'])
+      map.setStatus?.({ showBuildingBlock: true })
 
-      // 仅用透明面框住高新区视野，不画外轮廓蓝线
-      if (ring.length) {
-        const zonePolygon = new AMap.Polygon({
-          path: ring,
-          fillColor: 'rgba(0,0,0,0)',
+      addMapControls()
+
+      // 仅保留武汉市：外部全遮罩
+      if (wuhanFeature?.geometry) {
+        wuhanOuterRings = outerRingsFromGeometry(wuhanFeature.geometry)
+        rebuildWuhanMask()
+
+        // 湖北省外轮廓：省界实线 + 外发光，凸显省域范围
+        const hubeiFeature = (regionData.features ?? []).find(
+          f => String(f.properties?.name || '') === HUBEI_NAME,
+        ) ?? null
+        if (hubeiFeature?.geometry) {
+          createPolygonsForFeature(hubeiFeature, {
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            strokeColor: '#38bdf8',
+            strokeWeight: 5,
+            strokeOpacity: 0.22,
+            zIndex: 401,
+            cursor: 'default',
+            bubble: true,
+          }).forEach((polygon) => {
+            polygon.setMap(map)
+            provinceOutline.push(polygon)
+          })
+          createPolygonsForFeature(hubeiFeature, {
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            strokeColor: '#60a5fa',
+            strokeWeight: 2.2,
+            strokeStyle: 'dashed',
+            strokeOpacity: 0.88,
+            zIndex: 402,
+            cursor: 'default',
+            bubble: true,
+          }).forEach((polygon) => {
+            polygon.setMap(map)
+            provinceOutline.push(polygon)
+          })
+        }
+
+        // 湖北省各地市：淡蓝虚线细分省内结构（不含武汉）
+        for (const feature of (citiesData.features ?? [])) {
+          if (String(feature.properties?.name || '') === WUHAN_NAME) continue
+          createPolygonsForFeature(feature, {
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            strokeColor: '#3b82f6',
+            strokeWeight: 1,
+            strokeStyle: 'dashed',
+            strokeOpacity: 0.35,
+            zIndex: 403,
+            cursor: 'default',
+            bubble: true,
+          }).forEach((polygon) => {
+            polygon.setMap(map)
+            provinceLines.push(polygon)
+          })
+        }
+
+        // 武汉市边界高亮：外发光宽描边 + 亮青主描边，绘制于遮罩之上确保清晰醒目
+        createPolygonsForFeature(wuhanFeature, {
+          fillColor: 'transparent',
           fillOpacity: 0,
-          strokeOpacity: 0,
-          strokeWeight: 0,
-          zIndex: 1,
+          strokeColor: '#22d3ee',
+          strokeWeight: 10,
+          strokeOpacity: 0.28,
+          zIndex: 405,
+          cursor: 'default',
+          bubble: true,
+        }).forEach((polygon) => {
+          polygon.setMap(map)
+          cityPolygons.push(polygon)
         })
-        zonePolygon.setMap(map)
-        zonePolygons.push(zonePolygon)
+        createPolygonsForFeature(wuhanFeature, {
+          fillColor: '#0e5a8a',
+          fillOpacity: 0.08,
+          strokeColor: '#a5f3fc',
+          strokeWeight: 3.5,
+          strokeOpacity: 1,
+          zIndex: 406,
+          cursor: 'default',
+          bubble: true,
+        }).forEach((polygon) => {
+          polygon.setMap(map)
+          cityPolygons.push(polygon)
+        })
+      }
+
+      // 高新区范围：仅边界线，无填充
+      if (zoneData.features?.[0]) {
+        createPolygonsForFeature(zoneData.features[0], {
+          fillColor: 'transparent',
+          fillOpacity: 0,
+          strokeColor: '#7dd3fc',
+          strokeWeight: 2.6,
+          strokeOpacity: 0.95,
+          zIndex: MAP_LAYER_Z.zone,
+          cursor: 'default',
+          bubble: true,
+        }).forEach((polygon) => {
+          polygon.setMap(map)
+          zonePolygons.push(polygon)
+        })
+
+        // 高新区聚焦遮罩：世界矩形挖掉高新区做“洞”，区外整体压暗虚化，把园区从地图上“抠”出来
+        const zoneFeat = zoneData.features[0]
+        const zoneRings = zoneFeat.geometry ? outerRingsFromGeometry(zoneFeat.geometry) : []
+        if (AMap && zoneRings.length) {
+          const worldRing: [number, number][] = [
+            [-180, -85], [180, -85], [180, 85], [-180, 85],
+          ]
+          try {
+            const focus = new AMap.Polygon({
+              path: [worldRing, ...zoneRings],
+              fillColor: '#04162b',
+              fillOpacity: 0.82,
+              strokeColor: 'transparent',
+              strokeWeight: 0,
+              strokeOpacity: 0,
+              zIndex: 407,
+              bubble: false,
+              cursor: 'default',
+            })
+            focus.setMap(map)
+            zoneFocusMask.push(focus)
+          } catch (e) {
+            console.warn('高新区聚焦遮罩创建失败', e)
+          }
+        }
+
+        // 区界清晰发光边：绘制在遮罩之上，保证“抠出”边缘干净醒目
+        createPolygonsForFeature(zoneData.features[0], {
+          fillColor: 'transparent',
+          fillOpacity: 0,
+          strokeColor: '#a5f3fc',
+          strokeWeight: 3.2,
+          strokeOpacity: 1,
+          zIndex: 409,
+          cursor: 'default',
+          bubble: true,
+        }).forEach((polygon) => {
+          polygon.setMap(map)
+          zoneFocusMask.push(polygon)
+        })
       }
 
       renderParks(companies, false)
+      refreshCompanyLayers()
+      // 高新区漂浮透明立体板块
+      renderZoneFloatingBoard(zoneData)
 
       map.on('click', () => {
         if (suppressMapClick || !selectedParkName.value) return
         deferSelectPark(null, true)
       })
+      map.on('zoomend', bringHeatmapToFront)
+      map.on('moveend', bringHeatmapToFront)
 
       overviewViewSettled = false
       map.on('complete', () => {
         settleOverviewView(center)
         mapReady.value = true
-        requestAnimationFrame(() => {
-          startMapRipple(selectedParkName.value)
-        })
       })
 
       setTimeout(() => {
@@ -1164,7 +1683,6 @@ export function useEnterpriseL7Map() {
           settleOverviewView(center)
           mapReady.value = true
         }
-        startMapRipple(selectedParkName.value)
       }, 2500)
     } catch (e) {
       console.error('地图初始化失败', e)
@@ -1190,18 +1708,31 @@ export function useEnterpriseL7Map() {
     }
     const focus = selectedParkName.value
     renderParks(companies, Boolean(focus), focus)
+    refreshCompanyLayers()
   }
 
   function destroyMap() {
+    clearCompanyGlowLayer()
+    clearHeatmap()
+    clearZoneBoard()
     stopMapRipple()
     hideCompanyHoverLabel()
     companyHoverText = null
     clearOverlays(companyMarkers)
     clearOverlays(parkLabels)
+    clearOverlays(parkHoverPolygons)
+    clearOverlays(parkHitPolygons)
+    clearOverlays(parkLines)
     clearOverlays(parkPolygons)
     clearOverlays(zoneLines)
+    clearOverlays(provinceLines)
+    clearOverlays(provinceOutline)
     clearOverlays(zonePolygons)
+    clearOverlays(zoneFocusMask)
+    clearOverlays(cityPolygons)
+    clearOverlays(maskPolygons)
     clearMapControls()
+    wuhanOuterRings = []
     parkFeatures = []
     parkColorMap = new Map()
     parkLegend.value = []
@@ -1215,6 +1746,7 @@ export function useEnterpriseL7Map() {
     }
   }
 
+  // 对外暴露：容器/状态/园区图例与地图操作方法
   return {
     mapContainerRef,
     mapReady,

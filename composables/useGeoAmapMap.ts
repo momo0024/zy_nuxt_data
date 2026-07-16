@@ -100,33 +100,34 @@ function getCityStyle(
   focusMode: BlurFocusMode = 'wuhan',
   focusedAdcode?: number | null,
 ) {
-  if (focusMode === 'zone') {
-    return {
-      strokeColor: '#94a3b8',
-      strokeWeight: hovered ? 1.5 : 1,
-      strokeOpacity: hovered ? 0.35 : 0.18,
-      fillOpacity: 0,
-      fillColor: 'transparent',
-    }
-  }
+  const isWuhan = feature?.properties?.name === HIGHLIGHT_CITY
   if (hovered) return { ...HOVER_CITY_OUTLINE }
   if (focusedAdcode != null && feature?.properties?.adcode === focusedAdcode) {
     return { ...FOCUSED_CITY_STYLE }
   }
-  const isWuhan = feature?.properties?.name === HIGHLIGHT_CITY
-  if (!isWuhan) {
+  // 武汉市边界：任何视图下都高亮显示（青蓝描边 + 轻微填充，营造发光边界感）
+  if (isWuhan) {
     return {
-      strokeColor: '#6366f1',
-      strokeWeight: 2,
-      strokeOpacity: 0.85,
+      strokeColor: '#06b6d4',
+      strokeWeight: 3.5,
+      strokeOpacity: 1,
+      fillOpacity: 0.06,
+      fillColor: '#22d3ee',
+    }
+  }
+  if (focusMode === 'zone') {
+    return {
+      strokeColor: '#94a3b8',
+      strokeWeight: hovered ? 1.5 : 1,
+      strokeOpacity: hovered ? 0.35 : 0.22,
       fillOpacity: 0,
       fillColor: 'transparent',
     }
   }
   return {
-    strokeColor: '#0891b2',
-    strokeWeight: 2.5,
-    strokeOpacity: 0.95,
+    strokeColor: '#6366f1',
+    strokeWeight: 2,
+    strokeOpacity: 0.85,
     fillOpacity: 0,
     fillColor: 'transparent',
   }
@@ -137,21 +138,12 @@ function getProvinceStyle(
   hovered = false,
   focusMode: BlurFocusMode = 'wuhan',
 ) {
-  if (focusMode === 'zone') {
-    return {
-      strokeColor: '#94a3b8',
-      strokeWeight: 1,
-      strokeOpacity: hovered ? 0.28 : 0.12,
-      strokeStyle: 'dashed',
-      fillOpacity: 0,
-      fillColor: 'transparent',
-    }
-  }
   if (hovered) return { ...HOVER_OUTLINE }
+  // 湖北省范围：任何视图下都以科技蓝虚线高亮描边
   return {
-    strokeColor: '#94a3b8',
-    strokeWeight: 1.2,
-    strokeOpacity: 0.85,
+    strokeColor: '#2f7cf6',
+    strokeWeight: focusMode === 'zone' ? 2 : 2.4,
+    strokeOpacity: focusMode === 'zone' ? 0.62 : 0.82,
     strokeStyle: 'dashed',
     fillOpacity: 0,
     fillColor: 'transparent',
@@ -223,8 +215,8 @@ function getParkStyle(
       strokeColor: color,
       strokeWeight: 4,
       strokeOpacity: 1,
-      fillOpacity: 0.35,
-      fillColor: color,
+      fillOpacity: 0,
+      fillColor: 'transparent',
     }
   }
   if (isFocused) {
@@ -232,8 +224,8 @@ function getParkStyle(
       strokeColor: color,
       strokeWeight: 3.5,
       strokeOpacity: 1,
-      fillOpacity: 0.32,
-      fillColor: color,
+      fillOpacity: 0,
+      fillColor: 'transparent',
     }
   }
   if (dimmed) {
@@ -241,16 +233,16 @@ function getParkStyle(
       strokeColor: color,
       strokeWeight: 1.5,
       strokeOpacity: 0.12,
-      fillOpacity: 0.03,
-      fillColor: color,
+      fillOpacity: 0,
+      fillColor: 'transparent',
     }
   }
   return {
     strokeColor: color,
     strokeWeight: 2.75,
     strokeOpacity: 0.95,
-    fillOpacity: 0.2,
-    fillColor: color,
+    fillOpacity: 0,
+    fillColor: 'transparent',
   }
 }
 
@@ -457,11 +449,11 @@ export function useGeoAmapMap() {
 
   function getMaskAlpha(): number {
     if (blurFocusMode === 'zone') {
-      if (focusedParkId != null) return 0.62
-      return 0.48
+      if (focusedParkId != null) return 0.5
+      return 0.34
     }
-    if (focusedParkId != null) return 0.58
-    return 0.42
+    if (focusedParkId != null) return 0.46
+    return 0.3
   }
 
   function getMaskFillColor(): string {
@@ -472,7 +464,7 @@ export function useGeoAmapMap() {
     if (darkThemes.includes(sysTheme)) {
       return `rgba(0,0,0,${alpha})`
     }
-    return `rgba(230,232,240,${alpha})`
+    return `rgba(240,244,250,${alpha})`
   }
 
   function applyMaskForFocus() {
@@ -528,17 +520,19 @@ export function useGeoAmapMap() {
       const name = feature.properties?.name as string | undefined
       const center = feature.properties?.center as [number, number] | undefined
       if (!name || !Array.isArray(center) || center.length < 2) continue
+      const isWuhan = name === HIGHLIGHT_CITY
       layer.add(new AMap.LabelMarker({
         position: [center[0], center[1]],
+        zIndex: isWuhan ? 20 : 10,
         text: {
           content: name,
           direction: 'center',
           style: {
-            fontSize: 12,
-            fontWeight: '600',
-            fillColor: '#334155',
+            fontSize: isWuhan ? 14 : 12,
+            fontWeight: isWuhan ? '800' : '600',
+            fillColor: isWuhan ? '#0e7490' : '#334155',
             strokeColor: '#ffffff',
-            strokeWidth: 2,
+            strokeWidth: isWuhan ? 3 : 2,
           },
         },
       }))

@@ -9,7 +9,7 @@
           </span>
           <div class="nc-brand-text">
             <h1 class="nc-brand-title">新闻中心</h1>
-            <p class="nc-brand-sub">创新平台资讯聚合</p>
+            <p class="nc-brand-sub">资讯聚合</p>
           </div>
         </div>
         <div class="nc-hero-stats">

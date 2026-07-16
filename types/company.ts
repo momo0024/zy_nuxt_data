@@ -137,6 +137,16 @@ export async function fetchParkList(): Promise<CompanyApiListResponse<{ park_id:
   return res.data as unknown as CompanyApiListResponse<{ park_id: number, park_name: string, num?: number }[]>
 }
 
+export interface AboveScaleItem {
+  remark: string
+  sum: number
+}
+
+export async function fetchAboveScale(): Promise<CompanyApiListResponse<AboveScaleItem[]>> {
+  const res = await request.get<AboveScaleItem[]>('/company/aboveScale')
+  return res.data as unknown as CompanyApiListResponse<AboveScaleItem[]>
+}
+
 export function isCreditCode(code: string) {
   return /^[0-9A-Z]{18}$/i.test(code)
 }
