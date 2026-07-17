@@ -150,34 +150,6 @@ function getProvinceStyle(
   }
 }
 
-function getZoneStyle(hovered = false, focusMode: BlurFocusMode = 'wuhan') {
-  if (hovered) {
-    return {
-      strokeColor: '#dc2626',
-      strokeWeight: 3,
-      strokeOpacity: 1,
-      fillOpacity: 0,
-      fillColor: 'transparent',
-    }
-  }
-  if (focusMode === 'zone') {
-    return {
-      strokeColor: '#ea580c',
-      strokeWeight: 2.75,
-      strokeOpacity: 0.98,
-      fillOpacity: 0,
-      fillColor: 'transparent',
-    }
-  }
-  return {
-    strokeColor: '#ea580c',
-    strokeWeight: 2.5,
-    strokeOpacity: 0.95,
-    fillOpacity: 0,
-    fillColor: 'transparent',
-  }
-}
-
 const PARK_COLORS: Record<number, string> = {
   1: '#2563eb',
   2: '#16a34a',
@@ -244,12 +216,6 @@ function getParkStyle(
     fillOpacity: 0,
     fillColor: 'transparent',
   }
-}
-
-function filterCompaniesInPark(companies: CompanyRecord[], parkId: number, features: GeoJSON.Feature[]): CompanyRecord[] {
-  const polys = features.filter(f => f.properties?.park_id === parkId && f.geometry)
-  if (!polys.length) return companies
-  return companies.filter(c => polys.some(f => pointInGeoJSON(c.company_longitude, c.company_latitude, f.geometry!)))
 }
 
 function outerRingsFromGeometry(geometry: GeoJSON.Geometry): number[][][] {
@@ -332,12 +298,6 @@ function findFeatureAt(
   if (!hits.length) return null
   if (hits.length === 1) return hits[0]
   return hits.reduce((best, f) => (featureHitArea(f) < featureHitArea(best) ? f : best))
-}
-
-function filterCompaniesInZone(companies: CompanyRecord[], zone: GeoJSON.FeatureCollection): CompanyRecord[] {
-  const polys = zone.features.filter(f => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon')
-  if (!polys.length) return companies
-  return companies.filter(c => polys.some(f => pointInGeoJSON(c.company_longitude, c.company_latitude, f.geometry!)))
 }
 
 function bboxFromGeometry(geometry: GeoJSON.Geometry): [number, number, number, number] | null {
@@ -435,11 +395,9 @@ export function useGeoAmapMap() {
   let zoneFeatures: GeoJSON.Feature[] = []
   let zoneBboxCache: Map<GeoJSON.Feature, [number, number, number, number] | null> = new Map()
   let cityFeatures: GeoJSON.Feature[] = []
-  let cityBboxCache: Map<GeoJSON.Feature, [number, number, number, number] | null> = new Map()
   const cityList = ref<{ adcode: number, name: string }[]>([])
   let otherProvinceFeatures: GeoJSON.Feature[] = []
   let hubeiFeatureStored: GeoJSON.Feature | null = null
-  let wuhanFeatureStored: GeoJSON.Feature | null = null
   let blurFocusMode: BlurFocusMode = 'zone'
   let focusedCityAdcode: number | null = null
   let hoveredRegion: string | null = null
@@ -701,10 +659,6 @@ export function useGeoAmapMap() {
     })
   }
 
-  function isInWuhan(latlng: { lat: number, lng: number }) {
-    return !!(wuhanFeatureStored?.geometry && pointInGeoJSON(latlng.lng, latlng.lat, wuhanFeatureStored.geometry))
-  }
-
   function findParkTarget(latlng: { lat: number, lng: number }): GeoJSON.Feature | null {
     return findFeatureAt(latlng, zoneFeatures, zoneBboxCache)
   }
@@ -786,48 +740,6 @@ export function useGeoAmapMap() {
   function setParkMapCompanies(companies: CompanyRecord[]) {
     if (focusedParkId == null && focusedUnmappedParkIndex == null) return
     refreshMarkers(companies)
-  }
-
-  function setZoneHover(latlng: { lng: number, lat: number }) {
-    if (hoveredRegion === 'zone') {
-      showRegionTooltip(ZONE_LABEL, latlng.lng, latlng.lat)
-      return
-    }
-    clearRegionHover()
-    hoveredRegion = 'zone'
-    setPolygonsStyle(zonePolygons, getZoneStyle(true, blurFocusMode))
-    showRegionTooltip(ZONE_LABEL, latlng.lng, latlng.lat)
-  }
-
-  function setCityHover(feature: GeoJSON.Feature, latlng: { lng: number, lat: number }) {
-    if (isInZone(latlng)) return
-    const adcode = feature.properties?.adcode as number
-    if (!adcode) return
-    const regionKey = `city-${adcode}`
-    if (hoveredRegion === regionKey) {
-      const name = feature.properties?.name as string
-      if (name) showRegionTooltip(name, latlng.lng, latlng.lat)
-      return
-    }
-    clearRegionHover()
-    hoveredRegion = regionKey
-    setPolygonsStyle(cityPolygonsByAdcode.get(adcode) ?? [], getCityStyle(feature, true, blurFocusMode, focusedCityAdcode))
-    const name = feature.properties?.name as string
-    if (name) showRegionTooltip(name, latlng.lng, latlng.lat)
-  }
-
-  function setProvinceHover(feature: GeoJSON.Feature, latlng: { lng: number, lat: number }) {
-    const name = feature.properties?.name as string
-    if (!name) return
-    const regionKey = `province-${name}`
-    if (hoveredRegion === regionKey) {
-      showRegionTooltip(name, latlng.lng, latlng.lat)
-      return
-    }
-    clearRegionHover()
-    hoveredRegion = regionKey
-    setPolygonsStyle(provincePolygonsByName.get(name) ?? [], getProvinceStyle(feature, true, blurFocusMode))
-    showRegionTooltip(name, latlng.lng, latlng.lat)
   }
 
   function setBlurFocus(mode: BlurFocusMode, cityAdcode?: number | null) {
@@ -1132,7 +1044,6 @@ map.on('zoomend', () => {
       .filter(c => c.adcode && c.name)
       .sort((a, b) => a.name === HIGHLIGHT_CITY ? -1 : b.name === HIGHLIGHT_CITY ? 1 : a.adcode - b.adcode)
     hubeiFeatureStored = (region.features.find((f: any) => f.properties?.name === HIGHLIGHT_PROVINCE) as GeoJSON.Feature | undefined) ?? null
-    wuhanFeatureStored = cityFeatures.find(f => f.properties?.name === HIGHLIGHT_CITY) ?? null
     otherProvinceFeatures = (region.features as GeoJSON.Feature[]).filter(f => f.properties?.name !== HIGHLIGHT_PROVINCE)
 
     const zoneBoundaryFeature = zoneBoundary.features?.[0]
@@ -1262,7 +1173,6 @@ map.on('zoomend', () => {
     cityList.value = []
     otherProvinceFeatures = []
     hubeiFeatureStored = null
-    wuhanFeatureStored = null
     blurFocusMode = 'zone'
     focusedCityAdcode = null
     zoneBoundaryGeometry = null

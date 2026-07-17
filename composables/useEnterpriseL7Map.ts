@@ -36,7 +36,6 @@ declare global {
 
 /** Loca 官方示例呼吸波纹序列帧纹理（贴地扩散） */
 const BREATH_TEXTURE = 'https://a.amap.com/Loca/static/loca-v2/demos/images/breath_blue.png'
-const BREATH_TEXTURE_ALT = 'https://a.amap.com/Loca/static/loca-v2/demos/images/breath_yellow.png'
 
 const PARK_PALETTE = [
   '#38bdf8', // sky-400
@@ -72,19 +71,11 @@ const PARK_LINE_OPACITY_ACTIVE = 1
 const PARK_LINE_Z_HOVER = 520
 /** 园区边界线默认 zIndex */
 const PARK_LINE_Z_NORMAL = 500
-/** 园区悬停时 3D 抬升高度（凸起效果） */
-const PARK_HOVER_ALTITUDE = 3200
 
 /** 地图图层 zIndex */
 const MAP_LAYER_Z = {
-  city: 8,
   zone: 18,
-  park: 22,
-  heatmap: 120,
-  companyMarker: 320,
   parkLabel: 380,
-  mask: 400,
-  hoverLabel: 410,
 } as const
 
 function brightenHex(hex: string, amount = 0.28): string {
@@ -94,10 +85,6 @@ function brightenHex(hex: string, amount = 0.28): string {
   const b = parseInt(h.slice(4, 6), 16)
   const mix = (c: number) => Math.min(255, Math.round(c + (255 - c) * amount))
   return `#${mix(r).toString(16).padStart(2, '0')}${mix(g).toString(16).padStart(2, '0')}${mix(b).toString(16).padStart(2, '0')}`
-}
-
-function isHighlightPark(parkName: string) {
-  return parkName in PARK_COLOR_OVERRIDES
 }
 
 /**
@@ -134,13 +121,8 @@ export function useEnterpriseL7Map() {
   /** 园区透明命中面：用于在园区内部也能触发鼠标悬停 */
   let parkHitPolygons: any[] = []
   let parkLabels: any[] = []
-  let companyMarkers: any[] = []
-  let companyHoverText: any = null
   let heatmapLayer: any = null
-  /** 高新区漂浮透明立体板块（Loca PolygonLayer） */
-  let zoneBoardLayer: any = null
   let companyGlowLayers: any[] = []
-  let companyPrismLayer: any = null
   /** 园区定位激光束（Loca LaserLayer） */
   let parkPillarLayer: any = null
   /** 园区中心地面扩散波纹层 */
@@ -168,13 +150,10 @@ export function useEnterpriseL7Map() {
   let overviewViewState: MapViewState | null = null
   let overviewViewSettled = false
   let loca: any = null
-  let breathLayers: any[] = []
 
   /** 全览：武汉市尽量铺满视口；选中园区再拉近 */
   const MAP_PITCH = 20
-  const MAP_PITCH_FLAT = 0
   const MAP_ROTATION = 0
-  const MAP_ROTATION_FLAT = 0
   const MAP_ZOOM = 13.2
   const MAP_FIT_MAX_ZOOM = 15.8
   /** setFitView: [top, right, bottom, left]；左留白更大，全览时武汉视觉略偏右 */
@@ -182,8 +161,8 @@ export function useEnterpriseL7Map() {
   const MAP_PARK_FIT_MAX_ZOOM = 15.2
   const MAP_PARK_FIT_PADDING: [number, number, number, number] = [72, 200, 160, 200]
   /** 默认全览直接聚焦八大园区范围，让园区居中并自适应屏幕 */
-  const MAP_ZONE_FIT_MAX_ZOOM = 16
-  const MAP_ZONE_FIT_PADDING: [number, number, number, number] = [40, 40, 40, 40]
+  const MAP_ZONE_FIT_MAX_ZOOM = 19
+  const MAP_ZONE_FIT_PADDING: [number, number, number, number] = [8, 8, 8, 8]
   const WUHAN_NAME = '武汉市'
 
   function getParkName(feature: GeoFeature): string {
@@ -207,13 +186,6 @@ export function useEnterpriseL7Map() {
     if (!geometry || geometry.type !== 'Polygon') return []
     const ring = geometry.coordinates?.[0]
     return Array.isArray(ring) ? ring as number[][] : []
-  }
-
-  function linePath(geoData: GeoFeatureCollection): number[][] {
-    const geometry = geoData.features?.[0]?.geometry
-    if (!geometry || geometry.type !== 'LineString') return []
-    const path = geometry.coordinates
-    return Array.isArray(path) ? path as number[][] : []
   }
 
   function outerRingsFromGeometry(geometry: GeoGeometry): number[][][] {
@@ -240,52 +212,6 @@ export function useEnterpriseL7Map() {
       if (intersect) inside = !inside
     }
     return inside
-  }
-
-  function pointInGeometry(lng: number, lat: number, geometry: GeoGeometry): boolean {
-    if (geometry.type === 'Polygon') {
-      const coords = geometry.coordinates as number[][][]
-      const [outer, ...holes] = coords
-      if (!outer || !pointInRing(lng, lat, outer)) return false
-      return !holes.some(h => pointInRing(lng, lat, h))
-    }
-    if (geometry.type === 'MultiPolygon') {
-      const polys = geometry.coordinates as number[][][][]
-      return polys.some((poly) => {
-        const [outer, ...holes] = poly
-        if (!outer || !pointInRing(lng, lat, outer)) return false
-        return !holes.some(h => pointInRing(lng, lat, h))
-      })
-    }
-    return false
-  }
-
-  function featureHitArea(feature: GeoFeature): number {
-    const geom = feature.geometry
-    if (!geom) return Infinity
-    const rings = outerRingsFromGeometry(geom)
-    if (!rings.length) return Infinity
-    return Math.min(...rings.map((ring) => {
-      let minLng = Infinity
-      let maxLng = -Infinity
-      let minLat = Infinity
-      let maxLat = -Infinity
-      for (const [lng, lat] of ring) {
-        minLng = Math.min(minLng, lng)
-        maxLng = Math.max(maxLng, lng)
-        minLat = Math.min(minLat, lat)
-        maxLat = Math.max(maxLat, lat)
-      }
-      return (maxLng - minLng) * (maxLat - minLat)
-    }))
-  }
-
-  function findParkNameAt(lng: number, lat: number): string | null {
-    const hits = parkFeatures.filter(f => f.geometry && pointInGeometry(lng, lat, f.geometry))
-    if (!hits.length) return null
-    if (hits.length === 1) return getParkName(hits[0])
-    const best = hits.reduce((a, b) => (featureHitArea(a) < featureHitArea(b) ? a : b))
-    return getParkName(best)
   }
 
   /** 企业数优先用 /company/park 接口 num，不再按坐标落入地理范围统计 */
@@ -326,29 +252,6 @@ export function useEnterpriseL7Map() {
 
     if (!Number.isFinite(minLng)) return [114.475, 30.50]
     return [(minLng + maxLng) / 2, (minLat + maxLat) / 2]
-  }
-
-  function boundsForPark(parkName: string): [[number, number], [number, number]] | null {
-    const features = parkFeatures.filter(f => getParkName(f) === parkName)
-    let minLng = Infinity
-    let minLat = Infinity
-    let maxLng = -Infinity
-    let maxLat = -Infinity
-
-    for (const feature of features) {
-      if (!feature.geometry) continue
-      for (const ring of outerRingsFromGeometry(feature.geometry)) {
-        for (const [lng, lat] of ring) {
-          minLng = Math.min(minLng, lng)
-          minLat = Math.min(minLat, lat)
-          maxLng = Math.max(maxLng, lng)
-          maxLat = Math.max(maxLat, lat)
-        }
-      }
-    }
-
-    if (!Number.isFinite(minLng)) return null
-    return [[minLng, minLat], [maxLng, maxLat]]
   }
 
   function attachParkInteractionHandler(overlay: any, parkName: string) {
@@ -402,8 +305,8 @@ export function useEnterpriseL7Map() {
     const label = new AMap.Marker({
       position: center,
       content,
-      anchor: 'bottom-center',
-      offset: new AMap.Pixel(0, -70),
+      anchor: 'center',
+      offset: new AMap.Pixel(0, 0),
       zIndex: MAP_LAYER_Z.parkLabel,
       extData: { parkName },
     })
@@ -523,14 +426,6 @@ export function useEnterpriseL7Map() {
     }
   }
 
-  function bringHeatmapToFront() {
-    try {
-      heatmapLayer?.show?.()
-    } catch {
-      // ignore
-    }
-  }
-
   function buildCompanyPoints(companies: CompanyRecord[]) {
     return companies
       .map((c) => {
@@ -601,7 +496,6 @@ export function useEnterpriseL7Map() {
         max: maxCount,
       })
       heatmapLayer.show?.()
-      console.log('热力图已渲染', { points: points.length, max: maxCount })
     }
     catch (e) {
       console.warn('热力图初始化失败，尝试 {map} 形式', e)
@@ -640,16 +534,6 @@ export function useEnterpriseL7Map() {
       }
     })
     companyGlowLayers = []
-
-    if (companyPrismLayer) {
-      try {
-        loca?.remove?.(companyPrismLayer)
-        companyPrismLayer?.destroy?.()
-      } catch {
-        // ignore
-      }
-      companyPrismLayer = null
-    }
   }
 
   function ensureLocaContainer() {
@@ -666,18 +550,6 @@ export function useEnterpriseL7Map() {
     }
     catch {
       // ignore
-    }
-  }
-
-  function clearZoneBoard() {
-    if (zoneBoardLayer) {
-      try {
-        loca?.remove?.(zoneBoardLayer)
-        zoneBoardLayer?.destroy?.()
-      } catch {
-        // ignore
-      }
-      zoneBoardLayer = null
     }
   }
 
@@ -770,7 +642,6 @@ export function useEnterpriseL7Map() {
       delay: () => Math.random() * 2000,
     })
     container.add(parkPillarLayer)
-    console.log('园区激光定位层已添加', { count: geojson.features.length })
 
     // 2. 园区中心地面水波纹扩散
     const ringLayer = new window.Loca.ScatterLayer({
@@ -794,42 +665,6 @@ export function useEnterpriseL7Map() {
     parkRingLayers.push(ringLayer)
 
     startLocaAnimate()
-  }
-
-  /** 高新区漂浮边界：仅抬升描边，无顶面填充色 */
-  function renderZoneFloatingBoard(zoneData: GeoFeatureCollection) {
-    if (!map || !window.Loca) return
-    const container = ensureLocaContainer()
-    if (!container) return
-    const feature = zoneData.features?.[0]
-    if (!feature?.geometry || !window.Loca.PolygonLayer) return
-
-    clearZoneBoard()
-    const geojson = {
-      type: 'FeatureCollection',
-      features: [{ type: 'Feature', properties: {}, geometry: feature.geometry }],
-    }
-
-    zoneBoardLayer = new window.Loca.PolygonLayer({
-      loca: container,
-      zIndex: 128,
-      opacity: 1,
-      visible: true,
-      cullface: 'none',
-      acceptLight: false,
-      hasSide: true,
-      hasBottom: false,
-      shininess: 1,
-    })
-    zoneBoardLayer.setSource(new window.Loca.GeoJSONSource({ data: geojson }))
-    zoneBoardLayer.setStyle({
-      topColor: 'rgba(0, 0, 0, 0)',
-      sideTopColor: 'rgba(165, 243, 252, 0.95)',
-      sideBottomColor: 'rgba(56, 189, 248, 0.7)',
-      altitude: 1800, // 漂浮高度
-      height: 14,     // 极薄侧壁，视觉上只剩边界线
-    })
-    container.add(zoneBoardLayer)
   }
 
   function buildCompanyGlowGeoJSON(companies: CompanyRecord[]) {
@@ -1004,116 +839,6 @@ export function useEnterpriseL7Map() {
     return window.__enterpriseLocaPromise__
   }
 
-  function stopMapRipple(destroyContainer = true) {
-    breathLayers.forEach((layer) => {
-      try {
-        loca?.remove?.(layer)
-        layer?.destroy?.()
-      } catch {
-        // ignore
-      }
-    })
-    breathLayers = []
-    if (destroyContainer) {
-      try {
-        loca?.animate?.stop?.()
-        loca?.destroy?.()
-      } catch {
-        // ignore
-      }
-      loca = null
-    }
-  }
-
-  function buildBreathGeoJSON(points: [number, number][]) {
-    return {
-      type: 'FeatureCollection',
-      features: points.map(([lng, lat], index) => ({
-        type: 'Feature',
-        properties: { id: index },
-        geometry: {
-          type: 'Point',
-          coordinates: [lng, lat],
-        },
-      })),
-    }
-  }
-
-  function breathPointsForFocus(focusParkName?: string | null): [number, number][] {
-    const parkNames = focusParkName
-      ? [focusParkName].filter(name => parkColorMap.has(name))
-      : [...parkColorMap.keys()]
-    const parkPoints = parkNames.map(name => centroidForPark(name))
-    if (parkPoints.length) return parkPoints
-    return focusParkName ? [] : [zoneCenter]
-  }
-
-  /** 贴地呼吸波纹：放在标注线起始点（园区中心）；选中园区时仅保留该园区 */
-  function startMapRipple(focusParkName?: string | null) {
-    if (!map || !window.Loca) return
-
-    const points = breathPointsForFocus(focusParkName)
-    // 只移除波纹图层，不要 destroy Loca 容器（会清掉园区 Polygon）
-    stopMapRipple(false)
-    if (!points.length) return
-
-    if (!loca) {
-      loca = new window.Loca.Container({ map })
-    }
-
-    // 主波纹：标注线起点
-    const parkLayer = new window.Loca.ScatterLayer({
-      loca,
-      zIndex: 120,
-      opacity: 0.82,
-      visible: true,
-      zooms: [8, 20],
-    })
-    parkLayer.setSource(new window.Loca.GeoJSONSource({
-      data: buildBreathGeoJSON(points),
-    }))
-    parkLayer.setStyle({
-      unit: 'meter',
-      size: [4200, 4200],
-      borderWidth: 0,
-      texture: BREATH_TEXTURE,
-      duration: 1400,
-      animate: true,
-    })
-    loca.add(parkLayer)
-    breathLayers.push(parkLayer)
-
-    // 次级波纹：同一起点，节奏错开
-    const sparkLayer = new window.Loca.ScatterLayer({
-      loca,
-      zIndex: 121,
-      opacity: 0.55,
-      visible: true,
-      zooms: [9, 20],
-    })
-    sparkLayer.setSource(new window.Loca.GeoJSONSource({
-      data: buildBreathGeoJSON(points),
-    }))
-    sparkLayer.setStyle({
-      unit: 'meter',
-      size: [2200, 2200],
-      borderWidth: 0,
-      texture: BREATH_TEXTURE_ALT,
-      duration: 1000,
-      animate: true,
-    })
-    loca.add(sparkLayer)
-    breathLayers.push(sparkLayer)
-
-    requestAnimationFrame(() => {
-      try {
-        loca?.animate?.start?.()
-      } catch (e) {
-        console.warn('启动园区波纹动画失败', e)
-      }
-    })
-  }
-
   function applyMapView(targetCenter: [number, number], fitRegion = false) {
     if (!map) return
     if (fitRegion && parkFeatures.length) {
@@ -1167,58 +892,6 @@ export function useEnterpriseL7Map() {
     // 选中园区后仍保持 3D 俯仰与旋转
     if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH)
     if (typeof map.setRotation === 'function') map.setRotation(MAP_ROTATION)
-  }
-
-  function showCompanyHoverLabel(name: string, lng: number, lat: number) {
-    if (!AMap || !map) return
-    if (!companyHoverText) {
-      companyHoverText = new AMap.Text({
-        text: name,
-        position: [lng, lat],
-        anchor: 'bottom-center',
-        offset: (AMap as any).Pixel ? new (AMap as any).Pixel(0, -10) : [0, -10],
-        zIndex: 400,
-        style: {
-          'background-color': 'rgba(10, 32, 64, 0.94)',
-          'border': '1px solid rgba(56, 189, 248, 0.45)',
-          'border-radius': '3px',
-          'color': '#e8f4ff',
-          'font-size': '11px',
-          'font-weight': '500',
-          'padding': '3px 8px',
-          'line-height': '1.35',
-          'white-space': 'nowrap',
-          'box-shadow': '0 2px 10px rgba(37, 99, 235, 0.25)',
-          'pointer-events': 'none',
-        },
-      })
-    } else {
-      companyHoverText.setText(name)
-      companyHoverText.setPosition([lng, lat])
-    }
-    companyHoverText.setMap(map)
-  }
-
-  function hideCompanyHoverLabel() {
-    companyHoverText?.setMap?.(null)
-  }
-
-  function companiesInPark(parkName: string, companies: CompanyRecord[]) {
-    return companies.filter((company) => {
-      const lng = Number(company.company_longitude)
-      const lat = Number(company.company_latitude)
-      if (!Number.isFinite(lng) || !Number.isFinite(lat)) return false
-      return findParkNameAt(lng, lat) === parkName
-    })
-  }
-
-  function clearCompanyMarkers() {
-    hideCompanyHoverLabel()
-    clearOverlays(companyMarkers)
-  }
-
-  function companyMarkerColor(company: CompanyRecord): string {
-    return company.company_traded === 1 ? '#ef4444' : '#10b981'
   }
 
   function setParkLineActive(parkName: string | null) {
@@ -1325,58 +998,6 @@ export function useEnterpriseL7Map() {
     const g = parseInt(h.slice(2, 4), 16)
     const b = parseInt(h.slice(4, 6), 16)
     return `rgba(${r}, ${g}, ${b}, ${alpha})`
-  }
-
-  function renderCompanyMarkers(parkName: string, companies: CompanyRecord[]) {
-    clearCompanyMarkers()
-    if (!map || !AMap) return
-
-    const list = companiesInPark(parkName, companies)
-
-    for (const company of list) {
-      const lng = Number(company.company_longitude)
-      const lat = Number(company.company_latitude)
-      const color = companyMarkerColor(company)
-      const Marker = AMap.Marker
-      let marker: any
-
-      if (Marker) {
-        const size = company.company_traded === 1 ? 9 : 7
-        const offset = Math.round(size / 2)
-        marker = new Marker({
-          position: [lng, lat],
-          offset: (AMap as any).Pixel ? new (AMap as any).Pixel(-offset, -offset) : [-offset, -offset],
-          content: `<div style="position:relative;width:${size}px;height:${size}px;border-radius:50%;background:${color};border:1px solid #fff;box-shadow:0 0 8px ${color};"><span style="position:absolute;inset:-6px;border-radius:50%;border:1px solid ${color};opacity:0.55;animation:es-marker-pulse 1.8s ease-out infinite;"></span></div>`,
-          zIndex: company.company_traded === 1 ? 330 : 320,
-          cursor: 'pointer',
-        })
-      } else if (AMap.CircleMarker) {
-        marker = new AMap.CircleMarker({
-          center: [lng, lat],
-          radius: 3.5,
-          strokeColor: '#ffffff',
-          strokeWeight: 1,
-          strokeOpacity: 0.9,
-          fillColor: color,
-          fillOpacity: 0.95,
-          zIndex: company.company_traded === 1 ? 330 : 320,
-          bubble: false,
-          cursor: 'pointer',
-        })
-      } else {
-        continue
-      }
-
-      marker.setMap(map)
-      marker.setExtData?.(company)
-      marker.on?.('mouseover', () => {
-        showCompanyHoverLabel(company.company_name, lng, lat)
-      })
-      marker.on?.('mouseout', () => {
-        hideCompanyHoverLabel()
-      })
-      companyMarkers.push(marker)
-    }
   }
 
   async function waitForMapContainer() {
@@ -1513,7 +1134,6 @@ export function useEnterpriseL7Map() {
     clearParkHoverPolygons()
     clearOverlays(parkHitPolygons)
     clearOverlays(parkLabels)
-    clearCompanyMarkers()
 
     const counts = countCompaniesByPark(companies)
     const legend: ParkLegendItem[] = []
@@ -1808,14 +1428,11 @@ export function useEnterpriseL7Map() {
 
       renderParks(companies)
       refreshCompanyLayers()
-      // 高新区漂浮立体板块已移除，保持平面化
 
       map.on('click', () => {
         if (suppressMapClick || !selectedParkName.value) return
         deferSelectPark(null)
       })
-      map.on('zoomend', bringHeatmapToFront)
-      map.on('moveend', bringHeatmapToFront)
 
       overviewViewSettled = false
       map.on('complete', () => {
@@ -1834,18 +1451,6 @@ export function useEnterpriseL7Map() {
     }
   }
 
-  function highlightCompany(_company: CompanyRecord | null) {
-    // 园区模式不展示企业气泡
-  }
-
-  function flyToCompany(company: CompanyRecord) {
-    if (!map) return
-    const lng = Number(company.company_longitude) || 114.42
-    const lat = Number(company.company_latitude) || 30.49
-    map.setZoomAndCenter(13, [lng, lat], false, 400)
-    if (typeof map.setPitch === 'function') map.setPitch(MAP_PITCH)
-  }
-
   function updateCompanies(companies: CompanyRecord[]) {
     latestCompanies = companies
     if (selectedParkName.value && !parkColorMap.has(selectedParkName.value)) {
@@ -1858,12 +1463,7 @@ export function useEnterpriseL7Map() {
   function destroyMap() {
     clearCompanyGlowLayer()
     clearHeatmap()
-    clearZoneBoard()
     clearParkPillars()
-    stopMapRipple()
-    hideCompanyHoverLabel()
-    companyHoverText = null
-    clearOverlays(companyMarkers)
     clearOverlays(parkLabels)
     clearOverlays(parkHoverPolygons)
     clearOverlays(parkHitPolygons)
@@ -1902,8 +1502,6 @@ export function useEnterpriseL7Map() {
     initMap,
     updateCompanies,
     setParkApiList,
-    highlightCompany,
-    flyToCompany,
     destroyMap,
   }
 }

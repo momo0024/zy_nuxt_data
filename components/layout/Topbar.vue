@@ -11,7 +11,7 @@
           </svg>
         </div>
         <div class="brand-copy">
-          <span class="brand-text">智知云</span>
+          <span class="brand-text">企业数据平台</span>
           <span class="brand-sub">产业情报中心</span>
         </div>
       </div>
