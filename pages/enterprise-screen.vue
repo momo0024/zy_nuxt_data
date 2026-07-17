@@ -869,28 +869,27 @@ onUnmounted(() => {
    深色科技 · 产业情报大屏
    ============================================================ */
 .es-screen {
-  --es-bg-deep: #061a2b;
-  --es-bg: #0b2c48;
-  --es-bg-elev: #10345a;
-  --es-panel: rgba(14, 44, 78, 0.88);
-  --es-panel-solid: #0d2f52;
-  --es-hair: rgba(56, 189, 248, 0.26);
-  --es-hair-strong: rgba(125, 211, 252, 0.46);
+  --es-bg-deep: #051425;
+  --es-bg: #0a2238;
+  --es-bg-elev: #0f2d48;
+  --es-panel: rgba(12, 40, 70, 0.88);
+  --es-panel-solid: #0b2844;
+  --es-hair: rgba(56, 189, 248, 0.24);
+  --es-hair-strong: rgba(125, 211, 252, 0.48);
   --es-accent: #38bdf8;
   --es-accent-soft: #7dd3fc;
-  --es-accent-deep: #0284c7;
-  --es-accent-line: rgba(56, 189, 248, 0.6);
-  --es-gold: var(--es-accent);
-  --es-gold-soft: var(--es-accent-soft);
+  --es-accent-deep: #0ea5e9;
+  --es-accent-line: rgba(56, 189, 248, 0.62);
+  --es-gold: var(--es-accent-soft);
+  --es-gold-soft: #a5f3fc;
   --es-gold-line: var(--es-accent-line);
-  --es-crimson: #f87171;
-  --es-text-strong: #f0f8ff;
-  --es-text: #b8d8f0;
-  --es-text-mute: #7eb4d8;
-  --es-text-dim: #5a96c0;
-  --es-sans: 'DIN Alternate', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
-  --es-mono: 'DIN Alternate', 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
-  --es-radius: 8px;
+  --es-text-strong: #f6fbff;
+  --es-text: #c8e6f7;
+  --es-text-mute: #8fbfe6;
+  --es-text-dim: #5a9bc8;
+  --es-sans: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Noto Sans SC', 'Source Han Sans SC', sans-serif;
+  --es-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --es-radius: 10px;
   --es-float-w: 360px;
   --es-float-top-h: min(44vh, 440px);
   --es-float-bot-h: min(34vh, 320px);
@@ -903,8 +902,12 @@ onUnmounted(() => {
   background: var(--es-bg-deep);
   font-family: var(--es-sans);
   font-size: 13px;
+  font-weight: 450;
   font-feature-settings: 'tnum';
   letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   display: block;
   padding: 0;
 }
@@ -1242,7 +1245,7 @@ onUnmounted(() => {
   min-width: 0;
   min-height: 0;
   border: 1px solid rgba(56, 189, 248, 0.32);
-  background: linear-gradient(165deg, rgba(12, 44, 82, 0.5) 0%, rgba(6, 24, 48, 0.58) 100%);
+  background: linear-gradient(165deg, rgba(14, 50, 88, 0.52) 0%, rgba(7, 26, 50, 0.6) 100%);
   border-radius: var(--es-radius);
   box-shadow:
     0 14px 34px rgba(2, 12, 36, 0.4),
@@ -1255,6 +1258,16 @@ onUnmounted(() => {
   flex-direction: column;
   padding: 0;
   overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease;
+}
+.es-panel:hover {
+  transform: translateY(-2px);
+  border-color: rgba(125, 211, 252, 0.42);
+  box-shadow:
+    0 18px 42px rgba(2, 14, 40, 0.46),
+    0 0 32px rgba(56, 189, 248, 0.14),
+    inset 0 1px 0 rgba(125, 211, 252, 0.22),
+    inset 0 0 0 1px rgba(56, 189, 248, 0.1);
 }
 .es-panel::before {
   content: '';
@@ -1329,7 +1342,14 @@ onUnmounted(() => {
   height: 40px;
   padding: 0 14px 0 16px;
   flex-shrink: 0;
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(8, 36, 72, 0.32) 48%, transparent);
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(8, 36, 72, 0.32) 48%, transparent);
+  background-size: 40% 100%, 100% 100%;
+  background-position: -40% 0, 0 0;
+  background-repeat: no-repeat;
+  animation: es-head-shimmer 5.5s ease-in-out infinite;
+  overflow: hidden;
 }
 .es-panel-head::before {
   /* 斜切头部：左侧发光强调条 */
@@ -1406,15 +1426,21 @@ onUnmounted(() => {
 .es-metric {
   padding: 14px 14px 12px;
   background: var(--es-panel-solid);
-  transition: background 0.2s ease;
+  transition: background 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
   min-height: 0;
 }
+.es-metric:hover {
+  background: rgba(56, 189, 248, 0.08);
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 18px rgba(56, 189, 248, 0.08);
+}
 .es-metric.active {
-  background: rgba(56, 189, 248, 0.1);
+  background: rgba(56, 189, 248, 0.12);
+  box-shadow: inset 0 0 22px rgba(56, 189, 248, 0.1);
 }
 .es-metric.active::before {
   content: '';
@@ -1425,6 +1451,11 @@ onUnmounted(() => {
   width: 2px;
   background: linear-gradient(180deg, var(--es-accent-soft), var(--es-accent-deep));
   border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.55);
+}
+.es-metric.active .es-metric-value {
+  color: var(--es-accent-soft);
+  text-shadow: 0 0 12px rgba(125, 211, 252, 0.35);
 }
 .es-metric-head {
   display: flex;
@@ -1872,6 +1903,14 @@ onUnmounted(() => {
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  animation: es-dot-breathe 2.6s ease-in-out infinite;
+}
+.es-legend-item:hover .es-legend-dot,
+.es-legend-item.active .es-legend-dot {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18), 0 0 10px currentColor;
+  animation: es-dot-pulse 1.2s ease-in-out infinite;
 }
 .es-legend-name {
   flex: 1;
@@ -2074,8 +2113,70 @@ onUnmounted(() => {
   0% { transform: translateY(0); }
   100% { transform: translateY(-50%); }
 }
+
+/* 面板头部扫光 */
+@keyframes es-head-shimmer {
+  0%, 80%, 100% { background-position: -40% 0, 0 0; }
+  35% { background-position: 140% 0, 0 0; }
+}
+
+/* 图例圆点呼吸 */
+@keyframes es-dot-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.92; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+@keyframes es-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18), 0 0 10px currentColor; }
+  50% { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22), 0 0 16px currentColor; }
+}
+
+/* 地图企业标记扩散波纹 */
+@keyframes es-marker-pulse {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* 页面入场动画：四角面板 + 标题 + 地图的 staggered 进入 */
+@keyframes es-header-enter {
+  from { opacity: 0; transform: translateY(-18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes es-float-enter-left {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes es-float-enter-right {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes es-center-enter {
+  from { opacity: 0; transform: scale(0.965); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes es-title-glow {
+  0% { box-shadow: 0 0 18px rgba(56, 189, 248, 0.45), 0 0 40px rgba(14, 100, 180, 0.25), inset 0 0 20px rgba(56, 189, 248, 0.12); }
+  100% { box-shadow: 0 0 26px rgba(56, 189, 248, 0.62), 0 0 54px rgba(14, 100, 180, 0.34), inset 0 0 28px rgba(56, 189, 248, 0.18); }
+}
+
+.es-header { animation: es-header-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.es-float-tl { animation: es-float-enter-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.14s both; }
+.es-float-tr { animation: es-float-enter-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both; }
+.es-float-bl { animation: es-float-enter-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both; }
+.es-float-br { animation: es-float-enter-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both; }
+.es-center { animation: es-center-enter 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both; }
+.es-title-banner { animation: es-title-glow 3s ease-in-out infinite alternate; }
+
 @media (prefers-reduced-motion: reduce) {
-  .es-events-track {
+  .es-events-track,
+  .es-header,
+  .es-float-tl,
+  .es-float-tr,
+  .es-float-bl,
+  .es-float-br,
+  .es-center,
+  .es-title-banner,
+  .es-panel-head,
+  .es-legend-dot {
     animation: none !important;
   }
 }

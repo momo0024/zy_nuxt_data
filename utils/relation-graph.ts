@@ -377,9 +377,7 @@ export function buildRelationGraphChartOption(
   // 如果有主企业节点，固定它在中心
   const mainNode = echartsNodes.find(n => n.name === mainName)
   if (mainNode) {
-    mainNode.x = 0
-    mainNode.y = 0
-    mainNode.fixed = true
+    Object.assign(mainNode, { x: 0, y: 0, fixed: true })
   }
 
   return {
