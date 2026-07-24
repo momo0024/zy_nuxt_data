@@ -31,6 +31,7 @@ export default defineNuxtConfig({
       newsApiBaseFallback: newsApiBase,
       amapKey: process.env.NUXT_PUBLIC_AMAP_KEY || '',
       amapSecurityCode: process.env.NUXT_PUBLIC_AMAP_SECURITY_CODE || '',
+      datavUrl: process.env.NUXT_PUBLIC_DATAV_URL || 'http://localhost:5173/sc-datav/',
     },
   },
   sourcemap: { server: false, client: false },

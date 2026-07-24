@@ -319,7 +319,6 @@
                     rel="noopener noreferrer"
                     class="chain-modal-item"
                   >
-                    <span class="chain-modal-av">{{ co.company_name.charAt(0) }}</span>
                     <span class="chain-modal-name">{{ co.company_name }}</span>
                     <UIcon name="i-lucide-chevron-right" class="size-3.5 opacity-40" />
                   </NuxtLink>
@@ -2197,20 +2196,6 @@ onUnmounted(() => window.removeEventListener('resize', alignNodeCols))
   background: var(--surface-alt);
   border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
   transform: translateX(2px);
-}
-
-.chain-modal-av {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--surface-alt)), var(--surface-alt));
-  border: 1px solid var(--border);
-  color: var(--primary);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .chain-modal-name {

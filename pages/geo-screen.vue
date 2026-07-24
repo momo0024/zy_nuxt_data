@@ -210,9 +210,6 @@
                 :class="{ 'cp-item-highlighted': highlightedCompanyId === c.id }"
                 @click="openDetail(c)"
               >
-                <div class="cp-avatar" :style="{ background: getIndustryColor(c.product_type) }">
-                  {{ c.company_name.charAt(0) }}
-                </div>
                 <div class="cp-info">
                   <div class="cp-name">
                     {{ c.company_name }}
@@ -1528,19 +1525,6 @@ function hasStrengthData(c: CompanyRecord): boolean {
 .cp-item-highlighted {
   background: color-mix(in srgb, var(--primary) 12%, var(--surface-alt));
   border-color: color-mix(in srgb, var(--primary) 30%, transparent);
-}
-.cp-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
-  opacity: 0.92;
 }
 .cp-info { flex: 1; min-width: 0; }
 .cp-name {

@@ -53,7 +53,6 @@ function companyKey(c: CompanyRecord) {
           @mousedown.prevent
           @click="onSelect(c)"
         >
-          <span class="css-avatar">{{ c.company_name.charAt(0) }}</span>
           <span class="css-info">
             <span class="css-name">
               {{ c.company_name }}
@@ -110,20 +109,6 @@ function companyKey(c: CompanyRecord) {
 
 .css-item + .css-item {
   border-top: 1px solid var(--border);
-}
-
-.css-avatar {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--primary) 15%, var(--surface-alt));
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .css-info {
