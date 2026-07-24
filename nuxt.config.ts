@@ -8,7 +8,7 @@ const rootDir = dirname(fileURLToPath(import.meta.url))
 /** 企业地图等主后端（8096） */
 const apiBase = process.env.NUXT_PUBLIC_API_BASE || 'http://119.96.30.33:8096'
 /** 新闻中心 zy-news 后端（生产默认服务器地址） */
-const newsApiBase = process.env.NUXT_PUBLIC_NEWS_API_BASE || 'http://119.96.30.33:8097'
+const newsApiBase = process.env.NUXT_PUBLIC_NEWS_API_BASE || 'http://119.96.30.33:9094'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-11',
